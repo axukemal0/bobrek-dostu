@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Sağlık verisi bulut yedeğine ve cihaz transferine DAHİL EDİLMEZ.
+  Veritabanı SQLCipher ile şifrelenir ve anahtarı Android Keystore'da
+  tutulur; şifreli dosyanın anahtarsız kopyalanması işe yaramaz ve
+  yedeğe gönderilmesi gereksiz risktir.
+  Kullanıcı kendi yedeğini Ayarlar > Veri bölümünden JSON olarak alır.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="root" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="file" />
+        <exclude domain="external" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="root" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="file" />
+        <exclude domain="external" />
+    </device-transfer>
+</data-extraction-rules>

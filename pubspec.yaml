@@ -1,0 +1,122 @@
+name: bobrek_dostu
+description: "Böbrek Dostu — tek kişilik, çevrimdışı çalışan kronik böbrek hastalığı takip uygulaması."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.14.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # --- Durum yönetimi & yönlendirme ---
+  material_ui: ^1.11.1
+  flutter_riverpod: ^3.0.0
+  go_router: ^17.0.0
+
+  # --- Veritabanı (SQLite + SQLCipher ile şifreli) ---
+  drift: ^2.28.0
+  sqlite3: ^2.9.0
+  sqlcipher_flutter_libs: ^0.6.4
+  path_provider: ^2.1.5
+  path: ^1.9.1
+
+  # --- Güvenli depolama & kilit ---
+  flutter_secure_storage: ^9.2.4
+  local_auth: ^2.3.0
+  crypto: ^3.0.6
+
+  # --- Ağ ---
+  http: ^1.5.0
+  xml: ^6.6.1
+
+  # --- Harita & konum ---
+  flutter_map: ^8.2.2
+  latlong2: ^0.9.1
+  geolocator: ^14.0.2
+  url_launcher: ^6.3.2
+
+  # --- Kamera / OCR / barkod (cihaz üstü) ---
+  image_picker: ^1.2.0
+  google_mlkit_barcode_scanning: ^0.14.1
+  google_mlkit_text_recognition: ^0.15.0
+
+  # --- Sağlık verisi (Health Connect) ---
+  health: ^13.1.1
+
+  # DİKKAT — sürüm kilidi:
+  # image 4.11.0+ içindeki PNG çözücü, archive paketinin 4.1.0'da gelen
+  # ZLibDecoder.decodeLazy metodunu çağırıyor. Ancak pdf 3.12.0 archive'ı
+  # "<4.1.0" ile sınırlıyor; bu ikisi birlikte DERLENMİYOR
+  # (image içinde "The method 'decodeLazy' isn't defined" hatası).
+  # pdf 3.13+ bu sınırı kaldırıyor ama xml ^7 istiyor;
+  # xml ^7 ise flutter_local_notifications 19.x (xml ^6.5.0) ile çakışıyor.
+  # Bu yüzden image'i 4.11.0'ın ALTINA sabitliyoruz.
+  # Üst akış düzelince (pdf'in yeni sürümü xml ^6'yı da kabul edince ya da
+  # flutter_local_notifications xml ^7'ye geçince) bu kilit kaldırılabilir.
+  image: ">=4.1.0 <4.11.0"
+
+  # --- Grafik & PDF ---
+  fl_chart: ^1.1.1
+  pdf: ^3.11.3
+  printing: ^5.14.2
+  share_plus: ^12.0.0
+
+  # --- Ses ---
+  speech_to_text: ^7.3.0
+  flutter_tts: ^4.2.3
+
+  # --- Bildirim & arka plan ---
+  flutter_local_notifications: ^19.4.2
+  timezone: ^0.10.1
+  flutter_timezone: ^4.1.1
+  # NOT: workmanager KALDIRILDI.
+  # workmanager 0.9.3 (workmanager_android) eski Kotlin Gradle
+  # Plugin'ini uygular; Flutter 3.50 ile eklentinin Kotlin kaynakları
+  # DERLENMİYOR — ürettiği AAR'ın classes.jar'ı BOŞ kalıyor ve
+  # GeneratedPluginRegistrant "cannot find symbol: WorkmanagerPlugin"
+  # ile derlemeyi kırıyor. (Flutter bu eklentiyi "KGP uygulayan"
+  # eklentiler arasında uyarıyla listeliyor.)
+  # Yerine: akıllı bildirimler uygulama açıldığında/öne geldiğinde
+  # hesaplanır, günlük özet ise flutter_local_notifications ile
+  # günlük tekrarlı olarak zamanlanır (bkz.
+  # lib/core/services/smart_notifications.dart).
+
+  # --- İzinler & yardımcılar ---
+  permission_handler: ^12.0.1
+  shared_preferences: ^2.5.3
+  intl: ^0.20.2
+  file_picker: ^10.3.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  drift_dev: ^2.28.0
+  build_runner: ^2.7.1
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/data/
+    - assets/fonts/
+
+  fonts:
+    - family: PlayfairDisplay
+      fonts:
+        - asset: assets/fonts/PlayfairDisplay-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/PlayfairDisplay-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/PlayfairDisplay-Bold.ttf
+          weight: 700
+    - family: Nunito
+      fonts:
+        - asset: assets/fonts/Nunito-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Nunito-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Nunito-Bold.ttf
+          weight: 700

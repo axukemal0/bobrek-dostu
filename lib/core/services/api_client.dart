@@ -1,0 +1,192 @@
+import 'dart:async';
+import 'dart:convert';
+
+import 'package:http/http.dart' as http;
+
+import '../config/app_config.dart';
+import '../db/database.dart';
+
+/// Dış servis hatalarının sade Türkçe karşılığı.
+class ServiceFailure implements Exception {
+  const ServiceFailure(this.messageTr, {this.isOffline = false, this.statusCode});
+
+  final String messageTr;
+  final bool isOffline;
+  final int? statusCode;
+
+  @override
+  String toString() => 'ServiceFailure($messageTr)';
+}
+
+/// OSM / Overpass / Nominatim / Open-Meteo için ortak istemci.
+///
+/// Kullanım politikalarına uyum:
+///  * Her istekte kimliklendirici User-Agent (kişisel bilgi içermez).
+///  * Yanıtlar veritabanında önbelleğe alınır (gereksiz istek olmaz).
+///  * Nominatim için istekler arasında en az 1 saniye beklenir.
+///  * Hata durumunda üstel geri çekilme (exponential backoff).
+class ApiClient {
+  ApiClient({required this.db, http.Client? client})
+      : _client = client ?? http.Client();
+
+  final AppDatabase db;
+  final http.Client _client;
+
+  /// Nominatim'in kabul ettiği azami hız: saniyede 1 istek.
+  DateTime _lastNominatimCall = DateTime.fromMillisecondsSinceEpoch(0);
+  static const Duration _nominatimMinInterval = Duration(seconds: 1);
+
+  Map<String, String> get _headers => {
+        'User-Agent': AppConfig.userAgent,
+        'Accept': 'application/json',
+      };
+
+  /// Önbellekli GET. [maxAge] boyunca ağa hiç çıkmaz.
+  ///
+  /// Ağ başarısız olursa ve önbellekte eski bir kopya varsa onu döner
+  /// ([staleOk] true ise) — çevrimdışı kullanım için.
+  Future<String> cachedGet(
+    Uri uri, {
+    Duration maxAge = const Duration(hours: 1),
+    bool staleOk = true,
+    Duration timeout = const Duration(seconds: 20),
+    bool rateLimitNominatim = false,
+  }) async {
+    final key = uri.toString();
+    final cached = await db.cacheGet(key, maxAge);
+    if (cached != null) return cached;
+
+    try {
+      if (rateLimitNominatim) await _throttleNominatim();
+      final body = await _getWithRetry(uri, timeout: timeout);
+      await db.cachePut(key, body);
+      return body;
+    } on ServiceFailure catch (_) {
+      if (staleOk) {
+        final stale = await db.cacheGetStale(key);
+        if (stale != null) return stale;
+      }
+      rethrow;
+    }
+  }
+
+  Future<String> _getWithRetry(
+    Uri uri, {
+    required Duration timeout,
+    int attempts = 3,
+  }) async {
+    Object? lastError;
+    for (var i = 0; i < attempts; i++) {
+      if (i > 0) {
+        // Üstel geri çekilme: 0.8s, 1.6s
+        await Future<void>.delayed(Duration(milliseconds: 800 * (1 << (i - 1))));
+      }
+      try {
+        final res = await _client.get(uri, headers: _headers).timeout(timeout);
+        if (res.statusCode == 200) {
+          return utf8.decode(res.bodyBytes);
+        }
+        // 429/5xx geçicidir: tekrar dene.
+        if (res.statusCode == 429 || res.statusCode >= 500) {
+          lastError = ServiceFailure(
+            _statusMessage(res.statusCode),
+            statusCode: res.statusCode,
+          );
+          continue;
+        }
+        throw ServiceFailure(
+          _statusMessage(res.statusCode),
+          statusCode: res.statusCode,
+        );
+      } on TimeoutException {
+        lastError = const ServiceFailure(
+          'Sunucu zamanında yanıt vermedi. Bağlantını kontrol et.',
+          isOffline: true,
+        );
+      } on http.ClientException catch (e) {
+        lastError = ServiceFailure(
+          'İnternete ulaşılamadı (${e.message}).',
+          isOffline: true,
+        );
+      }
+    }
+    if (lastError is ServiceFailure) throw lastError;
+    throw const ServiceFailure('Beklenmeyen bir ağ hatası oluştu.');
+  }
+
+  static String _statusMessage(int code) => switch (code) {
+        400 => 'İstek geçersiz (400). Bu bir uygulama hatası olabilir.',
+        403 => 'Sunucu bu isteği reddetti (403).',
+        404 => 'Aradığın kayıt bulunamadı (404).',
+        429 => 'Sunucu çok yoğun, istek sınırına takıldık (429). '
+            'Biraz sonra tekrar dene.',
+        >= 500 => 'Sunucu şu an hizmet veremiyor ($code). '
+            'Bu ücretsiz bir açık servis; biraz sonra tekrar dene.',
+        _ => 'Sunucu beklenmedik bir yanıt verdi ($code).',
+      };
+
+  Future<void> _throttleNominatim() async {
+    final elapsed = DateTime.now().difference(_lastNominatimCall);
+    if (elapsed < _nominatimMinInterval) {
+      await Future<void>.delayed(_nominatimMinInterval - elapsed);
+    }
+    _lastNominatimCall = DateTime.now();
+  }
+
+  /// Overpass POST isteği — aynaları sırayla dener.
+  ///
+  /// Overpass'ın genel sunucusu sık "at capacity" döner; bu normaldir
+  /// ve kullanıcıya dürüstçe söylenir.
+  Future<String> overpassQuery(
+    String query, {
+    Duration maxAge = const Duration(hours: 6),
+  }) async {
+    final key = 'overpass:${query.hashCode}';
+    final cached = await db.cacheGet(key, maxAge);
+    if (cached != null) return cached;
+
+    final errors = <String>[];
+    for (final mirror in Endpoints.overpassMirrors) {
+      try {
+        final res = await _client
+            .post(
+              Uri.parse(mirror),
+              headers: {
+                'User-Agent': AppConfig.userAgent,
+                'Content-Type': 'application/x-www-form-urlencoded',
+              },
+              body: {'data': query},
+            )
+            .timeout(const Duration(seconds: 35));
+
+        if (res.statusCode == 200 && res.bodyBytes.isNotEmpty) {
+          final body = utf8.decode(res.bodyBytes);
+          // Overpass hata metnini 200 ile de dönebilir.
+          if (body.trimLeft().startsWith('{')) {
+            await db.cachePut(key, body);
+            return body;
+          }
+          errors.add('$mirror: beklenmeyen yanıt biçimi');
+          continue;
+        }
+        errors.add('$mirror: HTTP ${res.statusCode}');
+      } on TimeoutException {
+        errors.add('$mirror: zaman aşımı');
+      } on http.ClientException catch (e) {
+        errors.add('$mirror: ${e.message}');
+      }
+    }
+
+    final stale = await db.cacheGetStale(key);
+    if (stale != null) return stale;
+
+    throw ServiceFailure(
+      'Yakındaki mekanları getiren açık servis (Overpass) şu an '
+      'yanıt vermiyor. Bu ücretsiz bir topluluk servisidir ve '
+      'yoğun saatlerde doluyor. Birkaç dakika sonra tekrar dene.',
+      isOffline: errors.every((e) => e.contains('zaman aşımı')),
+    );
+  }
+
+  void dispose() => _client.close();
+}
