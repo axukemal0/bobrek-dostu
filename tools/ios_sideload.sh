@@ -52,10 +52,19 @@ DEVICE_NAME="${DEVICE_LINE##*	}"
 echo "Cihaz: $DEVICE_NAME"
 echo
 
-# Release derlemesi: hata ayıklama derlemesi telefonda yavaş çalışır ve
-# bilgisayara bağlı olmayınca açılmaz.
-flutter build ios --release --no-codesign >/dev/null
-echo "Derleme hazır, kuruluyor…"
+# RELEASE şart. Debug derlemesi iOS 14+ ile ana ekrandan AÇILMAZ
+# ("debug mode Flutter apps can only be launched from Flutter tooling")
+# ve telefonda belirgin biçimde yavaş çalışır.
+#
+# `flutter install` derlemeyi ve imzalamayı kendisi yapar; ayrıca
+# --no-codesign ile ön derleme yapmak işi iki kez yaptırıyordu.
+# `flutter install` SADECE kurar, derlemez — önce imzalı bir release
+# yapısı üretmek gerekiyor. (--no-codesign ile üretilen yapı kurulamaz:
+# "Could not find application bundle at build/ios/iphoneos/Runner.app".)
+echo "Release derleniyor (birkaç dakika sürebilir)…"
+flutter build ios --release
+
+echo "Telefona kuruluyor…"
 flutter install --release -d "$DEVICE_ID"
 
 echo
