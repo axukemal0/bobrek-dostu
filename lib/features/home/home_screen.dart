@@ -14,6 +14,7 @@ import '../../core/theme/app_typography.dart';
 import '../../core/theme/neumorphic.dart';
 import '../../core/widgets/common.dart';
 import '../../core/widgets/progress_ring.dart';
+import '../../core/widgets/nutrient_meter.dart';
 import '../../core/widgets/responsive.dart';
 import '../medications/medication_logic.dart';
 import 'day_tip.dart';
@@ -267,38 +268,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           ],
                         ),
                         SizedBox(height: r.gapMd),
-                        SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Row(
-                            children: [
-                              for (final n in nutrition.all)
-                                Padding(
-                                  padding:
-                                      EdgeInsets.only(right: r.gapSm),
-                                  child: Column(
-                                    children: [
-                                      ProgressRing(
-                                        ratio: n.ratio,
-                                        label: n.labelTr,
-                                        valueText: n.value < 10
-                                            ? n.value.toStringAsFixed(1)
-                                            : n.value.round().toString(),
-                                        unitText: n.unit,
-                                        size: r.s(84),
-                                      ),
-                                      SizedBox(height: r.gapXs),
-                                      Text(
-                                        n.labelTr,
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .labelSmall,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
+                        for (final n in nutrition.all)
+                          NutrientMeter(total: n),
                         if (foods.isEmpty) ...[
                           SizedBox(height: r.gapSm),
                           Text(

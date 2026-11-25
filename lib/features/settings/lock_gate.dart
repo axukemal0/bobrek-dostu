@@ -8,7 +8,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/neumorphic.dart';
-import '../../core/widgets/drop_leaf_logo.dart';
+import '../../core/brand/brand_mark.dart';
 import '../../core/widgets/responsive.dart';
 
 /// PIN hash'i (SHA-256 + sabit tuz yerine kullanıcıya özgü tuz).
@@ -130,7 +130,7 @@ class _LockGateState extends ConsumerState<LockGate>
     if (!prefs.loaded) {
       return Material(
         color: p.background,
-        child: Center(child: DropLeafMark(size: r.s(92), animate: false)),
+        child: Center(child: BrandMark(size: r.s(92))),
       );
     }
 
@@ -147,7 +147,7 @@ class _LockGateState extends ConsumerState<LockGate>
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  DropLeafMark(size: r.s(92), animate: false),
+                  BrandMark(size: r.s(92)),
                   SizedBox(height: r.gapLg),
                   Text(
                     'Uygulama kilitli',

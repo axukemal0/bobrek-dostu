@@ -80,170 +80,172 @@ class TrendChart extends StatelessWidget {
     final lastMs = sorted.last.at.millisecondsSinceEpoch.toDouble();
     final span = (lastMs - firstMs) == 0 ? 1.0 : lastMs - firstMs;
 
-    double x(DateTime d) =>
-        (d.millisecondsSinceEpoch - firstMs) / span;
+    double x(DateTime d) => (d.millisecondsSinceEpoch - firstMs) / span;
 
     return SizedBox(
       height: height,
-      child: Padding(
-        padding: EdgeInsets.only(right: r.gapSm, top: r.gapSm),
-        child: LineChart(
-          LineChartData(
-            minX: 0,
-            maxX: 1,
-            minY: minY,
-            maxY: maxY,
-            clipData: const FlClipData.all(),
-            gridData: FlGridData(
-              show: true,
-              drawVerticalLine: false,
-              horizontalInterval: (maxY - minY) / 4,
-              getDrawingHorizontalLine: (_) => FlLine(
-                color: p.divider.withValues(alpha: 0.5),
-                strokeWidth: 1,
-              ),
-            ),
-            borderData: FlBorderData(show: false),
-            // Referans aralığı gölgesi.
-            rangeAnnotations: RangeAnnotations(
-              horizontalRangeAnnotations: [
-                if (refMin != null || refMax != null)
-                  HorizontalRangeAnnotation(
-                    y1: refMin ?? minY,
-                    y2: refMax ?? maxY,
-                    color: p.primary.withValues(alpha: 0.10),
-                  ),
-              ],
-            ),
-            extraLinesData: ExtraLinesData(
-              horizontalLines: [
-                if (targetLine != null)
-                  HorizontalLine(
-                    y: targetLine!,
-                    color: p.accent.withValues(alpha: 0.8),
-                    strokeWidth: 1.6,
-                    dashArray: [6, 4],
-                    label: HorizontalLineLabel(
-                      show: targetLabelTr != null,
-                      labelResolver: (_) => targetLabelTr ?? '',
-                      alignment: Alignment.topRight,
-                      style: Theme.of(context).textTheme.labelSmall,
-                    ),
-                  ),
-              ],
-            ),
-            titlesData: FlTitlesData(
-              topTitles:
-                  const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-              rightTitles:
-                  const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-              leftTitles: AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: true,
-                  reservedSize: r.s(42),
-                  interval: (maxY - minY) / 4,
-                  getTitlesWidget: (value, meta) => Padding(
-                    padding: const EdgeInsets.only(right: 4),
-                    child: Text(
-                      value.toStringAsFixed(
-                        (maxY - minY) > 20 ? 0 : decimals,
-                      ),
-                      style: Theme.of(context).textTheme.labelSmall,
-                      textAlign: TextAlign.right,
-                    ),
-                  ),
+      // Grafik kendi katmanında kalsın: sayfanın geri kalanı her
+      // değiştiğinde fl_chart tüm yolları yeniden çizmesin.
+      child: RepaintBoundary(
+        child: Padding(
+          padding: EdgeInsets.only(right: r.gapSm, top: r.gapSm),
+          child: LineChart(
+            LineChartData(
+              minX: 0,
+              maxX: 1,
+              minY: minY,
+              maxY: maxY,
+              clipData: const FlClipData.all(),
+              gridData: FlGridData(
+                show: true,
+                drawVerticalLine: false,
+                horizontalInterval: (maxY - minY) / 4,
+                getDrawingHorizontalLine: (_) => FlLine(
+                  color: p.divider.withValues(alpha: 0.5),
+                  strokeWidth: 1,
                 ),
               ),
-              bottomTitles: AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: true,
-                  reservedSize: r.s(28),
-                  interval: 0.5,
-                  getTitlesWidget: (value, meta) {
-                    final ms = firstMs + value * span;
-                    final d = DateTime.fromMillisecondsSinceEpoch(ms.round());
-                    return Padding(
-                      padding: const EdgeInsets.only(top: 6),
-                      child: Text(
-                        '${d.day}.${d.month}',
+              borderData: FlBorderData(show: false),
+              // Referans aralığı gölgesi.
+              rangeAnnotations: RangeAnnotations(
+                horizontalRangeAnnotations: [
+                  if (refMin != null || refMax != null)
+                    HorizontalRangeAnnotation(
+                      y1: refMin ?? minY,
+                      y2: refMax ?? maxY,
+                      color: p.primary.withValues(alpha: 0.10),
+                    ),
+                ],
+              ),
+              extraLinesData: ExtraLinesData(
+                horizontalLines: [
+                  if (targetLine != null)
+                    HorizontalLine(
+                      y: targetLine!,
+                      color: p.accent.withValues(alpha: 0.8),
+                      strokeWidth: 1.6,
+                      dashArray: [6, 4],
+                      label: HorizontalLineLabel(
+                        show: targetLabelTr != null,
+                        labelResolver: (_) => targetLabelTr ?? '',
+                        alignment: Alignment.topRight,
                         style: Theme.of(context).textTheme.labelSmall,
                       ),
-                    );
-                  },
-                ),
-              ),
-            ),
-            lineTouchData: LineTouchData(
-              touchTooltipData: LineTouchTooltipData(
-                getTooltipColor: (_) => p.isDark ? p.surface : p.textPrimary,
-                getTooltipItems: (spots) => spots.map((s) {
-                  final ms = firstMs + s.x * span;
-                  final d =
-                      DateTime.fromMillisecondsSinceEpoch(ms.round());
-                  return LineTooltipItem(
-                    '${s.y.toStringAsFixed(decimals)} $unit\n'
-                    '${d.day}.${d.month}.${d.year}',
-                    TextStyle(
-                      color: p.isDark ? p.textPrimary : p.surface,
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w600,
                     ),
-                  );
-                }).toList(),
-              ),
-            ),
-            lineBarsData: [
-              LineChartBarData(
-                spots: [
-                  for (final pt in sorted) FlSpot(x(pt.at), pt.value),
                 ],
-                isCurved: true,
-                curveSmoothness: 0.22,
-                preventCurveOverShooting: true,
-                color: p.primary,
-                barWidth: 2.6,
-                dotData: FlDotData(
-                  show: sorted.length <= 30,
-                  getDotPainter: (spot, _, _, _) => FlDotCirclePainter(
-                    radius: 3,
-                    color: p.primary,
-                    strokeColor: p.surface,
-                    strokeWidth: 1.5,
+              ),
+              titlesData: FlTitlesData(
+                topTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                rightTitles: const AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                leftTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: r.s(42),
+                    interval: (maxY - minY) / 4,
+                    getTitlesWidget: (value, meta) => Padding(
+                      padding: const EdgeInsets.only(right: 4),
+                      child: Text(
+                        value.toStringAsFixed(
+                          (maxY - minY) > 20 ? 0 : decimals,
+                        ),
+                        style: Theme.of(context).textTheme.labelSmall,
+                        textAlign: TextAlign.right,
+                      ),
+                    ),
                   ),
                 ),
-                belowBarData: BarAreaData(
-                  show: true,
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      p.primary.withValues(alpha: 0.22),
-                      p.primary.withValues(alpha: 0.0),
-                    ],
+                bottomTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: r.s(28),
+                    interval: 0.5,
+                    getTitlesWidget: (value, meta) {
+                      final ms = firstMs + value * span;
+                      final d = DateTime.fromMillisecondsSinceEpoch(ms.round());
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Text(
+                          '${d.day}.${d.month}',
+                          style: Theme.of(context).textTheme.labelSmall,
+                        ),
+                      );
+                    },
                   ),
                 ),
               ),
-              if (secondary != null)
+              lineTouchData: LineTouchData(
+                touchTooltipData: LineTouchTooltipData(
+                  getTooltipColor: (_) => p.isDark ? p.surface : p.textPrimary,
+                  getTooltipItems: (spots) => spots.map((s) {
+                    final ms = firstMs + s.x * span;
+                    final d = DateTime.fromMillisecondsSinceEpoch(ms.round());
+                    return LineTooltipItem(
+                      '${s.y.toStringAsFixed(decimals)} $unit\n'
+                      '${d.day}.${d.month}.${d.year}',
+                      TextStyle(
+                        color: p.isDark ? p.textPrimary : p.surface,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+              lineBarsData: [
                 LineChartBarData(
-                  spots: [
-                    for (final pt in secondary) FlSpot(x(pt.at), pt.value),
-                  ],
+                  spots: [for (final pt in sorted) FlSpot(x(pt.at), pt.value)],
                   isCurved: true,
                   curveSmoothness: 0.22,
                   preventCurveOverShooting: true,
-                  color: p.accent,
-                  barWidth: 2.2,
+                  color: p.primary,
+                  barWidth: 2.6,
                   dotData: FlDotData(
-                    show: secondary.length <= 30,
+                    show: sorted.length <= 30,
                     getDotPainter: (spot, _, _, _) => FlDotCirclePainter(
-                      radius: 2.6,
-                      color: p.accent,
+                      radius: 3,
+                      color: p.primary,
                       strokeColor: p.surface,
-                      strokeWidth: 1.4,
+                      strokeWidth: 1.5,
+                    ),
+                  ),
+                  belowBarData: BarAreaData(
+                    show: true,
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        p.primary.withValues(alpha: 0.22),
+                        p.primary.withValues(alpha: 0.0),
+                      ],
                     ),
                   ),
                 ),
-            ],
+                if (secondary != null)
+                  LineChartBarData(
+                    spots: [
+                      for (final pt in secondary) FlSpot(x(pt.at), pt.value),
+                    ],
+                    isCurved: true,
+                    curveSmoothness: 0.22,
+                    preventCurveOverShooting: true,
+                    color: p.accent,
+                    barWidth: 2.2,
+                    dotData: FlDotData(
+                      show: secondary.length <= 30,
+                      getDotPainter: (spot, _, _, _) => FlDotCirclePainter(
+                        radius: 2.6,
+                        color: p.accent,
+                        strokeColor: p.surface,
+                        strokeWidth: 1.4,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       ),
@@ -290,8 +292,8 @@ class TrendSummary extends StatelessWidget {
           delta.abs() < 0.0001
               ? Icons.trending_flat_rounded
               : (rising
-                  ? Icons.trending_up_rounded
-                  : Icons.trending_down_rounded),
+                    ? Icons.trending_up_rounded
+                    : Icons.trending_down_rounded),
           color: tone,
           size: 18,
         ),
@@ -301,9 +303,7 @@ class TrendSummary extends StatelessWidget {
             '${sorted.first.value.toStringAsFixed(decimals)} → '
             '${sorted.last.value.toStringAsFixed(decimals)} $unit '
             '(${delta >= 0 ? "+" : ""}${delta.toStringAsFixed(decimals)})',
-            style: Theme.of(context)
-                .textTheme
-                .labelMedium
+            style: Theme.of(context).textTheme.labelMedium
                 ?.copyWith(color: tone),
           ),
         ),

@@ -12,6 +12,10 @@ dependencies:
 
   # --- Durum yönetimi & yönlendirme ---
   material_ui: ^1.11.1
+  # Yalnız CupertinoPageTransitionsBuilder için: iOS'ta soldan kaydırarak
+  # geri gitme jesti bu geçişe bağlı. (Flutter 3.50'de Cupertino, material
+  # gibi ayrı bir pakete taşındı.)
+  cupertino_ui: ^1.1.1
   flutter_riverpod: ^3.0.0
   go_router: ^17.0.0
 
@@ -39,8 +43,20 @@ dependencies:
 
   # --- Kamera / OCR / barkod (cihaz üstü) ---
   image_picker: ^1.2.0
-  google_mlkit_barcode_scanning: ^0.14.1
-  google_mlkit_text_recognition: ^0.15.0
+  # Barkod: google_mlkit_barcode_scanning YERİNE mobile_scanner.
+  # Sebep işlevsel: eski kurulum fotoğraf çekip o kareyi tarıyordu, yani
+  # kullanıcı barkodu net çekmek zorundaydı ve çoğu denemede okunmuyordu.
+  # mobile_scanner canlı kamera akışını sürekli tarar (hedef çerçevesi,
+  # fener, otomatik odak). iOS'ta Apple Vision kullanır (ek bağımlılık yok),
+  # Android'de ise android/gradle.properties içindeki
+  # `dev.steenbakker.mobile_scanner.useUnbundled=true` ile ayrık ML Kit'e
+  # geçirildi: barkod modeli APK'ya gömülmez (~5,5 MB tasarruf).
+  mobile_scanner: ^7.0.0
+  # Metin okuma (OCR) için Dart eklentisi YOK: iOS'ta Apple Vision,
+  # Android'de ayrık ML Kit yerel koddan çağrılır. Sebebi
+  # lib/core/services/text_recognition.dart başında yazılı — özetle
+  # google_mlkit_text_recognition iOS simülatöründe arm64 desteklemiyor
+  # ve modeli uygulamaya gömüyordu.
 
   # --- Sağlık verisi (Health Connect) ---
   health: ^13.1.1
@@ -104,14 +120,14 @@ flutter:
     - assets/fonts/
 
   fonts:
+    # Yazı tipleri Latin + Türkçe kümesine indirgenmiştir
+    # (tools/subset_fonts.sh). Tam kümede 972 KB idi, şimdi 252 KB.
+    # Playfair yalnız başlıklarda ve tek ağırlıkta (w600) kullanılıyor;
+    # Regular ve Bold hiçbir yerde çağrılmadığı için kaldırıldı.
     - family: PlayfairDisplay
       fonts:
-        - asset: assets/fonts/PlayfairDisplay-Regular.ttf
-          weight: 400
         - asset: assets/fonts/PlayfairDisplay-SemiBold.ttf
           weight: 600
-        - asset: assets/fonts/PlayfairDisplay-Bold.ttf
-          weight: 700
     - family: Nunito
       fonts:
         - asset: assets/fonts/Nunito-Regular.ttf

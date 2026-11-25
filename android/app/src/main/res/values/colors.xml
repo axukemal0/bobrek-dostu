@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- AppPalette.warmLight.background / warmDark.background ile aynı -->
+    <color name="launch_background_light">#FFF6F1E7</color>
+    <color name="launch_background_dark">#FF1C1A17</color>
+</resources>

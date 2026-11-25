@@ -5,7 +5,7 @@ import 'package:bobrek_dostu/core/theme/app_typography.dart';
 import 'package:bobrek_dostu/core/theme/motion.dart';
 import 'package:bobrek_dostu/core/theme/neumorphic.dart';
 import 'package:bobrek_dostu/core/widgets/common.dart';
-import 'package:bobrek_dostu/core/widgets/drop_leaf_logo.dart';
+import 'package:bobrek_dostu/core/brand/brand_mark.dart';
 import 'package:bobrek_dostu/core/widgets/form_fields.dart';
 import 'package:bobrek_dostu/core/widgets/progress_ring.dart';
 import 'package:bobrek_dostu/core/widgets/responsive.dart';
@@ -300,7 +300,7 @@ void main() {
       await pumpAt(
         tester,
         Center(
-          child: DropLeafMark(
+          child: AnimatedBrandMark(
             size: 120,
             animate: false,
             onCompleted: () => completed = true,
@@ -321,7 +321,7 @@ void main() {
       await tester.pumpWidget(
         harness(
           Center(
-            child: DropLeafMark(
+            child: AnimatedBrandMark(
               size: 120,
               duration: const Duration(milliseconds: 600),
               onCompleted: () => completed = true,

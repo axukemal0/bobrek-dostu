@@ -1,3 +1,5 @@
+import 'package:cupertino_ui/cupertino_ui.dart'
+    show CupertinoPageTransitionsBuilder;
 import 'package:material_ui/material_ui.dart';
 
 import 'app_colors.dart';
@@ -181,9 +183,15 @@ class AppTheme {
         ),
         textStyle: text.bodySmall?.copyWith(color: p.surface),
       ),
+      // DİKKAT: `builders` verildiğinde Flutter'ın varsayılan haritasının
+      // TAMAMI değişir; listelenmeyen platform ZoomPageTransitions'a düşer.
+      // Yalnız Android yazılıydı, bu yüzden iPhone'da sayfalar zoom ile
+      // açılıyor ve SOLDAN KAYDIRARAK GERİ GİTME jesti çalışmıyordu —
+      // iOS'ta bu jest kas hafızasıdır, kaybolmamalı.
       pageTransitionsTheme: const PageTransitionsTheme(
         builders: {
           TargetPlatform.android: FadeForwardsPageTransitionsBuilder(),
+          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
         },
       ),
     );

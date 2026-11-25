@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>Böbrek Dostu</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>bobrek_dostu</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(FLUTTER_BUILD_NAME)</string>
+	<key>CFBundleSignature</key>
+	<string>????</string>
+	<key>CFBundleVersion</key>
+	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<!-- ================= İZİN AÇIKLAMALARI =================
+	     iOS bu metinleri izin sorulurken kullanıcıya AYNEN gösterir.
+	     Her biri neden gerektiğini sade Türkçe ile söyler; uygulama
+	     içindeki izin akışı da aynı gerekçeyi tekrarlar. -->
+
+	<key>NSCameraUsageDescription</key>
+	<string>Barkod okumak, ambalaj etiketini taramak ve yemek fotoğrafını değerlendirmek için kameraya erişmem gerekiyor. Barkod ve etiket okuma telefonun içinde yapılır. Yemek fotoğrafı yalnız sen onay verirsen yapay zekaya gönderilir.</string>
+
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Daha önce çektiğin etiket, barkod ya da tahlil fotoğrafını okuyabilmem için galerine erişmem gerekiyor. Seçtiğin fotoğrafın dışında hiçbir şey okunmaz.</string>
+
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Hazırladığın doktor raporunu telefonuna kaydedebilmen için galeriye yazma izni gerekiyor.</string>
+
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Sesli komutla su, kilo ya da tansiyon girebilmen için mikrofona erişmem gerekiyor. Ses kaydedilmez, saklanmaz.</string>
+
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Söylediklerini yazıya çevirip "iki bardak su içtim" gibi komutları anlayabilmem için konuşma tanımaya erişmem gerekiyor.</string>
+
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Yakındaki uygun restoranları bulmak ve hava durumuna göre uyarı verebilmek için konumuna erişmem gerekiyor. Konumun telefonda kalır, kimseyle paylaşılmaz. Acil durum düğmesine bastığında konumun yalnız senin seçtiğin acil kişilere gönderilir.</string>
+
+	<key>NSFaceIDUsageDescription</key>
+	<string>Uygulamayı yüz tanıma ile kilitleyebilmen için Face ID iznine ihtiyacım var. Sağlık verilerin başkasının eline geçmesin diye.</string>
+
+	<key>NSHealthShareUsageDescription</key>
+	<string>Nabız, tansiyon, adım, uyku ve oksijen ölçümlerini Sağlık uygulamasından OKUYABİLMEM için izin gerekiyor. Veriler yalnız telefonunda işlenir; yapay zekaya ancak sen "yorumla" dersen gönderilir.</string>
+
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>Uygulama Sağlık verilerine YAZMAZ. Bu izin yalnız sistem tarafından istendiği için burada yer alıyor.</string>
+
+	<key>NSMotionUsageDescription</key>
+	<string>Günlük adım sayını okuyabilmem için hareket verisine erişmem gerekiyor.</string>
+
+	<!-- Açılabilecek dış uygulamalar: telefon, SMS, WhatsApp, harita -->
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>tel</string>
+		<string>sms</string>
+		<string>whatsapp</string>
+		<string>maps</string>
+		<string>comgooglemaps</string>
+	</array>
+
+	<!-- Sistem arayüzü uygulamanın sıcak zeminiyle uyumlu olsun -->
+	<key>UIViewControllerBasedStatusBarAppearance</key>
+	<false/>
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<false/>
+		<key>UISceneConfigurations</key>
+		<dict>
+			<key>UIWindowSceneSessionRoleApplication</key>
+			<array>
+				<dict>
+					<key>UISceneClassName</key>
+					<string>UIWindowScene</string>
+					<key>UISceneConfigurationName</key>
+					<string>flutter</string>
+					<key>UISceneDelegateClassName</key>
+					<string>$(PRODUCT_MODULE_NAME).SceneDelegate</string>
+					<key>UISceneStoryboardFile</key>
+					<string>Main</string>
+				</dict>
+			</array>
+		</dict>
+	</dict>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
+	<key>UILaunchStoryboardName</key>
+	<string>LaunchScreen</string>
+	<key>UIMainStoryboardFile</key>
+	<string>Main</string>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+</dict>
+</plist>

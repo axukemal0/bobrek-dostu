@@ -1,8 +1,11 @@
 import 'dart:io';
 
-import 'package:google_mlkit_barcode_scanning/google_mlkit_barcode_scanning.dart';
-import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
+
+import 'text_recognition.dart';
+
+export 'text_recognition.dart' show OcrFailure, RecognizedTextResult;
 
 /// Barkod ve metin okuma — TAMAMEN CİHAZ ÜSTÜNDE çalışır.
 /// Hiçbir görsel internete gönderilmez.
@@ -10,8 +13,8 @@ class ScannerService {
   ScannerService();
 
   final ImagePicker _picker = ImagePicker();
-  BarcodeScanner? _barcodeScanner;
-  TextRecognizer? _textRecognizer;
+  MobileScannerController? _stillScanner;
+  final TextRecognitionService _textRecognizer = const TextRecognitionService();
 
   /// Kamera ile fotoğraf çeker.
   Future<File?> captureFromCamera({int maxWidth = 1600}) async {
@@ -33,58 +36,42 @@ class ScannerService {
     return shot == null ? null : File(shot.path);
   }
 
-  /// Görseldeki barkodları okur (cihaz üstü).
+  /// Hazır bir görseldeki barkodları okur (cihaz üstü).
+  ///
+  /// Canlı tarama için [BarcodeScannerView] kullanılır; bu yol yalnız
+  /// galeriden seçilen fotoğraflar için.
   Future<List<String>> scanBarcodes(File image) async {
-    _barcodeScanner ??= BarcodeScanner(
-      formats: [
+    final scanner = _stillScanner ??= MobileScannerController(
+      autoStart: false,
+      formats: const [
         BarcodeFormat.ean13,
         BarcodeFormat.ean8,
-        BarcodeFormat.upca,
-        BarcodeFormat.upce,
+        BarcodeFormat.upcA,
+        BarcodeFormat.upcE,
         BarcodeFormat.code128,
       ],
     );
-    final input = InputImage.fromFile(image);
-    final results = await _barcodeScanner!.processImage(input);
-    return results
+    final capture = await scanner.analyzeImage(image.path);
+    if (capture == null) return const [];
+    return capture.barcodes
         .map((b) => b.rawValue)
         .whereType<String>()
-        .where((v) => v.trim().isNotEmpty)
+        .map((v) => v.trim())
+        .where((v) => v.isNotEmpty)
         .toList(growable: false);
   }
 
   /// Görseldeki metni okur (cihaz üstü OCR).
   ///
-  /// Latin alfabesi tanıyıcısı kullanılır; Türkçe karakterlerde
-  /// yanlış okuma olabilir, bu yüzden sonucu kullanıcı ONAYLAR.
-  Future<RecognizedTextResult> recognizeText(File image) async {
-    _textRecognizer ??= TextRecognizer(script: TextRecognitionScript.latin);
-    final input = InputImage.fromFile(image);
-    final result = await _textRecognizer!.processImage(input);
-    return RecognizedTextResult(
-      fullText: result.text,
-      lines: [
-        for (final block in result.blocks)
-          for (final line in block.lines) line.text,
-      ],
-    );
-  }
+  /// iOS'ta Apple Vision, Android'de ayrık ML Kit kullanılır. Türkçe
+  /// karakterlerde yanlış okuma olabilir, bu yüzden sonucu kullanıcı ONAYLAR.
+  Future<RecognizedTextResult> recognizeText(File image) =>
+      _textRecognizer.recognize(image);
 
   Future<void> dispose() async {
-    await _barcodeScanner?.close();
-    await _textRecognizer?.close();
-    _barcodeScanner = null;
-    _textRecognizer = null;
+    await _stillScanner?.dispose();
+    _stillScanner = null;
   }
-}
-
-class RecognizedTextResult {
-  const RecognizedTextResult({required this.fullText, required this.lines});
-
-  final String fullText;
-  final List<String> lines;
-
-  bool get isEmpty => fullText.trim().isEmpty;
 }
 
 /// OCR metninden tahlil değerleri çıkarır — SAF fonksiyon, test edilebilir.

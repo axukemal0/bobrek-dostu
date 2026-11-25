@@ -5,8 +5,8 @@ import '../../clinical/definitions.dart';
 import '../../clinical/evaluator.dart';
 import '../../clinical/sources.dart';
 import '../theme/app_colors.dart';
-import '../theme/motion.dart';
 import '../theme/neumorphic.dart';
+import 'app_shell.dart';
 import 'responsive.dart';
 
 /// Bölüm başlığı (serif) + isteğe bağlı eylem.
@@ -436,15 +436,20 @@ class PageBody extends StatelessWidget {
           left: r.pagePadding,
           right: r.pagePadding,
           top: r.gapSm,
-          bottom: padBottom ? r.gapXl * 2 : r.gapMd,
+          // Alt gezinme çubuğu gövdenin üstünde durduğu için onun yüksekliği
+          // kadar fazladan boşluk bırakılır (kabuk dışındaki sayfalarda 0).
+          bottom: (padBottom ? r.gapXl : r.gapMd) + BottomBarInset.of(context),
         ),
         child: ContentColumn(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // Kartlar sırayla içeri kaymıyor: her kart için ayrı denetleyici
+              // + Opacity katmanı hem kareleri düşürüyordu hem de kullanıcıyı
+              // sayfanın yüklenişini izlemeye zorluyordu. İçerik anında gelir.
               for (var i = 0; i < children.length; i++) ...[
                 if (i > 0) SizedBox(height: r.gapMd),
-                StaggeredEntrance(index: i, child: children[i]),
+                children[i],
               ],
               if (showDisclaimer) ...[
                 SizedBox(height: r.gapLg),

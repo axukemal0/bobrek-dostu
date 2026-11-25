@@ -1,8 +1,8 @@
 # Böbrek Dostu
 
 Kronik böbrek hastalığı olan **tek bir kişi için**, tamamen telefonda
-çalışan Android takip uygulaması. Giriş/üyelik yok, sunucu yok,
-Play Store'da değil. Tüm veriler cihazda **şifreli** (SQLCipher) tutulur.
+çalışan **Android + iOS** takip uygulaması. Giriş/üyelik yok, sunucu yok,
+mağazada değil. Tüm veriler cihazda **şifreli** (SQLCipher) tutulur.
 
 > **Bu uygulama tıbbi tavsiye değildir, klinik karar kullanıcıya aittir.**
 
@@ -15,26 +15,27 @@ yılı ve **doğrulama durumu** yazar.
 
 ## 1. Hızlı başlangıç
 
-### 1.1 Derlenmiş APK'yı telefona atmak
+### 1.1 Android: derlenmiş APK'yı telefona atmak
 
-İki APK üretildi:
+Mimariye göre ayrı APK'lar üretilir (`--split-per-abi`). 2017 sonrası
+tüm telefonlar **arm64**'tür.
 
 | Dosya | Boyut | Ne zaman |
 |---|---|---|
-| `app-arm64-v8a-debug.apk` | **132 MB** | **Önerilen.** 2017 sonrası tüm Android telefonlar (arm64). |
-| `app-debug.apk` | 236 MB | Üç mimariyi birlikte taşır (arm64 + arm32 + x86_64). Emülatör veya çok eski cihaz gerekiyorsa. |
+| `app-arm64-v8a-release.apk` | **31 MB** | **Önerilen.** Günlük kullanım. |
+| `app-arm64-v8a-debug.apk` | 117 MB | Geliştirme/hata ayıklama. |
+| `app-armeabi-v7a-release.apk` | 28 MB | 2017 öncesi 32-bit cihaz. |
+| `app-x86_64-release.apk` | 33 MB | Emülatör. |
 
 ```bash
-adb install -r build/app/outputs/flutter-apk/app-arm64-v8a-debug.apk
+adb install -r build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
 ```
 
 ADB yoksa APK dosyasını telefona kopyalayıp dosya yöneticisinden
 açmak da yeterli (telefonda "bilinmeyen kaynaklara izin ver" gerekir).
 
-Boyut neden büyük? Bunlar **hata ayıklama (debug)** derlemeleri:
-JIT için ek kod, sıkıştırılmamış semboller ve cihaz üstü ML Kit
-modelleri (barkod + metin okuma) içinde. İmzalı release derlemesi
-belirgin biçimde küçülür (bkz. TODO).
+> Release APK kendi kendini imzalar (debug anahtarı). Mağazaya
+> yüklenmeyeceği için ayrı bir imza anahtarı tanımlanmadı.
 
 **Doğrulanan APK özellikleri:**
 
@@ -43,8 +44,44 @@ belirgin biçimde küçülür (bkz. TODO).
 - minSdk 26, targetSdk 36, compileSdk 36
 - 21 izin manifest'te (konum, kamera, mikrofon, bildirim, tam alarm,
   SMS, aktivite tanıma, 7 Health Connect OKUMA izni)
-- Gömülü varlıklar: 6 font dosyası (Playfair + Nunito, 3 ağırlık) ve
-  `turkish_foods.json`
+- Uyarlanabilir (adaptive) launcher ikonu + Material You tek renk katmanı
+
+31 MB'ın dağılımı (arm64 release):
+
+| Parça | Boyut | Not |
+|---|---|---|
+| `libflutter.so` | 10,8 MB | Flutter motoru — sabit maliyet |
+| `libapp.so` | 12,2 MB | Derlenmiş Dart kodu |
+| `libsqlcipher.so` | 4,9 MB | Şifreli veritabanı — vazgeçilmez |
+| `classes.dex` | 4,4 MB | Java/Kotlin katmanı |
+| varlıklar | 0,4 MB | yazı tipleri + besin verisi |
+
+### 1.1b iOS: simülatörde ya da iPhone'da çalıştırmak
+
+```bash
+flutter build ios --debug --simulator
+```
+
+```bash
+xcrun simctl install booted build/ios/iphonesimulator/Runner.app
+```
+
+Gerçek bir iPhone'a kurmak için Xcode'da `ios/Runner.xcworkspace`
+açılır, **Signing & Capabilities** altında bir Apple hesabı seçilir
+(ücretsiz hesap yeterli) ve çalıştırılır. Bunu yapmadan gerçek cihaza
+kurulum mümkün değil — Apple'ın imza zorunluluğu.
+
+iOS tarafında kurulu olanlar:
+
+- Dağıtım hedefi **iOS 15.5** (ML Kit yerine Apple Vision kullanıldığı
+  için daha düşük bir hedef de mümkün, ama diğer eklentiler bunu istiyor)
+- Tüm izin açıklamaları **Türkçe** (`ios/Runner/Info.plist`)
+- `Runner.entitlements`: Keychain erişimi (şifreleme anahtarı burada
+  durur) ve HealthKit **okuma**
+- Uygulama ikonu açık/karanlık/tinted üç varyantıyla
+- Soldan kaydırarak geri gitme jesti çalışır
+
+---
 
 ### 1.2 Kaynaktan derlemek
 
@@ -59,6 +96,151 @@ dart run build_runner build
 ```bash
 flutter build apk --debug
 ```
+
+---
+
+## 1.5 İkinci turda yapılanlar (amblem, arayüz, iOS, barkod/etiket/fotoğraf)
+
+### Amblem — tek logo, tek kaynak
+
+Yeni amblem **"ölçülü kap"**: bir böbrek silueti aynı zamanda ölçekli bir
+kaptır. İçindeki yeşil sıvı günün kalan bütçesi, üstündeki ince altın
+çizgi ise kullanıcının kendi belirlediği sınır — yani uygulamanın
+çekirdek fikri. Malzemesi uygulamanın kendi dili: yumuşak kabartma
+gölgesi, cam parıltısı, tek altın vurgu.
+
+Farklı yerlerde farklı logo **olamaz**, çünkü hepsi tek bir boyayıcıdan
+çıkıyor: `lib/core/brand/brand_mark.dart`. Android launcher ikonu,
+iOS AppIcon, bildirim ikonu, açılış ekranı ve uygulama içindeki işaret
+`tools/gen_icons.dart` ile **aynı `BrandMarkPainter`'dan** üretilir:
+
+```bash
+flutter test tools/gen_icons.dart
+```
+
+Boyuta göre ayrıntı düşer (16 px'te yalnız siluet, 64 px üstünde sıvı +
+altın çizgi + parıltı) ama biçim aynı kalır — aynı logonun küçük ölçek
+sürümüdür, başka bir logo değil.
+
+Açılış animasyonu da aynı geometriyi kullanır: siluet yerine oturur,
+kap dolar, sınır çizgisi soldan sağa çizilir.
+
+### Tasarım dili — üç kademeli derinlik
+
+Önceden her kart hem kabartmalı hem buzlu camdı; hiçbir şey öne çıkmıyordu
+ve düz krem zemin üzerinde **görünmeyen** bir bulanıklık için her karede
+GPU harcanıyordu. Artık üç kademe var, her birinin bir işi var
+(`lib/core/theme/neumorphic.dart`, `enum Surface`):
+
+| Kademe | Ne zaman | Nasıl |
+|---|---|---|
+| `flat` | İçerik kartları | Tonlu dolgu, saç teli kenar, gölge yok |
+| `raised` | Basılabilen yüzeyler | Yumuşak çift gölge |
+| `floating` | Üstte duran kabuk | **Gerçek** bulanıklık (`GlassBar`) |
+
+Buzlu cam artık yalnız **tek yerde**: alt gezinme çubuğu. Orada anlamlı,
+çünkü içerik gerçekten arkasından akıyor (`extendBody: true`).
+
+Tipografi kuralı tekleşti: **serif yalnız başlıklarda**. Ölçüm değerleri
+artık tablo rakamlı Nunito ile yazılıyor — başlık yüzü veride hem
+okunurluğu düşürüyor hem sütunlarda hizalanmıyordu.
+
+### Akıcılık
+
+Kullanıcı "yeterince akıcı değil" dedi; yapısal sebepler şunlardı:
+
+1. **Açılış 2,4 saniye bekletiyordu.** Animasyon bitmeden veritabanına
+   gidilmiyordu. Artık hazırlık animasyonla **paralel** yürür ve animasyon
+   1,1 saniye: toplam süre `max(animasyon, hazırlık)`.
+2. **Her kart ayrı animasyonla içeri kayıyordu.** Sayfa başına N adet
+   `AnimationController` + `Opacity` katmanı. Kaldırıldı; içerik anında
+   gelir.
+3. **13 kart `BackdropFilter` kullanıyordu.** Her biri tam bir GPU
+   geçişi. Biri hariç hepsi kaldırıldı.
+4. **Amblem her karede `Path.computeMetrics()` çağırıyordu.** Artık yol
+   bir kez hesaplanıp saklanıyor.
+5. Dokunma geri bildirimi `setState` yerine denetleyiciyle sürülüyor.
+6. Grafik ve halkalar `RepaintBoundary` içinde.
+7. Geçiş süreleri 320 ms → 210 ms.
+
+### Boyut
+
+| Değişiklik | Kazanç |
+|---|---|
+| Barkod modeli APK'dan çıkarıldı (ayrık ML Kit) | ~5,5 MB |
+| `google_mlkit_text_recognition` kaldırıldı (yerine yerel OCR) | ML Kit pod/AAR yükü |
+| Yazı tipleri Latin+Türkçe kümesine indirgendi | 972 KB → 252 KB |
+| Kullanılmayan Playfair ağırlıkları silindi | 390 KB |
+| `--split-per-abi` | Tek mimari başına ~60% |
+
+arm64 release APK **31 MB**, debug 132 MB → **117 MB**.
+
+### Barkod / etiket / yemek fotoğrafı — yeniden kuruldu
+
+**Barkod: fotoğraf değil, canlı tarama.** Eskiden fotoğraf çekilip o tek
+kare taranıyordu; barkod net çıkmazsa okunmuyordu. Artık kamera akışı
+sürekli taranır (`lib/features/nutrition/barcode_scanner_view.dart`):
+hedef çerçevesi, fener düğmesi, dokunarak odak, okunduğunda titreşim.
+Okunmazsa kodu elle yazma ve galerideki fotoğraftan okuma yolları var.
+
+**Etiket okuma: gerçek bir besin tablosu çözümleyicisi.** Eski kod
+`anahtar[^0-9]{0,20}(sayı)` kalıbıyla sayı arıyordu ve böbrek hastası
+için **en kritik üç alanda sessizce yanlış** sonuç veriyordu:
+
+1. **Tuz.** Türkiye'deki etiketler "Sodyum" değil **"Tuz"** yazar. Eski
+   kalıp "sodyum" arıyor, bulamıyor, sodyum alanını **boş** bırakıyordu —
+   yani günün en önemli kısıtı hiç okunmuyordu.
+   Yeni: Tuz (g) × 400 = sodyum (mg), türetme ekranda yazılı.
+2. **Enerji.** Etiket "1850 kJ / 442 kcal" yazar; eski kalıp **1850**'yi
+   kcal diye kaydediyordu (~4,2 kat fazla). Yeni: kcal tercih edilir,
+   yoksa kJ ÷ 4,184 ve bu belirtilir.
+3. **Sütun.** AB/TR etiketlerinde "100 g'da" ve "porsiyonda" diye iki
+   sütun vardır. Eski kalıp hangisi önce geldiyse onu alıyor, 100 g
+   sanıp porsiyona göre ölçekliyordu — sonuç iki katına çıkabiliyor ya
+   da yarıya inebiliyordu. Yeni: sütun tanınır, gerekirse 100 g'a
+   çevrilir, hangi sütundan okunduğu ekranda yazar.
+
+Her alan için **birim, sütun ve güven** ayrı ayrı raporlanır; potasyum
+ve fosfor Türkiye'de genelde etikete yazılmadığı için "okunamadı" diye
+açıkça belirtilir (sıfır sayılmaz).
+Çözümleyici saf Dart: `lib/features/nutrition/nutrition_label_parser.dart`,
+18 testle doğrulanmış.
+
+**Yemek fotoğrafı: kalem kalem.** Bir tabakta genelde tek yemek olmaz
+(pilav + tavuk + salata + ekmek). Tek toplamda birleştirmek kullanıcıyı
+çaresiz bırakıyordu — "pilavın yarısını yedim" diyemiyordu. Artık model
+JSON ile kalem kalem yanıt verir; her kalem ayrı düzenlenir, porsiyonu
+değişince o kalemin tüm değerleri orantılı güncellenir, yenmeyen kalem
+listeden çıkarılır, her kalem veritabanına **ayrı** kaydedilir.
+Eski düz metin biçimi yedek olarak korundu.
+
+### OCR: ML Kit yerine yerel çerçeveler
+
+`google_mlkit_text_recognition` kaldırıldı. Sebebi hem işlevsel hem boyut:
+
+- Paket iOS'ta GoogleMLKit pod'unu getiriyor, GoogleMLKit ise simülatör
+  için **arm64 dilimi yayınlamıyor**. Apple Silicon'da iOS 26+
+  simülatörleri arm64 zorunlu kıldığından uygulama x86_64'e düşüyordu ve
+  **simülatörde hiç çalıştırılamıyordu**.
+- Android'de modeli APK'ya gömüyordu.
+
+Yerine yerel kod:
+
+- **iOS** → Apple Vision (`ios/Runner/TextRecognition.swift`)
+- **Android** → ayrık ML Kit, Play hizmetleri üzerinden
+  (`MainActivity.kt`)
+- Ortak Dart arayüzü: `lib/core/services/text_recognition.dart`
+
+Görseller her iki platformda da cihazdan **çıkmaz**.
+
+### iOS'ta çalışmayan tek şey: otomatik SMS
+
+iOS, bir uygulamanın kullanıcı onayı olmadan SMS göndermesine işletim
+sistemi düzeyinde izin **vermez**. Bu bir eksik değil, Apple'ın kuralı ve
+aşılamaz. iPhone'da eşik aşımında ve acil düğmesinde mesaj hazır hâlde
+Mesajlar'da açılır; gönder tuşuna kullanıcı basar. Ayarlardaki
+"otomatik SMS" anahtarı iPhone'da gösterilmez, yerine bu durum yazılır.
+Android'de davranış değişmedi.
 
 ---
 
@@ -155,16 +337,23 @@ yes | sdkmanager --sdk_root="$HOME/development/android-sdk" --licenses && sdkman
 ### 3.2 Tasarım
 
 - Sıcak krem/bej zemin (`#F6F1E7`), yumuşak yeşil (`#3C6B54`) ve altın
-  (`#8A6A20`) vurgu. Buzlu cam kartlar (`GlassCard`, gerçek
-  `BackdropFilter`), kabartmalı butonlar (`NeuCard`/`NeuButton`,
-  çift yönlü yumuşak gölge).
+  (`#8A6A20`) vurgu.
+- **Üç kademeli derinlik** (`enum Surface`): `flat` içerik kartları
+  (tonlu dolgu + saç teli kenar), `raised` basılabilen yüzeyler (çift
+  yönlü yumuşak gölge), `floating` üstte duran kabuk. Buzlu cam
+  (`GlassBar`, gerçek `BackdropFilter`) yalnız alt gezinme çubuğunda —
+  orada içerik gerçekten arkasından aktığı için anlamlı. Ayrıntı için
+  bkz. **1.5 İkinci turda yapılanlar**.
 - **Fontlar assets'e gömüldü**: Playfair Display (başlık, serif) ve
-  Nunito (gövde, sans). Google Fonts'un değişken (variable) sürümleri
-  indirilip `fontTools` ile **statik örneklere** (400/600/700)
-  dönüştürüldü — hem Flutter hem de PDF tarafında güvenilir çalışması
-  için. Türkçe karakterler (ı, İ, ş, ğ, ü, ö, ç) ikisinde de tam.
-  *(Playfair'da `₂` alt simgesi yok; Flutter font geri dönüşüyle
-  hallediyor, PDF'te gövde fontu kullanıldığı için sorun çıkmıyor.)*
+  Nunito (gövde, sans). Google Fonts'un değişken sürümleri indirilip
+  `fontTools` ile statik örneklere dönüştürüldü, sonra **Latin + Türkçe
+  kümesine indirgendi** (`tools/subset_fonts.sh`): 972 KB → 252 KB.
+  Kullanılmayan Playfair ağırlıkları (400/700) silindi — serif tek
+  ağırlıkta (600) kullanılıyor. Türkçe karakterler (ı, İ, ş, ğ, ü, ö, ç)
+  cihazda doğrulandı.
+- **Kural: serif yalnız başlıklarda.** Etiketler, butonlar, gövde ve
+  özellikle **sayılar** Nunito ile, tablo rakamlarıyla yazılır. Başlık
+  yüzü veride hem okunurluğu düşürüyor hem sütunlarda hizalanmıyordu.
 - **Responsive**: hiçbir yerde sabit piksel yok. Tüm ölçüler
   `Responsive` sınıfından geçiyor (referans 390 dp, 0.88–1.22 arası
   sınırlı ölçek). Telefonda tek sütun, ≥600 dp iki, ≥980 dp üç sütun;
@@ -399,14 +588,38 @@ USDA FoodData Central · Türk Nefroloji Derneği · Open Food Facts.
 
 ## 6. Bilinen eksikler / TODO
 
+### Önce şunu bilmek gerekir: neyin cihazda denenmediği
+
+Uygulama iOS 27.2 simülatöründe (iPhone 17 Pro Max) **çalışır hâlde**
+görüldü; ekranlar, şifreli veritabanı, açık/koyu tema ve gezinme
+doğrulandı. Ama simülatörün **kamerası yoktur**. Bu yüzden şu üç yol
+derlenir ve mantığı testlidir, fakat **gerçek bir çekimle denenmemiştir**:
+
+- canlı barkod tarama,
+- kamerayla etiket okuma (Apple Vision / ayrık ML Kit),
+- yemek fotoğrafı çekimi.
+
+Besin etiketi çözümleyicisi 18 testle doğrulandı ama testler **yazılmış
+örnek etiket metinleri** üzerinde; gerçek bir fotoğraftan çıkan OCR
+metni daha dağınık olur. İlk gerçek denemede çözümleyicinin
+kaçırdıkları görülüp `nutrition_label_parser.dart` içindeki takma ad
+listesi genişletilmelidir.
+
+Aynı şekilde iOS'ta **HealthKit, bildirimler, konuşma tanıma ve
+seslendirme** cihazda çalıştırılmadı; HealthKit için Xcode'da bir
+geliştirici hesabı seçmek de gerekir.
+
 ```
-[ ] Gerçek cihazda uçtan uca deneme: izin diyalogları, kamera + ML Kit,
-    Health Connect eşleşmesi, bildirim zamanlaması (özellikle
-    "tam zamanlı alarm" izni kapalıyken), SMS platform kanalı.
-[ ] Launcher ikonu: DropLeafPainter'ı adaptive icon'a çevir
-    (flutter_launcher_icons).
-[ ] İmzalı release APK + ProGuard/R8 kuralları (ML Kit ve Drift için).
-    Debug APK 132 MB (arm64); release derlemesi belirgin küçülür.
+[ ] Gerçek cihazda uçtan uca deneme: izin diyalogları, canlı barkod,
+    kamerayla etiket okuma, yemek fotoğrafı, Health Connect / HealthKit
+    eşleşmesi, bildirim zamanlaması (özellikle "tam zamanlı alarm" izni
+    kapalıyken), SMS platform kanalı.
+[ ] Android Lint tüm alt projelerde KAPALI (android/build.gradle.kts).
+    Sebep: AGP'nin lint sürümü image_picker_android'in bir javadoc
+    yorumunu ayrıştırırken çöküyor ve release derlemesini durduruyordu.
+    Üst akış düzelince geri açılmalı.
+[ ] ProGuard/R8 kuralları gözden geçirilmedi (release çalışıyor ama
+    küçültme kuralları özelleştirilmedi).
 [ ] Düşük adım bildirimi: ayar var ama bildirim üretilmiyor.
     Adım sayısı ana sayfada gösteriliyor; eşik altı için bildirim
     uygulama açıkken hesaplanabilir — henüz bağlanmadı.
@@ -454,7 +667,7 @@ USDA FoodData Central · Türk Nefroloji Derneği · Open Food Facts.
 flutter test
 ```
 
-186 test, 12 dosya. Kapsanan kritik mantık:
+**215 test, 14 dosya.** Kapsanan kritik mantık:
 
 | Dosya | Ne test ediliyor |
 |---|---|
@@ -465,7 +678,9 @@ flutter test
 | `voice_command_test.dart` | Sesli sıvı/tansiyon/kilo komutları, Türkçe ölçü birimleri, yazıyla sayılar |
 | `medication_logic_test.dart` | Saat/gün çözümleme, geçersiz girdi dayanıklılığı |
 | `report_aggregation_test.dart` | İlaç uyumu, tansiyon istatistikleri, **ortalamaların veri girilen güne bölünmesi** |
-| `cuisine_and_feed_test.dart` | Mutfak puanı (çoklu etikette en güvenli seçim), RSS/Atom ayrıştırma, tahlil OCR satır çözümleme, yemek fotoğrafı yanıtı ayrıştırma |
+| `cuisine_and_feed_test.dart` | Mutfak puanı (çoklu etikette en güvenli seçim), RSS/Atom ayrıştırma, tahlil OCR satır çözümleme, eski düz metin yemek yanıtı |
+| `nutrition_label_test.dart` | **Besin etiketi çözümleyici (18 test)**: iki sütunlu TR etiketi, kJ yerine kcal seçimi, **Tuz → sodyum türetmesi**, "doymuş yağ" satırının "yağ"ı ezmemesi, porsiyon ağırlığı, birim çevrimi (g↔mg), binlik/ondalık ayırıcı, alt satıra düşen değer, alakasız metinden değer uydurmama |
+| `meal_vision_test.dart` | **Çok kalemli yemek analizi (11 test)**: JSON kalemleri, kalem başına güven, toplamların kalemlerden hesaplanması, porsiyon değişince orantılı ölçekleme, kalem çıkarma, bozuk JSON'da düz metne düşme, boş sonuçta sayı uydurmama |
 | `quiet_hours_test.dart` | Gece yarısını geçen sessiz saat aralığı, kritik/isteğe bağlı kategori ayrımı |
 | `phone_and_distance_test.dart` | Türkiye telefon numarası → WhatsApp biçimi, kuş uçuşu mesafe (haversine), Türkçe arama normalleştirme |
 | `app_smoke_test.dart` | **Uçtan uca duman testleri, GERÇEK (bellek içi) veritabanıyla**: sağlayıcı zinciri, drift sorgu/akışları, acil durum mesajı içeriği, yakın modu özeti, **PDF'in gerçekten üretildiği** (%PDF- imzası, >20 KB), yerel besin tablosu + Türkçe arama ve **yapay zeka bağlamının ad/telefon/doktor/acil kişi İÇERMEDİĞİ** |

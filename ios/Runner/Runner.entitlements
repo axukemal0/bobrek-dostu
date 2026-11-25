@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Keychain erişimi.
+	     flutter_secure_storage veritabanı şifreleme anahtarını ve Claude
+	     API anahtarını Keychain'de tutar. Bu hak olmadan iOS, Keychain
+	     çağrılarını -34018 (A required entitlement is not present) ile
+	     reddeder; uygulama da şifresiz yazmaktansa durur. -->
+	<key>keychain-access-groups</key>
+	<array>
+		<string>$(AppIdentifierPrefix)com.bobrekdostu.bobrekDostu</string>
+	</array>
+
+	<!-- Sağlık verisi OKUMA. Yazma yok.
+	     Gerçek cihazda bu hakkın çalışması için Xcode'da bir geliştirici
+	     hesabı seçilmeli (HealthKit yeteneği provizyon profiline girer). -->
+	<key>com.apple.developer.healthkit</key>
+	<true/>
+	<key>com.apple.developer.healthkit.access</key>
+	<array/>
+</dict>
+</plist>

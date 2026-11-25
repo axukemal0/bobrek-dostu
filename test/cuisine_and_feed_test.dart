@@ -176,39 +176,41 @@ POTASYUM: 450 mg (± 150)
 FOSFOR: 175 mg (± 60)
 NOT: Tuz miktarını göremiyorum, lokanta çorbası daha tuzlu olur.
 ''';
-      final e = parseMealEstimate(text);
+      // Eski düz metin biçimi hâlâ desteklenir (model JSON vermezse).
+      final a = parseMealAnalysis(text);
+      final e = a.items.single;
       expect(e.name, 'Mercimek çorbası');
       expect(e.portionG, closeTo(250, 1e-9));
       expect(e.confidence, AiConfidence.medium);
       expect(e.kcal!.value, closeTo(190, 1e-9));
       expect(e.kcal!.plusMinus, closeTo(40, 1e-9));
       expect(e.sodium!.value, closeTo(1050, 1e-9));
-      expect(e.noteTr, contains('Tuz'));
+      expect(a.noteTr, contains('Tuz'));
       expect(e.hasAnyValue, isTrue);
     });
 
     test('sapma yoksa null kalır', () {
-      final e = parseMealEstimate('KALORİ: 300 kcal');
+      final e = parseMealAnalysis('KALORİ: 300 kcal').items.single;
       expect(e.kcal!.value, closeTo(300, 1e-9));
       expect(e.kcal!.plusMinus, isNull);
       expect(e.kcal!.formatted('kcal'), '≈ 300 kcal');
     });
 
     test('güven belirtilmezse unknown', () {
-      expect(parseMealEstimate('YEMEK: x').confidence, AiConfidence.unknown);
+      expect(parseMealAnalysis('YEMEK: x').confidence, AiConfidence.unknown);
     });
 
     test('düşük güven tanınır', () {
       expect(
-        parseMealEstimate('GÜVEN: düşük').confidence,
+        parseMealAnalysis('GÜVEN: düşük').confidence,
         AiConfidence.low,
       );
     });
 
     test('boş yanıt değersiz döner, sayı uydurmaz', () {
-      final e = parseMealEstimate('Bu fotoğrafta yemek görmüyorum.');
-      expect(e.hasAnyValue, isFalse);
-      expect(e.kcal, isNull);
+      final a = parseMealAnalysis('Bu fotoğrafta yemek görmüyorum.');
+      expect(a.isEmpty, isTrue);
+      expect(a.kcal, isNull);
     });
 
     test('sapmalı biçim metni ± içerir', () {

@@ -245,27 +245,40 @@ $kAiSafetyRules
 KULLANICININ GÜNLÜK HEDEFLERİ:
 ${targets.isEmpty ? "(hedef girilmemiş)" : targets}
 
-ÇIKTI BİÇİMİ — tam olarak bu başlıkları kullan:
+ÇIKTI BİÇİMİ — YALNIZCA aşağıdaki JSON'u döndür, başka hiçbir şey yazma:
 
-YEMEK: <tanıdığın yemeğin adı>
-PORSİYON: <tahmini gram>
-GÜVEN: <düşük | orta | yüksek>
-KALORİ: <sayı> kcal (± <sapma>)
-PROTEİN: <sayı> g (± <sapma>)
-SODYUM: <sayı> mg (± <sapma>)
-POTASYUM: <sayı> mg (± <sapma>)
-FOSFOR: <sayı> mg (± <sapma>)
-NOT: <bir iki cümle: neyi göremedin, ne belirsiz>
+{
+  "tabak": "<tabağın bütününe kısa bir ad>",
+  "guven": "<düşük | orta | yüksek>",
+  "not": "<bir iki cümle: neyi göremedin, ne belirsiz>",
+  "kalemler": [
+    {
+      "ad": "<yemeğin adı>",
+      "porsiyon_g": <tahmini gram>,
+      "porsiyon_not": "<nasıl tahmin ettin: 'yaklaşık 1 kepçe' gibi>",
+      "guven": "<düşük | orta | yüksek>",
+      "kcal": <sayı>, "kcal_pm": <sapma>,
+      "protein": <g>, "protein_pm": <sapma>,
+      "sodyum": <mg>, "sodyum_pm": <sapma>,
+      "potasyum": <mg>, "potasyum_pm": <sapma>,
+      "fosfor": <mg>, "fosfor_pm": <sapma>
+    }
+  ]
+}
 
 KURALLAR:
-- Fotoğraftan porsiyonu kesin bilemezsin. Her sayının yanına
-  gerçekçi bir ± sapma yaz.
-- Tuz miktarını göremezsin: ev yapımı ile lokanta yemeği arasında
-  sodyum kat kat değişir. Bunu NOT satırında yaz.
-- Fotoğrafta yemek yoksa ya da tanıyamadıysan GÜVEN: düşük yaz ve
-  NOT satırında bunu söyle; sayı uydurma.
-- Görünmeyen malzemeleri (içine konan tereyağı, salça, tuz)
-  tahmin ettiğini belirt.
+- Tabaktaki her yemeği AYRI bir kalem olarak yaz. Pilav, tavuk, salata ve
+  ekmek tek kalem değildir; kullanıcı her birini ayrı düzeltebilmeli.
+- Fotoğraftan porsiyonu kesin bilemezsin. Her sayı için gerçekçi bir
+  "_pm" sapma değeri ver.
+- Tuz miktarını göremezsin: ev yemeği ile lokanta yemeği arasında sodyum
+  kat kat değişir. Bunu "not" alanında yaz ve sodyum sapmasını geniş tut.
+- Göremediğin bir besin için alanı HİÇ YAZMA; sıfır yazma. Sıfır "yok"
+  demektir, "bilmiyorum" demek değildir.
+- Fotoğrafta yemek yoksa ya da tanıyamadıysan "kalemler" boş dizi olsun ve
+  "not" alanında bunu söyle. Sayı uydurma.
+- Görünmeyen malzemeleri (içine konan tereyağı, salça, tuz) tahmin
+  ettiğini "not" alanında belirt.
 ''';
   }
 

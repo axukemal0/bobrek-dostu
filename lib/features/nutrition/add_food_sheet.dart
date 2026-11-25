@@ -15,18 +15,25 @@ import '../../core/services/food_service.dart';
 import '../../core/services/permission_service.dart';
 import '../../core/services/scanner_service.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_typography.dart';
 import '../../core/theme/neumorphic.dart';
 import '../../core/widgets/common.dart';
 import '../../core/widgets/form_fields.dart';
 import '../../core/widgets/responsive.dart';
 import '../home/home_screen.dart' show showPermissionDialog;
+import 'barcode_scanner_view.dart';
 import 'meal_vision_parser.dart';
+import 'nutrition_label_parser.dart';
 
 Future<void> showAddFoodSheet(BuildContext context, WidgetRef ref) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
+    // Kök gezginde açılır: alt gezinme çubuğunun ÜSTÜNÜ kaplar.
+    // Aksi hâlde sayfa içeriği çubuğun altında kesiliyordu ve odaklanılmış
+    // bir iş için yarım bir pencere gibi duruyordu.
+    useRootNavigator: true,
     builder: (context) => const _AddFoodSheet(),
   );
 }
@@ -130,9 +137,9 @@ class _AddFoodSheetState extends ConsumerState<_AddFoodSheet> {
   static String _labelOf(_Mode m) => switch (m) {
         _Mode.search => 'Ara',
         _Mode.barcode => 'Barkod',
-        _Mode.label => 'Etiket oku',
-        _Mode.photo => 'Fotoğraf analizi',
-        _Mode.manual => 'Elle gir',
+        _Mode.label => 'Etiket',
+        _Mode.photo => 'Fotoğraf',
+        _Mode.manual => 'Elle',
       };
 }
 
@@ -435,41 +442,62 @@ class _BarcodeTabState extends ConsumerState<_BarcodeTab> {
     super.dispose();
   }
 
+  /// Canlı tarayıcıyı açar.
+  ///
+  /// Önceden burada fotoğraf çekilip o tek kare taranıyordu; barkod net
+  /// çıkmazsa okunmuyordu. Artık kamera akışı sürekli taranıyor.
   Future<void> _scan() async {
     final granted = await _ensureCamera();
-    if (!granted) return;
+    if (!granted || !mounted) return;
 
+    final code = await Navigator.of(context).push<String>(
+      MaterialPageRoute<String>(
+        builder: (_) => const BarcodeScannerView(),
+        fullscreenDialog: true,
+      ),
+    );
+    if (code == null || !mounted) return;
+    await _lookup(code);
+  }
+
+  /// Galeriden seçilen fotoğrafta barkod arar (ambalajın fotoğrafı
+  /// önceden çekilmişse).
+  Future<void> _scanFromGallery() async {
     setState(() {
       _busy = true;
-      _statusTr = 'Fotoğraf çekiliyor…';
+      _statusTr = 'Fotoğraftaki barkod aranıyor (telefonun içinde)…';
       _product = null;
     });
     try {
       final scanner = ref.read(scannerServiceProvider);
-      final file = await scanner.captureFromCamera();
+      final file = await scanner.pickFromGallery();
       if (file == null) {
-        setState(() {
-          _busy = false;
-          _statusTr = null;
-        });
+        if (mounted) {
+          setState(() {
+            _busy = false;
+            _statusTr = null;
+          });
+        }
         return;
       }
-      setState(() => _statusTr = 'Barkod okunuyor (telefonun içinde)…');
       final codes = await scanner.scanBarcodes(file);
+      if (!mounted) return;
       if (codes.isEmpty) {
         setState(() {
           _busy = false;
-          _statusTr = 'Barkod bulunamadı. Barkodu çerçeveye yakın ve '
-              'net çekmeyi dene, ya da numarayı elle yaz.';
+          _statusTr = 'Bu fotoğrafta barkod bulunamadı. Canlı taramayı dene '
+              'ya da numarayı elle yaz.';
         });
         return;
       }
       await _lookup(codes.first);
     } on Object catch (e) {
-      setState(() {
-        _busy = false;
-        _statusTr = 'Okuma başarısız: $e';
-      });
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _statusTr = 'Okuma başarısız: $e';
+        });
+      }
     }
   }
 
@@ -572,10 +600,20 @@ class _BarcodeTabState extends ConsumerState<_BarcodeTab> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           NeuButton(
-            label: _busy ? 'İşleniyor…' : 'Barkodu çek',
+            label: 'Barkodu tara',
             icon: Icons.qr_code_scanner_rounded,
             expanded: true,
+            loading: _busy,
             onPressed: _busy ? null : _scan,
+          ),
+          SizedBox(height: r.gapSm),
+          NeuButton(
+            label: 'Galerideki fotoğraftan oku',
+            icon: Icons.photo_library_outlined,
+            filled: false,
+            tone: NeuTone.neutral,
+            expanded: true,
+            onPressed: _busy ? null : _scanFromGallery,
           ),
           SizedBox(height: r.gapMd),
           LabeledField(
@@ -706,6 +744,9 @@ class _LabelOcrTabState extends ConsumerState<_LabelOcrTab> {
   String? _text;
   String? _statusTr;
 
+  /// Çözümlenmiş etiket — hangi değer hangi sütundan, hangi birimden geldi.
+  ParsedNutritionLabel? _parsed;
+
   final _label = TextEditingController();
   final _grams = TextEditingController(text: '100');
   final _kcal = TextEditingController();
@@ -724,46 +765,66 @@ class _LabelOcrTabState extends ConsumerState<_LabelOcrTab> {
     super.dispose();
   }
 
-  Future<void> _capture() async {
+  Future<bool> _ensureCamera() async {
     final service = ref.read(permissionServiceProvider);
-    if (await service.status(AppPermission.camera) !=
+    if (await service.status(AppPermission.camera) ==
         AppPermissionStatus.granted) {
-      if (!mounted) return;
-      final ok = await showPermissionDialog(
-        context,
-        permissionInfo(AppPermission.camera),
-      );
-      if (!ok) return;
-      if (await service.request(AppPermission.camera) !=
-          AppPermissionStatus.granted) {
-        return;
-      }
+      return true;
     }
+    if (!mounted) return false;
+    final ok = await showPermissionDialog(
+      context,
+      permissionInfo(AppPermission.camera),
+    );
+    if (!ok) return false;
+    return await service.request(AppPermission.camera) ==
+        AppPermissionStatus.granted;
+  }
 
+  Future<void> _capture() async {
+    if (!await _ensureCamera()) return;
+    await _read(fromCamera: true);
+  }
+
+  Future<void> _pickFromGallery() => _read(fromCamera: false);
+
+  Future<void> _read({required bool fromCamera}) async {
     setState(() {
       _busy = true;
-      _statusTr = 'Metin okunuyor (telefonun içinde)…';
+      _statusTr = 'Etiket okunuyor (telefonun içinde)…';
     });
     try {
       final scanner = ref.read(scannerServiceProvider);
-      final file = await scanner.captureFromCamera();
+      // Etiket yazısı küçük: daha yüksek çözünürlük OCR'ı belirgin
+      // biçimde iyileştiriyor.
+      final file = fromCamera
+          ? await scanner.captureFromCamera(maxWidth: 2400)
+          : await scanner.pickFromGallery(maxWidth: 2400);
       if (file == null) {
-        setState(() {
-          _busy = false;
-          _statusTr = null;
-        });
+        if (mounted) {
+          setState(() {
+            _busy = false;
+            _statusTr = null;
+          });
+        }
         return;
       }
       final result = await scanner.recognizeText(file);
       if (!mounted) return;
+      final parsed = parseNutritionLabel(result.fullText);
       setState(() {
         _busy = false;
         _text = result.fullText;
+        _parsed = parsed;
         _statusTr = result.isEmpty
-            ? 'Metin bulunamadı. Etiketi daha yakın ve net çekmeyi dene.'
-            : null;
+            ? 'Metin bulunamadı. Etiketi daha yakın, düz ve iyi ışıkta '
+                'çekmeyi dene.'
+            : parsed.isEmpty
+                ? 'Metin okundu ama besin değerleri tablosu bulunamadı. '
+                    'Tablonun tamamı kadrajda mı?'
+                : null;
       });
-      _prefillFromText(result.fullText);
+      _applyParsed(parsed);
     } on Object catch (e) {
       if (mounted) {
         setState(() {
@@ -774,25 +835,38 @@ class _LabelOcrTabState extends ConsumerState<_LabelOcrTab> {
     }
   }
 
-  /// Etiket metninden sayıları tahmin eder — kullanıcı onaylar.
-  void _prefillFromText(String text) {
-    final t = text.toLowerCase().replaceAll(',', '.');
-    void fill(TextEditingController c, List<String> keys) {
-      for (final k in keys) {
-        final m = RegExp('$k[^0-9]{0,20}(\\d+\\.?\\d*)').firstMatch(t);
-        if (m != null) {
-          c.text = m.group(1)!;
-          return;
-        }
+  /// Çözümlenen değerleri alanlara yazar.
+  ///
+  /// Değerler 100 g sütunundan gelmediyse ve etikette porsiyon ağırlığı
+  /// varsa 100 g'a çevrilir — alanlar "100 g için" diye etiketli olduğu
+  /// için aksi hâlde kayıt sessizce yanlış ölçeklenirdi.
+  void _applyParsed(ParsedNutritionLabel parsed) {
+    final factor = _normalizationFactor(parsed);
+
+    void fill(TextEditingController c, String key, int decimals) {
+      final f = parsed[key];
+      if (f == null) {
+        c.text = '';
+        return;
       }
+      final v = f.value * factor;
+      c.text = v.toStringAsFixed(decimals).replaceAll('.', ',');
     }
 
-    fill(_kcal, ['enerji', 'kalori', 'kcal', 'energy']);
-    fill(_protein, ['protein']);
-    fill(_sodium, ['sodyum', 'sodium']);
-    fill(_potassium, ['potasyum', 'potassium']);
-    fill(_phosphorus, ['fosfor', 'phosphorus']);
+    fill(_kcal, 'kcal', 0);
+    fill(_protein, 'protein', 1);
+    fill(_sodium, 'sodium', 0);
+    fill(_potassium, 'potassium', 0);
+    fill(_phosphorus, 'phosphorus', 0);
     setState(() {});
+  }
+
+  /// Okunan sütunu 100 g'a çeviren çarpan (çevrilemiyorsa 1).
+  double _normalizationFactor(ParsedNutritionLabel parsed) {
+    if (parsed.basis != NutrientBasis.perPortion) return 1;
+    final portion = parsed.portionG;
+    if (portion == null || portion <= 0) return 1;
+    return 100 / portion;
   }
 
   Future<void> _save() async {
@@ -844,10 +918,20 @@ class _LabelOcrTabState extends ConsumerState<_LabelOcrTab> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           NeuButton(
-            label: _busy ? 'Okunuyor…' : 'Etiketi çek',
+            label: 'Etiketi çek',
             icon: Icons.text_snippet_outlined,
             expanded: true,
+            loading: _busy,
             onPressed: _busy ? null : _capture,
+          ),
+          SizedBox(height: r.gapSm),
+          NeuButton(
+            label: 'Galerideki fotoğraftan oku',
+            icon: Icons.photo_library_outlined,
+            filled: false,
+            tone: NeuTone.neutral,
+            expanded: true,
+            onPressed: _busy ? null : _pickFromGallery,
           ),
           SizedBox(height: r.gapSm),
           Text(
@@ -855,6 +939,13 @@ class _LabelOcrTabState extends ConsumerState<_LabelOcrTab> {
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.labelSmall,
           ),
+          if (_parsed != null && !_parsed!.isEmpty) ...[
+            SizedBox(height: r.gapMd),
+            _LabelReadout(
+              parsed: _parsed!,
+              normalizationFactor: _normalizationFactor(_parsed!),
+            ),
+          ],
           if (_statusTr != null) ...[
             SizedBox(height: r.gapMd),
             NeuCard(
@@ -959,26 +1050,37 @@ class _PhotoTab extends ConsumerStatefulWidget {
   ConsumerState<_PhotoTab> createState() => _PhotoTabState();
 }
 
+/// Bir kalemin düzenlenebilir hâli.
+class _EditableItem {
+  _EditableItem(this.item) : include = true {
+    portion = TextEditingController(
+      text: (item.portionG ?? 0) > 0
+          ? item.portionG!.toStringAsFixed(0)
+          : '',
+    );
+  }
+
+  MealItem item;
+  bool include;
+  late final TextEditingController portion;
+
+  void dispose() => portion.dispose();
+}
+
 class _PhotoTabState extends ConsumerState<_PhotoTab> {
   File? _image;
   bool _busy = false;
   String? _errorTr;
-  MealEstimate? _estimate;
+  MealAnalysis? _analysis;
+  List<_EditableItem> _items = [];
 
   final _label = TextEditingController();
-  final _grams = TextEditingController(text: '200');
-  final _kcal = TextEditingController();
-  final _protein = TextEditingController();
-  final _sodium = TextEditingController();
-  final _potassium = TextEditingController();
-  final _phosphorus = TextEditingController();
 
   @override
   void dispose() {
-    for (final c in [
-      _label, _grams, _kcal, _protein, _sodium, _potassium, _phosphorus,
-    ]) {
-      c.dispose();
+    _label.dispose();
+    for (final i in _items) {
+      i.dispose();
     }
     super.dispose();
   }
@@ -1002,15 +1104,18 @@ class _PhotoTabState extends ConsumerState<_PhotoTab> {
     }
     final scanner = ref.read(scannerServiceProvider);
     final file = camera
-        ? await scanner.captureFromCamera(maxWidth: 1280)
-        : await scanner.pickFromGallery(maxWidth: 1280);
-    if (file != null && mounted) {
-      setState(() {
-        _image = file;
-        _estimate = null;
-        _errorTr = null;
-      });
-    }
+        ? await scanner.captureFromCamera()
+        : await scanner.pickFromGallery();
+    if (file == null || !mounted) return;
+    setState(() {
+      _image = file;
+      _analysis = null;
+      _errorTr = null;
+      for (final i in _items) {
+        i.dispose();
+      }
+      _items = [];
+    });
   }
 
   Future<void> _analyze() async {
@@ -1028,8 +1133,8 @@ class _PhotoTabState extends ConsumerState<_PhotoTab> {
           'bilgin (adın, tahlillerin, ilaçların) bu istekle '
           'gönderilmez — yalnızca günlük hedeflerin gönderilir.\n\n'
           'Sonuç TAHMİNDİR: porsiyon ve özellikle tuz miktarı '
-          'fotoğraftan kesin bilinemez. Değerleri kaydetmeden önce '
-          'düzeltebilirsin.',
+          'fotoğraftan kesin bilinemez. Her kalemi kaydetmeden önce '
+          'düzeltebilir ya da listeden çıkarabilirsin.',
         ),
         actions: [
           TextButton(
@@ -1065,20 +1170,21 @@ class _PhotoTabState extends ConsumerState<_PhotoTab> {
             model: model,
           );
 
-      final est = parseMealEstimate(reply.text);
+      final analysis = parseMealAnalysis(reply.text);
       if (!mounted) return;
+      for (final i in _items) {
+        i.dispose();
+      }
       setState(() {
         _busy = false;
-        _estimate = est;
-        _label.text = est.name ?? 'Fotoğraftan analiz';
-        if (est.portionG != null) {
-          _grams.text = est.portionG!.toStringAsFixed(0);
+        _analysis = analysis;
+        _items = [for (final it in analysis.items) _EditableItem(it)];
+        _label.text = analysis.dishNameTr ?? 'Fotoğraftan analiz';
+        if (analysis.isEmpty) {
+          _errorTr = analysis.noteTr ??
+              'Fotoğrafta tanıyabildiğim bir yemek yok. Başka bir açıdan '
+                  'çekmeyi ya da elle girmeyi dene.';
         }
-        _kcal.text = est.kcal?.value.toStringAsFixed(0) ?? '';
-        _protein.text = est.protein?.value.toStringAsFixed(1) ?? '';
-        _sodium.text = est.sodium?.value.toStringAsFixed(0) ?? '';
-        _potassium.text = est.potassium?.value.toStringAsFixed(0) ?? '';
-        _phosphorus.text = est.phosphorus?.value.toStringAsFixed(0) ?? '';
       });
     } on AiFailure catch (e) {
       if (!mounted) return;
@@ -1089,41 +1195,53 @@ class _PhotoTabState extends ConsumerState<_PhotoTab> {
     }
   }
 
+  /// Kullanıcının düzenlediği hâliyle seçili kalemler.
+  List<MealItem> get _selected {
+    final out = <MealItem>[];
+    for (final e in _items) {
+      if (!e.include) continue;
+      final grams = parseLocaleNumber(e.portion.text);
+      out.add(grams != null && grams > 0 ? e.item.withPortion(grams) : e.item);
+    }
+    return out;
+  }
+
   Future<void> _save() async {
+    final analysis = _analysis;
+    final items = _selected;
+    if (analysis == null || items.isEmpty) return;
+
     final db = ref.read(databaseProvider);
     final day = ref.read(selectedDayProvider);
     final now = DateTime.now();
-    final grams = parseLocaleNumber(_grams.text) ?? 200;
+    final consumedAt =
+        DateTime(day.year, day.month, day.day, now.hour, now.minute);
 
-    await db.into(db.foodLogRows).insert(
-          FoodLogRowsCompanion.insert(
-            label: _label.text.trim().isEmpty
-                ? 'Fotoğraftan analiz'
-                : _label.text.trim(),
-            grams: grams,
-            // AI çıktısı PORSİYON TOPLAMI olarak verilir, 100 g değil.
-            kcal: Value(parseLocaleNumber(_kcal.text)),
-            proteinG: Value(parseLocaleNumber(_protein.text)),
-            sodiumMg: Value(parseLocaleNumber(_sodium.text)),
-            potassiumMg: Value(parseLocaleNumber(_potassium.text)),
-            phosphorusMg: Value(parseLocaleNumber(_phosphorus.text)),
-            origin: const Value('ai'),
-            confidence: Value(_estimate?.confidence.dbValue),
-            note: Value(
-              [
-                'Yapay zeka tahmini (${_estimate?.confidence.labelTr})',
-                if (_estimate?.noteTr != null) _estimate!.noteTr!,
-              ].join(' · '),
+    // Her kalem AYRI kaydedilir: kullanıcı sonradan tek bir kalemi
+    // silebilsin ya da düzeltebilsin.
+    for (final item in items) {
+      await db.into(db.foodLogRows).insert(
+            FoodLogRowsCompanion.insert(
+              label: item.name,
+              grams: item.portionG ?? 0,
+              // AI çıktısı PORSİYON TOPLAMI olarak verilir, 100 g değil.
+              kcal: Value(item.kcal?.value),
+              proteinG: Value(item.protein?.value),
+              sodiumMg: Value(item.sodium?.value),
+              potassiumMg: Value(item.potassium?.value),
+              phosphorusMg: Value(item.phosphorus?.value),
+              origin: const Value('ai'),
+              confidence: Value(item.confidence.dbValue),
+              note: Value(
+                [
+                  'Yapay zeka tahmini (${item.confidence.labelTr})',
+                  if (analysis.noteTr != null) analysis.noteTr!,
+                ].join(' · '),
+              ),
+              consumedAt: consumedAt,
             ),
-            consumedAt: DateTime(
-              day.year,
-              day.month,
-              day.day,
-              now.hour,
-              now.minute,
-            ),
-          ),
-        );
+          );
+    }
     if (mounted) Navigator.pop(context);
   }
 
@@ -1131,47 +1249,48 @@ class _PhotoTabState extends ConsumerState<_PhotoTab> {
   Widget build(BuildContext context) {
     final r = Responsive.fromContext(context);
     final p = context.palette;
-    final conn = ref.watch(aiConnectionProvider).value;
+    final text = Theme.of(context).textTheme;
+    final connected =
+        ref.watch(aiConnectionProvider).value == AiConnectionState.ok;
 
-    if (conn != AiConnectionState.ok) {
+    if (!connected) {
       return Padding(
         padding: EdgeInsets.all(r.pagePadding),
         child: EmptyState(
-          title: 'Önce bağlantıyı kur',
-          message: 'Fotoğraftan yemek analizi, kendi Anthropic '
-              'anahtarınla çalışır. Ayarlar > Yapay Zeka Bağlantısı '
-              'bölümünden anahtarını ekleyebilirsin. '
-              'Diğer ekleme yolları (ara, barkod, etiket, elle) '
-              'anahtarsız çalışır.',
-          icon: Icons.key_off_outlined,
+          icon: Icons.link_off_rounded,
+          title: 'Önce yapay zeka bağlantısını kur',
+          message: 'Fotoğraftan yemek analizi Claude API ile çalışır. '
+              'Ayarlar → Yapay Zeka Bağlantısı bölümünden anahtarını '
+              'girdikten sonra burası açılır. Diğer sekmeler anahtarsız '
+              'da çalışır.',
           action: NeuButton(
             label: 'Bağlantıyı kur',
-            icon: Icons.key_outlined,
-            onPressed: () {
-              Navigator.pop(context);
-              context.push(Routes.aiConnection);
-            },
+            icon: Icons.key_rounded,
+            onPressed: () => context.push(Routes.aiConnection),
           ),
         ),
       );
     }
+
+    final selected = _selected;
+    final totals = _analysis?.withItems(selected);
 
     return SingleChildScrollView(
       padding: EdgeInsets.all(r.pagePadding),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (_image != null)
+          if (_image != null) ...[
             ClipRRect(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(18),
               child: Image.file(
                 _image!,
-                height: r.s(180),
-                width: double.infinity,
+                height: r.s(170),
                 fit: BoxFit.cover,
               ),
             ),
-          if (_image != null) SizedBox(height: r.gapMd),
+            SizedBox(height: r.gapSm),
+          ],
           Row(
             children: [
               Expanded(
@@ -1179,7 +1298,6 @@ class _PhotoTabState extends ConsumerState<_PhotoTab> {
                   label: 'Fotoğraf çek',
                   icon: Icons.photo_camera_outlined,
                   compact: true,
-                  expanded: true,
                   onPressed: _busy ? null : () => _pick(camera: true),
                 ),
               ),
@@ -1189,157 +1307,214 @@ class _PhotoTabState extends ConsumerState<_PhotoTab> {
                   label: 'Galeriden',
                   icon: Icons.photo_library_outlined,
                   filled: false,
+                  tone: NeuTone.neutral,
                   compact: true,
-                  expanded: true,
                   onPressed: _busy ? null : () => _pick(camera: false),
                 ),
               ),
             ],
           ),
           if (_image != null) ...[
-            SizedBox(height: r.gapMd),
+            SizedBox(height: r.gapSm),
             NeuButton(
-              label: _busy ? 'Analiz ediliyor…' : 'Yapay zekaya analiz ettir',
+              label: 'Analiz et',
               icon: Icons.auto_awesome_rounded,
               expanded: true,
-              tone: NeuTone.accent,
+              loading: _busy,
               onPressed: _busy ? null : _analyze,
             ),
           ],
           if (_errorTr != null) ...[
             SizedBox(height: r.gapMd),
             NeuCard(
-              color: p.danger.withValues(alpha: 0.09),
-              child: Text(
-                _errorTr!,
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
+              color: p.danger.withValues(alpha: 0.10),
+              child: Text(_errorTr!, style: text.bodyMedium),
             ),
           ],
-          if (_estimate != null) ...[
+          if (_items.isNotEmpty) ...[
             SizedBox(height: r.gapLg),
-            NeuCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          'Tahmin',
-                          style:
-                              Theme.of(context).textTheme.titleMedium,
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: switch (_estimate!.confidence) {
-                            AiConfidence.high => p.primarySoft,
-                            AiConfidence.medium => p.accentSoft,
-                            _ => p.danger.withValues(alpha: 0.12),
-                          },
-                          borderRadius: BorderRadius.circular(7),
-                        ),
-                        child: Text(
-                          _estimate!.confidence.labelTr,
-                          style:
-                              Theme.of(context).textTheme.labelSmall,
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: r.gapSm),
-                  for (final e
-                      in <({String label, EstimatedValue? v, String u})>[
-                    (label: 'Enerji', v: _estimate!.kcal, u: 'kcal'),
-                    (label: 'Protein', v: _estimate!.protein, u: 'g'),
-                    (label: 'Sodyum', v: _estimate!.sodium, u: 'mg'),
-                    (label: 'Potasyum', v: _estimate!.potassium, u: 'mg'),
-                    (label: 'Fosfor', v: _estimate!.phosphorus, u: 'mg'),
-                  ])
-                    Padding(
-                      padding: EdgeInsets.only(bottom: r.gapXs),
-                      child: Row(
-                        children: [
-                          Expanded(child: Text(e.label)),
-                          Text(
-                            e.v?.formatted(e.u) ?? 'bilinmiyor',
-                            style:
-                                Theme.of(context).textTheme.titleSmall,
-                          ),
-                        ],
-                      ),
-                    ),
-                  if (_estimate!.noteTr != null) ...[
+            Row(
+              children: [
+                Expanded(
+                  child: Text('Tabaktaki kalemler', style: text.titleMedium),
+                ),
+                Text(
+                  '${selected.length}/${_items.length} seçili',
+                  style: text.labelSmall,
+                ),
+              ],
+            ),
+            SizedBox(height: r.gapXs),
+            Text(
+              'Her kalemi ayrı ayrı düzelt. Porsiyonu değiştirince o '
+              'kalemin tüm değerleri orantılı güncellenir. Yemediğin '
+              'kalemi listeden çıkar.',
+              style: text.bodySmall,
+            ),
+            SizedBox(height: r.gapSm),
+            for (final e in _items) ...[
+              _MealItemCard(
+                editable: e,
+                onChanged: () => setState(() {}),
+              ),
+              SizedBox(height: r.gapSm),
+            ],
+            if (totals != null && selected.isNotEmpty) ...[
+              SizedBox(height: r.gapSm),
+              NeuCard(
+                surface: Surface.raised,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Toplam', style: text.titleMedium),
                     SizedBox(height: r.gapSm),
-                    Container(
-                      padding: EdgeInsets.all(r.gapSm),
-                      decoration: BoxDecoration(
-                        color: p.accentSoft.withValues(alpha: 0.5),
-                        borderRadius: BorderRadius.circular(10),
+                    for (final row in <({String l, EstimatedValue? v, String u})>[
+                      (l: 'Enerji', v: totals.kcal, u: 'kcal'),
+                      (l: 'Protein', v: totals.protein, u: 'g'),
+                      (l: 'Sodyum', v: totals.sodium, u: 'mg'),
+                      (l: 'Potasyum', v: totals.potassium, u: 'mg'),
+                      (l: 'Fosfor', v: totals.phosphorus, u: 'mg'),
+                    ])
+                      Padding(
+                        padding: EdgeInsets.only(bottom: r.gapXs),
+                        child: Row(
+                          children: [
+                            Expanded(child: Text(row.l, style: text.bodyMedium)),
+                            Text(
+                              row.v == null
+                                  ? 'bilinmiyor'
+                                  : row.v!.formatted(row.u),
+                              style: AppTypography.numericSmall(
+                                p,
+                                color: row.v == null ? p.danger : p.textPrimary,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      child: Text(
-                        _estimate!.noteTr!,
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ),
                   ],
-                  SizedBox(height: r.gapMd),
-                  Text(
-                    'Düzelt ve kaydet',
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
-                  SizedBox(height: r.gapSm),
-                  TextField(
-                    controller: _label,
-                    decoration:
-                        const InputDecoration(labelText: 'Yemek adı'),
-                  ),
-                  SizedBox(height: r.gapSm),
-                  NumberField(
-                    controller: _grams,
-                    suffix: 'g',
-                    hintText: 'Porsiyon',
-                  ),
-                  SizedBox(height: r.gapSm),
-                  for (final f in <({TextEditingController c, String l})>[
-                    (c: _kcal, l: 'Enerji (kcal, porsiyon toplamı)'),
-                    (c: _protein, l: 'Protein (g)'),
-                    (c: _sodium, l: 'Sodyum (mg)'),
-                    (c: _potassium, l: 'Potasyum (mg)'),
-                    (c: _phosphorus, l: 'Fosfor (mg)'),
-                  ])
-                    Padding(
-                      padding: EdgeInsets.only(bottom: r.gapSm),
-                      child: NumberField(controller: f.c, hintText: f.l),
-                    ),
-                  NeuButton(
-                    label: 'Kaydet',
-                    icon: Icons.check_rounded,
-                    expanded: true,
-                    onPressed: _save,
-                  ),
-                ],
+                ),
+              ),
+            ],
+            if (_analysis?.noteTr != null) ...[
+              SizedBox(height: r.gapSm),
+              NeuCard(
+                color: p.accentSoft.withValues(alpha: 0.5),
+                child: Text(_analysis!.noteTr!, style: text.bodySmall),
+              ),
+            ],
+            SizedBox(height: r.gapMd),
+            NeuButton(
+              label: selected.length == 1
+                  ? 'Kalemi kaydet'
+                  : '${selected.length} kalemi kaydet',
+              icon: Icons.check_rounded,
+              expanded: true,
+              onPressed: selected.isEmpty ? null : _save,
+            ),
+          ],
+          SizedBox(height: r.gapMd),
+          Text(
+            'Değerler TAHMİNDİR. Fotoğraftan porsiyon ve özellikle tuz '
+            'kesin bilinemez; kaydedilen kalemler "yapay zeka tahmini" '
+            'olarak işaretlenir.',
+            style: text.labelSmall,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Tabaktaki tek bir kalem: seç/çıkar, porsiyonu düzelt, değerleri gör.
+class _MealItemCard extends StatelessWidget {
+  const _MealItemCard({required this.editable, required this.onChanged});
+
+  final _EditableItem editable;
+  final VoidCallback onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    final r = Responsive.fromContext(context);
+    final text = Theme.of(context).textTheme;
+
+    final grams = parseLocaleNumber(editable.portion.text);
+    final shown = grams != null && grams > 0
+        ? editable.item.withPortion(grams)
+        : editable.item;
+
+    return NeuCard(
+      selected: editable.include,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Semantics(
+                label: '${editable.item.name} kalemini dahil et',
+                child: Checkbox(
+                  value: editable.include,
+                  onChanged: (v) {
+                    editable.include = v ?? false;
+                    onChanged();
+                  },
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  editable.item.name,
+                  style: text.titleSmall?.copyWith(color: p.textPrimary),
+                ),
+              ),
+            ],
+          ),
+          if (editable.item.portionNoteTr?.isNotEmpty == true)
+            Padding(
+              padding: EdgeInsets.only(left: r.gapLg, bottom: r.gapXs),
+              child: Text(
+                editable.item.portionNoteTr!,
+                style: text.labelSmall,
               ),
             ),
-            SizedBox(height: r.gapMd),
-            ExpansionTile(
-              title: Text(
-                'Yapay zekanın ham yanıtı',
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
+          if (editable.include) ...[
+            SizedBox(height: r.gapXs),
+            Row(
               children: [
-                Padding(
-                  padding: EdgeInsets.all(r.gapSm),
-                  child: Text(
-                    _estimate!.rawText,
-                    style: const TextStyle(fontSize: 12),
+                SizedBox(
+                  width: r.s(120),
+                  child: NumberField(
+                    controller: editable.portion,
+                    suffix: 'g',
+                    hintText: 'porsiyon',
+                    onChanged: (_) => onChanged(),
                   ),
                 ),
+                SizedBox(width: r.gapSm),
+                Flexible(
+                  child: ApproximateBadge(
+                    labelTr: editable.item.confidence.labelTr,
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: r.gapSm),
+            Wrap(
+              spacing: r.gapSm,
+              runSpacing: r.gapXs,
+              children: [
+                for (final e in <({String l, EstimatedValue? v, String u})>[
+                  (l: 'kcal', v: shown.kcal, u: 'kcal'),
+                  (l: 'protein', v: shown.protein, u: 'g'),
+                  (l: 'Na', v: shown.sodium, u: 'mg'),
+                  (l: 'K', v: shown.potassium, u: 'mg'),
+                  (l: 'P', v: shown.phosphorus, u: 'mg'),
+                ])
+                  if (e.v != null)
+                    Text(
+                      '${e.l} ${e.v!.formatted(e.u)}',
+                      style: AppTypography.numericSmall(p, size: 13),
+                    ),
               ],
             ),
           ],
@@ -1349,9 +1524,110 @@ class _PhotoTabState extends ConsumerState<_PhotoTab> {
   }
 }
 
-// ===========================================================================
-// ELLE GİRİŞ
-// ===========================================================================
+/// Etiketten okunan değerlerin kaynağını gösterir: hangi sütun, hangi
+/// birim, türetildi mi. Kullanıcı etiketle karşılaştırabilsin diye.
+class _LabelReadout extends StatelessWidget {
+  const _LabelReadout({
+    required this.parsed,
+    required this.normalizationFactor,
+  });
+
+  final ParsedNutritionLabel parsed;
+  final double normalizationFactor;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    final r = Responsive.fromContext(context);
+    final text = Theme.of(context).textTheme;
+
+    Color colorFor(LabelConfidence c) => switch (c) {
+          LabelConfidence.high => p.success,
+          LabelConfidence.medium => p.warning,
+          LabelConfidence.low => p.danger,
+        };
+
+    const rows = <({String key, String label, String unit})>[
+      (key: 'kcal', label: 'Enerji', unit: 'kcal'),
+      (key: 'protein', label: 'Protein', unit: 'g'),
+      (key: 'sodium', label: 'Sodyum', unit: 'mg'),
+      (key: 'potassium', label: 'Potasyum', unit: 'mg'),
+      (key: 'phosphorus', label: 'Fosfor', unit: 'mg'),
+    ];
+
+    return NeuCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Etiketten okunanlar', style: text.titleMedium),
+          SizedBox(height: r.gapXs),
+          Text(
+            parsed.basis == NutrientBasis.perPortion && normalizationFactor != 1
+                ? 'Etiket porsiyon sütununu veriyor '
+                    '(${parsed.portionG?.toStringAsFixed(0)} g). Değerler '
+                    '100 g\'a çevrildi.'
+                : 'Sütun: ${parsed.basis.labelTr}.',
+            style: text.bodySmall,
+          ),
+          SizedBox(height: r.gapSm),
+          for (final row in rows)
+            Padding(
+              padding: EdgeInsets.only(bottom: r.gapXs),
+              child: Builder(
+                builder: (context) {
+                  final f = parsed[row.key];
+                  if (f == null) {
+                    return Row(
+                      children: [
+                        Expanded(
+                          child: Text(row.label, style: text.bodyMedium),
+                        ),
+                        Text(
+                          'okunamadı',
+                          style: text.labelMedium?.copyWith(color: p.danger),
+                        ),
+                      ],
+                    );
+                  }
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(row.label, style: text.bodyMedium),
+                          ),
+                          Text(
+                            '${(f.value * normalizationFactor).toStringAsFixed(f.unit == 'g' ? 1 : 0)} ${row.unit}',
+                            style: AppTypography.numericSmall(p),
+                          ),
+                          SizedBox(width: r.gapXs),
+                          Icon(Icons.circle,
+                              size: 8, color: colorFor(f.confidence)),
+                        ],
+                      ),
+                      if (f.derivationTr != null)
+                        Text(f.derivationTr!, style: text.labelSmall),
+                    ],
+                  );
+                },
+              ),
+            ),
+          if (parsed.missingCriticalTr.isNotEmpty) ...[
+            SizedBox(height: r.gapSm),
+            Text(
+              'Etikette yazmayanlar: ${parsed.missingCriticalTr.join(", ")}. '
+              'Potasyum ve fosfor Türkiye\'de genelde etikete yazılmaz; '
+              'boş bırakılırsa sıfır değil "bilinmiyor" olarak kaydedilir.',
+              style: text.labelSmall?.copyWith(color: p.warning),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 class _ManualTab extends ConsumerStatefulWidget {
   const _ManualTab();
 

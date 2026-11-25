@@ -11,6 +11,8 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/neumorphic.dart';
 import '../../core/widgets/common.dart';
 import '../../core/widgets/progress_ring.dart';
+import '../../core/widgets/app_shell.dart';
+import '../../core/widgets/nutrient_meter.dart';
 import '../../core/widgets/responsive.dart';
 import 'add_food_sheet.dart';
 
@@ -27,6 +29,8 @@ class NutritionScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: p.background,
+      floatingActionButtonLocation:
+          ShellFabLocation(BottomBarInset.of(context)),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => showAddFoodSheet(context, ref),
         icon: const Icon(Icons.add_rounded),
@@ -98,9 +102,12 @@ class NutritionScreen extends ConsumerWidget {
                                 ProgressRing(
                                   ratio: n.ratio,
                                   label: n.labelTr,
-                                  valueText: n.value < 10
-                                      ? n.value.toStringAsFixed(1)
-                                      : n.value.round().toString(),
+                                  // Birimine göre ondalık: "0,0 kcal" ya da
+                                  // "0,0 mg" yazmak anlamsızdı.
+                                  valueText: NutrientMeter.formatValue(
+                                    n.value,
+                                    n.unit,
+                                  ),
                                   unitText: n.unit,
                                   size: r.s(88),
                                 ),

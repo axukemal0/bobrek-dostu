@@ -8,6 +8,7 @@ import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/neumorphic.dart';
 import '../../core/widgets/common.dart';
+import '../../core/widgets/app_shell.dart';
 import '../../core/widgets/responsive.dart';
 
 class DietPlanScreen extends ConsumerStatefulWidget {
@@ -28,6 +29,8 @@ class _DietPlanScreenState extends ConsumerState<DietPlanScreen> {
     return Scaffold(
       backgroundColor: p.background,
       appBar: AppBar(title: const Text('Diyet planı')),
+      floatingActionButtonLocation:
+          ShellFabLocation(BottomBarInset.of(context)),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => showModalBottomSheet<void>(
           context: context,
@@ -85,7 +88,7 @@ class _DietPlanScreenState extends ConsumerState<DietPlanScreen> {
                 Padding(
                   padding: EdgeInsets.only(bottom: r.gapSm),
                   child: NeuCard(
-                    depth: 0.4,
+                    surface: Surface.flat,
                     child: Row(
                       children: [
                         Expanded(

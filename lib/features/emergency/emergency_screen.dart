@@ -407,6 +407,32 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen> {
                 ),
 
             // --- otomatik SMS ayarı ---
+            // iPhone'da işletim sistemi kendiliğinden SMS göndermeye izin
+            // vermiyor; kapatılamayan bir anahtar göstermek yerine durumu
+            // açıkça yazıyoruz.
+            if (!SmsService.supportsDirectSend)
+              NeuCard(
+                color: p.accentSoft.withValues(alpha: 0.5),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Otomatik SMS iPhone\'da yok',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    SizedBox(height: r.gapXs),
+                    Text(
+                      'iPhone, uygulamaların senin onayın olmadan SMS '
+                      'göndermesine izin vermiyor — bu Apple\'ın kuralı, '
+                      'aşılamıyor. Eşik aşıldığında uygulama mesajı hazır '
+                      'hâlde Mesajlar\'da açar; gönder tuşuna sen basarsın. '
+                      'Acil düğmesi de aynı şekilde çalışır.',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ],
+                ),
+              )
+            else
             NeuCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

@@ -50,6 +50,12 @@ kotlin {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
+
+    // Cihaz üstü metin okuma (OCR).
+    // AYRIK (unbundled) sürüm: model APK'ya gömülmez, Google Play
+    // hizmetleri üzerinden ilk kullanımda indirilir. Gömülü sürüm
+    // (com.google.mlkit:text-recognition) APK'ya ~17 MB ekliyordu.
+    implementation("com.google.android.gms:play-services-mlkit-text-recognition:19.0.1")
 }
 
 flutter {

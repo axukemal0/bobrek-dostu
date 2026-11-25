@@ -19,6 +19,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/neumorphic.dart';
 import '../../core/widgets/common.dart';
 import '../../core/widgets/form_fields.dart';
+import '../../core/widgets/app_shell.dart';
 import '../../core/widgets/responsive.dart';
 import '../../core/widgets/trend_chart.dart';
 import '../emergency/alert_dispatcher.dart';
@@ -37,6 +38,8 @@ class LabsScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: p.background,
       appBar: AppBar(title: const Text('Laboratuvar')),
+      floatingActionButtonLocation:
+          ShellFabLocation(BottomBarInset.of(context)),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showAddSheet(context),
         icon: const Icon(Icons.add_rounded),

@@ -14,7 +14,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/motion.dart';
 import '../../core/theme/neumorphic.dart';
 import '../../core/widgets/common.dart';
-import '../../core/widgets/drop_leaf_logo.dart';
+import '../../core/brand/brand_mark.dart';
 import '../../core/widgets/form_fields.dart';
 import '../../core/widgets/responsive.dart';
 import '../settings/clinical_settings_screen.dart';
@@ -412,7 +412,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         SizedBox(height: r.gapMd),
         Hero(
           tag: 'app-mark',
-          child: DropLeafMark(size: r.s(110), animate: false),
+          child: BrandMark(size: r.s(110)),
         ),
         SizedBox(height: r.gapLg),
         Text(
@@ -1062,7 +1062,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SizedBox(height: r.gapMd),
-        Center(child: DropLeafMark(size: r.s(96), animate: false)),
+        Center(child: BrandMark(size: r.s(96))),
         SizedBox(height: r.gapLg),
         Text(
           'Hazırsın, ${_name.text.trim().isEmpty ? "hoş geldin" : _name.text.trim()}',

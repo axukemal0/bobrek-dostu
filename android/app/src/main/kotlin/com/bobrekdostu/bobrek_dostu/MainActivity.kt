@@ -2,17 +2,22 @@ package com.bobrekdostu.bobrek_dostu
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.telephony.SmsManager
 import androidx.core.content.ContextCompat
+import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import java.io.File
 
 /**
  * Böbrek Dostu ana aktivitesi.
  *
- * Tek platform kanalı: doğrudan SMS gönderimi.
+ * İki platform kanalı: doğrudan SMS gönderimi ve cihaz üstü metin okuma.
  * Acil durumda ve ölçüm alarm eşiği aşıldığında (kullanıcı bu ayarı
  * AÇIKÇA açtıysa) acil kişilere mesaj gönderilmesi için kullanılır.
  *
@@ -22,6 +27,7 @@ import io.flutter.plugin.common.MethodChannel
 class MainActivity : FlutterActivity() {
 
     private val smsChannel = "com.bobrekdostu.app/sms"
+    private val ocrChannel = "com.bobrekdostu.app/ocr"
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -32,6 +38,23 @@ class MainActivity : FlutterActivity() {
         ).setMethodCallHandler { call, result ->
             when (call.method) {
                 "sendSms" -> handleSendSms(call.argument("numbers"), call.argument("message"), result)
+                else -> result.notImplemented()
+            }
+        }
+
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            ocrChannel,
+        ).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "recognize" -> {
+                    val path = call.argument<String>("path")
+                    if (path.isNullOrBlank()) {
+                        result.error("BAD_ARGS", "Dosya yolu verilmedi.", null)
+                    } else {
+                        recognizeText(path, result)
+                    }
+                }
                 else -> result.notImplemented()
             }
         }
@@ -102,5 +125,50 @@ class MainActivity : FlutterActivity() {
         } else {
             result.success(sent)
         }
+    }
+
+    /**
+     * Cihaz üstü metin okuma.
+     *
+     * AYRIK ML Kit kullanılır: model APK'ya gömülmez, Google Play
+     * hizmetleri sağlar. Görsel cihazdan ÇIKMAZ.
+     */
+    private fun recognizeText(path: String, result: MethodChannel.Result) {
+        val file = File(path)
+        if (!file.exists()) {
+            result.error("BAD_IMAGE", "Fotoğraf bulunamadı.", path)
+            return
+        }
+
+        val image = try {
+            InputImage.fromFilePath(this, Uri.fromFile(file))
+        } catch (e: Exception) {
+            result.error("BAD_IMAGE", e.message, null)
+            return
+        }
+
+        val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+        recognizer.process(image)
+            .addOnSuccessListener { visionText ->
+                // Satırları yukarıdan aşağı sırala: etiket tablosunun satır
+                // düzeni korunsun (Dart tarafındaki çözümleyici sütunları
+                // satırdan çıkarıyor).
+                val lines = visionText.textBlocks
+                    .flatMap { it.lines }
+                    .sortedBy { it.boundingBox?.top ?: 0 }
+                    .map { it.text }
+                result.success(
+                    mapOf(
+                        "text" to lines.joinToString("\n"),
+                        "lines" to lines,
+                    ),
+                )
+                recognizer.close()
+            }
+            .addOnFailureListener { e ->
+                // Play hizmetleri eski/eksikse modül indirilemez.
+                result.error("UNAVAILABLE", e.message, null)
+                recognizer.close()
+            }
     }
 }

@@ -12,6 +12,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/neumorphic.dart';
 import '../../core/widgets/common.dart';
 import '../../core/widgets/form_fields.dart';
+import '../../core/widgets/app_shell.dart';
 import '../../core/widgets/responsive.dart';
 import '../home/home_screen.dart' show showPermissionDialog;
 
@@ -45,6 +46,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     return Scaffold(
       backgroundColor: p.background,
       appBar: AppBar(title: const Text('Takvim')),
+      floatingActionButtonLocation:
+          ShellFabLocation(BottomBarInset.of(context)),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showSheet(context),
         icon: const Icon(Icons.add_rounded),

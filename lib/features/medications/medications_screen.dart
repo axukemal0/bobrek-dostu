@@ -11,6 +11,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/neumorphic.dart';
 import '../../core/widgets/common.dart';
 import '../../core/widgets/form_fields.dart';
+import '../../core/widgets/app_shell.dart';
 import '../../core/widgets/responsive.dart';
 import '../home/home_screen.dart' show showPermissionDialog;
 import 'medication_logic.dart';
@@ -147,6 +148,8 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
 
     return Scaffold(
       backgroundColor: p.background,
+      floatingActionButtonLocation:
+          ShellFabLocation(BottomBarInset.of(context)),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showMedSheet(context),
         icon: const Icon(Icons.add_rounded),
@@ -241,7 +244,7 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
                         horizontal: r.gapMd,
                         vertical: r.gapSm,
                       ),
-                      depth: 0.4,
+                      surface: Surface.flat,
                       child: Row(
                         children: [
                           Icon(

@@ -3,7 +3,52 @@ import 'package:material_ui/material_ui.dart';
 
 import '../router/app_router.dart';
 import '../theme/app_colors.dart';
+import '../theme/neumorphic.dart';
 import 'responsive.dart';
+
+/// Alt gezinme çubuğunun kapladığı yüksekliği sayfalara bildirir.
+///
+/// Gövde çubuğun altına uzandığı için (buzlu cam ancak arkasından içerik
+/// akarsa anlamlıdır) sayfaların alt boşluğu bu kadar artmalı; yoksa son
+/// kart çubuğun altında kalır.
+class BottomBarInset extends InheritedWidget {
+  const BottomBarInset({
+    required this.height,
+    required super.child,
+    super.key,
+  });
+
+  final double height;
+
+  static double of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<BottomBarInset>()?.height ?? 0;
+
+  @override
+  bool updateShouldNotify(BottomBarInset oldWidget) =>
+      oldWidget.height != height;
+}
+
+/// Kayan eylem butonunu alt gezinme çubuğunun üstüne kaldırır.
+///
+/// Kabuk `extendBody: true` kullanıyor (içerik camın arkasından aksın
+/// diye); bu da iç ekranların kendi Scaffold'undaki FAB'ı çubuğun altında
+/// bırakıyordu. "Yemek ekle" butonu görünmez olmuştu.
+class ShellFabLocation implements FloatingActionButtonLocation {
+  const ShellFabLocation(this.lift);
+
+  /// Kabuk dışındaki (itilmiş) sayfalarda 0 gelir ve davranış değişmez.
+  final double lift;
+
+  @override
+  Offset getOffset(ScaffoldPrelayoutGeometry scaffoldGeometry) {
+    final base =
+        FloatingActionButtonLocation.endFloat.getOffset(scaffoldGeometry);
+    return Offset(base.dx, base.dy - lift);
+  }
+
+  @override
+  String toString() => 'ShellFabLocation($lift)';
+}
 
 /// Alt navigasyonlu kabuk. Tek elle kullanım için gezinme ALTTA.
 class AppShell extends StatelessWidget {
@@ -55,29 +100,30 @@ class AppShell extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = context.palette;
     final r = Responsive.fromContext(context);
+    final barHeight = r.isCompact ? 68.0 : 74.0;
 
     return Scaffold(
       backgroundColor: p.background,
-      body: SafeArea(bottom: false, child: child),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: p.surface,
-          boxShadow: [
-            BoxShadow(
-              color: p.shadowDark,
-              offset: const Offset(0, -2),
-              blurRadius: 16,
-            ),
-          ],
-          border: Border(top: BorderSide(color: p.divider)),
-        ),
+      // Gövde çubuğun altına uzanır: içerik camın arkasından akar.
+      extendBody: true,
+      body: BottomBarInset(
+        height: barHeight,
+        child: SafeArea(bottom: false, child: child),
+      ),
+      bottomNavigationBar: GlassBar(
+        blur: 18,
+        borderSide: BorderSide(color: p.divider.withValues(alpha: 0.8)),
         child: SafeArea(
           top: false,
           child: NavigationBar(
             selectedIndex: _index,
-            height: r.isCompact ? 66 : 72,
-            labelBehavior:
-                NavigationDestinationLabelBehavior.alwaysShow,
+            height: barHeight,
+            backgroundColor: Colors.transparent,
+            surfaceTintColor: Colors.transparent,
+            shadowColor: Colors.transparent,
+            elevation: 0,
+            indicatorColor: p.primarySoft,
+            labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
             onDestinationSelected: (i) {
               if (i == _index) return;
               context.go(tabs[i].path);
@@ -85,8 +131,8 @@ class AppShell extends StatelessWidget {
             destinations: [
               for (final t in tabs)
                 NavigationDestination(
-                  icon: Icon(t.icon),
-                  selectedIcon: Icon(t.activeIcon),
+                  icon: Icon(t.icon, color: p.textSecondary),
+                  selectedIcon: Icon(t.activeIcon, color: p.primary),
                   label: t.label,
                   tooltip: t.label,
                 ),

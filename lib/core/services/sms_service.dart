@@ -1,19 +1,33 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 /// SMS gönderimi.
 ///
-/// İKİ YOL vardır ve ikisi de desteklenir:
+/// İKİ YOL vardır:
 ///  1. [sendDirect] — SEND_SMS izni ile, kullanıcı müdahalesi olmadan.
 ///     Yalnızca kullanıcı bunu ayarlardan AÇIKÇA açtıysa kullanılır.
-///     Varsayılan KAPALIDIR.
+///     Varsayılan KAPALIDIR. **Yalnız Android.**
 ///  2. [openComposer] — mesajı hazırlar, SMS uygulamasını açar;
-///     gönder tuşuna kullanıcı basar. İzin GEREKTİRMEZ.
+///     gönder tuşuna kullanıcı basar. İzin GEREKTİRMEZ. Her iki platform.
+///
+/// PLATFORM FARKI — dürüstçe söylemek gerekir: iOS, bir uygulamanın
+/// kullanıcı onayı olmadan SMS göndermesine işletim sistemi düzeyinde izin
+/// VERMEZ. Bu bir eksik değil, Apple'ın kuralıdır ve aşılamaz. iPhone'da
+/// eşik aşımında ya da acil düğmesinde mesaj hazırlanır ve Mesajlar
+/// uygulaması açılır; gönder tuşuna kullanıcı basar. [supportsDirectSend]
+/// bunu söyler; arayüz de ayarı buna göre gizler.
 class SmsService {
   const SmsService();
 
   static const MethodChannel _channel =
       MethodChannel('com.bobrekdostu.app/sms');
+
+  /// Kullanıcı müdahalesi olmadan SMS gönderilebilir mi?
+  ///
+  /// Android'de evet (SEND_SMS izniyle), iOS'ta hayır.
+  static bool get supportsDirectSend => Platform.isAndroid;
 
   /// Doğrudan SMS gönderir (SEND_SMS izni gerekir).
   ///
@@ -24,6 +38,13 @@ class SmsService {
     required String message,
   }) async {
     if (phoneNumbers.isEmpty) return 0;
+    if (!supportsDirectSend) {
+      throw const SmsFailure(
+        'iPhone, uygulamaların kendiliğinden SMS göndermesine izin vermez. '
+        'Mesajı hazırlayıp Mesajlar uygulamasını açabilirim; gönder tuşuna '
+        'senin basman gerekiyor.',
+      );
+    }
     try {
       final sent = await _channel.invokeMethod<int>('sendSms', {
         'numbers': phoneNumbers,
