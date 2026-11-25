@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- FileProvider'ın paylaşmasına izin verilen klasörler.
+     Yalnız uygulamanın kendi geçici klasörü: indirilen güncelleme APK'sı. -->
+<paths>
+    <cache-path name="updates" path="." />
+    <external-cache-path name="external_updates" path="." />
+</paths>

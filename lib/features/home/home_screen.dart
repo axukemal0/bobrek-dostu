@@ -203,6 +203,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           valueText: '${budget.consumedMl}',
                           unitText: 'mL',
                           size: r.s(112),
+                          tone: p.accents.fluid,
                         ),
                         SizedBox(width: r.gapMd),
                         Expanded(
@@ -314,17 +315,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     semanticLabel: 'İlaçlar, aç',
                     child: Row(
                       children: [
-                        Container(
-                          padding: EdgeInsets.all(r.gapSm),
-                          decoration: BoxDecoration(
-                            color: p.primarySoft,
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: Icon(
-                            Icons.medication_rounded,
-                            color: p.primary,
-                            size: r.s(24),
-                          ),
+                        AccentTile(
+                          icon: Icons.medication_rounded,
+                          color: p.accents.medication,
                         ),
                         SizedBox(width: r.gapMd),
                         Expanded(
@@ -414,21 +407,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         icon: Icons.science_outlined,
                         label: 'Tahlil',
                         route: Routes.labs,
+                        tone: p.accents.lab,
                       ),
                       _QuickTile(
                         icon: Icons.monitor_weight_outlined,
                         label: 'Kilo & tansiyon',
                         route: Routes.weight,
+                        tone: p.accents.weight,
                       ),
                       _QuickTile(
                         icon: Icons.calendar_month_outlined,
                         label: 'Takvim',
                         route: Routes.calendar,
+                        tone: p.accents.appointment,
                       ),
                       _QuickTile(
                         icon: Icons.auto_awesome_outlined,
                         label: 'Yapay zeka',
                         route: Routes.ai,
+                        tone: p.accent,
                       ),
                     ],
                   ),
@@ -520,17 +517,9 @@ class _StepsCard extends ConsumerWidget {
       semanticLabel: 'Sağlık verisi ekranını aç',
       child: Row(
         children: [
-          Container(
-            padding: EdgeInsets.all(r.gapSm),
-            decoration: BoxDecoration(
-              color: p.primarySoft,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(
-              Icons.directions_walk_rounded,
-              color: p.primary,
-              size: r.s(24),
-            ),
+          AccentTile(
+            icon: Icons.directions_walk_rounded,
+            color: p.accents.activity,
           ),
           SizedBox(width: r.gapMd),
           Expanded(
@@ -832,11 +821,15 @@ class _QuickTile extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.route,
+    required this.tone,
   });
 
   final IconData icon;
   final String label;
   final String route;
+
+  /// Gideceği alanın rengi — kart okunmadan nereye götürdüğü anlaşılsın.
+  final Color tone;
 
   @override
   Widget build(BuildContext context) {
@@ -851,7 +844,7 @@ class _QuickTile extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(icon, color: p.primary, size: r.s(22)),
+          AccentTile(icon: icon, color: tone, size: r.s(20)),
           SizedBox(width: r.gapSm),
           Expanded(
             child: Text(

@@ -2,6 +2,7 @@ import 'package:drift/drift.dart' show Value;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
+import 'update_card.dart';
 
 import '../../clinical/definitions.dart';
 import '../../core/config/app_config.dart';
@@ -537,6 +538,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
             ),
 
+            // ============ GÜNCELLEME ============
+            const SectionHeader(
+              title: 'Güncelleme',
+              icon: Icons.system_update_alt_outlined,
+            ),
+            const UpdateCard(),
+
             // ============ VERİ ============
             const SectionHeader(
               title: 'Veri',
@@ -708,7 +716,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ],
               ),
             ),
-            const MedicalDisclaimerBanner(),
           ],
         ),
       ),

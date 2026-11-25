@@ -354,7 +354,10 @@ class _NotificationPrompt extends ConsumerWidget {
           .status(AppPermission.notifications),
       builder: (context, snapshot) {
         if (snapshot.data == AppPermissionStatus.granted) {
-          return const SizedBox.shrink();
+          // İzin var ama hatırlatmaların DAKİKASINDA gelmesi ayrı bir
+          // izne bağlı (Android 14+). Kapalıysa ilaç saati birkaç dakika
+          // kayabilir; kullanıcı bunu bilmeli.
+          return const _ExactAlarmNotice();
         }
         return NeuCard(
           color: p.accentSoft.withValues(alpha: 0.6),
@@ -387,6 +390,57 @@ class _NotificationPrompt extends ConsumerWidget {
                 compact: true,
                 expanded: true,
                 onPressed: onEnable,
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// "Tam zamanlı alarm" izni kapalıysa uyarır.
+///
+/// Android 14'ten beri bu izin ayrıdır ve kapalıyken sistem bildirimi
+/// birkaç dakika geciktirebilir. Bildirim tamamen kaybolmaz (uygulama
+/// gevşek moda düşer) ama ilaç saatinde bu fark önemlidir.
+class _ExactAlarmNotice extends ConsumerWidget {
+  const _ExactAlarmNotice();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final p = context.palette;
+    final r = Responsive.fromContext(context);
+    return FutureBuilder<bool>(
+      future: ref.read(notificationServiceProvider).exactAlarmsAllowed(),
+      builder: (context, snapshot) {
+        if (snapshot.data != false) return const SizedBox.shrink();
+        return NeuCard(
+          color: p.accentSoft.withValues(alpha: 0.6),
+          margin: EdgeInsets.only(bottom: r.gapMd),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.schedule_outlined, color: p.warning, size: r.s(20)),
+              SizedBox(width: r.gapSm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Hatırlatmalar birkaç dakika kayabilir',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    SizedBox(height: r.gapXs),
+                    Text(
+                      'Telefonun "tam zamanlı alarm" izni kapalı. '
+                      'Bildirimler yine gelir ama saati şaşabilir. '
+                      'Ayarlar > Uygulamalar > Böbrek Dostu > Alarmlar ve '
+                      'hatırlatıcılar bölümünden açabilirsin.',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
               ),
             ],
           ),

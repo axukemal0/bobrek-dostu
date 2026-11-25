@@ -56,7 +56,70 @@ açmak da yeterli (telefonda "bilinmeyen kaynaklara izin ver" gerekir).
 | `classes.dex` | 4,4 MB | Java/Kotlin katmanı |
 | varlıklar | 0,4 MB | yazı tipleri + besin verisi |
 
-### 1.1b iOS: simülatörde ya da iPhone'da çalıştırmak
+### 1.1b iOS: iPhone'a kurmak ve OTOMATİK GÜNCELLEME
+
+Apple, App Store dışından kurulan uygulamaların kendi kendini
+güncellemesine izin vermez. iPhone'da gerçek otomatik güncellemenin tek
+yolu **TestFlight**'tır. İki seçenek var:
+
+#### A) TestFlight — otomatik güncelleme (önerilen)
+
+Gereken: **Apple Developer Program üyeliği** (yılda 99 USD). Bu olmadan
+otomatik güncelleme mümkün değil; Apple'ın kuralı, aşılamıyor.
+
+Kurulum bir kez yapılır:
+
+1. [developer.apple.com](https://developer.apple.com/programs/) üzerinden
+   üye ol.
+2. App Store Connect'te **App Store Connect API anahtarı** oluştur
+   (Users and Access → Integrations → App Store Connect API → `+`).
+   Rol: **App Manager**. İnen `.p8` dosyası bir kez indirilir, sakla.
+3. App Store Connect'te `com.bobrekdostu.bobrekDostu` kimliğiyle yeni bir
+   uygulama kaydı aç.
+4. GitHub deposunda **Settings → Secrets and variables → Actions** altına
+   dört gizli değer ekle:
+
+   | Ad | Nereden |
+   |---|---|
+   | `ASC_KEY_ID` | Anahtarın kimliği (10 karakter) |
+   | `ASC_ISSUER_ID` | Aynı sayfadaki "Issuer ID" |
+   | `ASC_PRIVATE_KEY` | `.p8` dosyasının İÇERİĞİ (tamamı, satır sonlarıyla) |
+   | `ASC_TEAM_ID` | Membership sayfasındaki "Team ID" |
+
+5. iPhone'a **TestFlight** uygulamasını kur, Apple kimliğinle gir,
+   kendini test kullanıcısı olarak ekle.
+6. TestFlight → Böbrek Dostu → **Automatic Updates: On**.
+
+Bundan sonra yeni sürüm yayınlamak tek komut:
+
+```bash
+git tag v1.0.1 && git push origin v1.0.1
+```
+
+GitHub Actions derler, TestFlight'a yükler, iPhone güncellemeyi
+kendiliğinden indirir. Android APK'ları da aynı çalışmada üretilip
+GitHub Release'e eklenir.
+
+> Gizli değerler tanımlı değilse iOS işi sessizce atlanır, Android
+> tarafı çalışmaya devam eder.
+
+#### B) Ücretsiz Apple kimliğiyle yan yükleme (otomatik güncelleme YOK)
+
+Ücretsiz bir Apple kimliğiyle de kurulabilir ama imza **7 günde bir
+dolar** ve uygulama açılmaz olur; her hafta Xcode'a takıp yeniden
+yüklemek gerekir. Otomatik güncelleme olmaz.
+
+1. Xcode'da `ios/Runner.xcworkspace` açılır.
+2. Runner hedefi → **Signing & Capabilities** → Team olarak kendi Apple
+   kimliğin seçilir.
+3. iPhone USB ile bağlanır, hedef olarak seçilir, çalıştırılır.
+4. iPhone'da **Ayarlar → Genel → VPN ve Cihaz Yönetimi** altından
+   geliştiriciye güven verilir.
+
+> HealthKit'in gerçek cihazda çalışması için de bu adımda bir Apple
+> hesabı seçilmiş olması gerekir.
+
+#### Simülatörde denemek (hesap gerekmez)
 
 ```bash
 flutter build ios --debug --simulator
@@ -66,36 +129,23 @@ flutter build ios --debug --simulator
 xcrun simctl install booted build/ios/iphonesimulator/Runner.app
 ```
 
-Gerçek bir iPhone'a kurmak için Xcode'da `ios/Runner.xcworkspace`
-açılır, **Signing & Capabilities** altında bir Apple hesabı seçilir
-(ücretsiz hesap yeterli) ve çalıştırılır. Bunu yapmadan gerçek cihaza
-kurulum mümkün değil — Apple'ın imza zorunluluğu.
-
 iOS tarafında kurulu olanlar:
 
-- Dağıtım hedefi **iOS 15.5** (ML Kit yerine Apple Vision kullanıldığı
-  için daha düşük bir hedef de mümkün, ama diğer eklentiler bunu istiyor)
+- Dağıtım hedefi **iOS 15.5**
 - Tüm izin açıklamaları **Türkçe** (`ios/Runner/Info.plist`)
 - `Runner.entitlements`: Keychain erişimi (şifreleme anahtarı burada
   durur) ve HealthKit **okuma**
 - Uygulama ikonu açık/karanlık/tinted üç varyantıyla
 - Soldan kaydırarak geri gitme jesti çalışır
 
----
+### 1.1c Android: uygulama içi güncelleme
 
-### 1.2 Kaynaktan derlemek
+Android'de uygulama yeni sürümü kendi görür: Ayarlar → **Güncelleme**
+kartı GitHub Release'leri denetler, APK'yı indirir ve sistemin kurulum
+ekranını açar. Kurulumu sistem yapar, onayı kullanıcı verir.
 
-```bash
-flutter pub get
-```
-
-```bash
-dart run build_runner build
-```
-
-```bash
-flutter build apk --debug
-```
+İlk kurulumda telefon "bilinmeyen kaynaklardan uygulama yükleme" izni
+ister; uygulama kullanıcıyı doğrudan ilgili ayar ekranına götürür.
 
 ---
 
@@ -241,6 +291,84 @@ aşılamaz. iPhone'da eşik aşımında ve acil düğmesinde mesaj hazır hâlde
 Mesajlar'da açılır; gönder tuşuna kullanıcı basar. Ayarlardaki
 "otomatik SMS" anahtarı iPhone'da gösterilmez, yerine bu durum yazılır.
 Android'de davranış değişmedi.
+
+---
+
+## 1.6 Üçüncü turda yapılanlar (tema hatası, bildirimler, renk, güncelleme)
+
+### Tema hatası — düzeltildi
+
+Karanlıktan aydınlığa geçince uygulama ancak kapatılıp açılınca
+değişiyordu. Sebep: palet, sistem temasını bir `Provider` gövdesinde
+**tek seferlik** okuyordu (`PlatformDispatcher.instance.platformBrightness`).
+Bu sabit bir okumadır; Riverpod'un onu yeniden hesaplaması için bir sebebi
+yoktur. Kök widget'taki `didChangePlatformBrightness` yeniden çizim
+tetikliyordu ama provider önbellekten aynı paleti döndürdüğü için hiçbir
+şey değişmiyordu.
+
+Artık sistem teması `systemBrightnessProvider` ile **dinleniyor**
+(`WidgetsBindingObserver`), palet de onu izliyor. Cihazda doğrulandı:
+uygulama açıkken sistem temasını değiştirince anında dönüyor.
+`test/theme_reactivity_test.dart` bunu üç testle koruyor.
+
+### Bildirimler — dört gerçek hata
+
+1. **iOS'ta bildirim HİÇ çalışmıyordu.** `initialize` çağrısına yalnız
+   `android:` ayarı veriliyordu; `DarwinInitializationSettings` olmadan
+   eklenti iOS'ta hiç başlatılmıyor. Eklendi.
+2. **Uygulama açıkken bildirim yutuluyordu (iOS).** `AppDelegate` içinde
+   `UNUserNotificationCenter.current().delegate` atanmamıştı. Eklendi.
+3. **Android ikonu beyaz lekeydi.** Bildirim ikonu olarak renkli
+   `@mipmap/ic_launcher` veriliyordu; Android bildirim ikonunu maskeler ve
+   renkli bir görsel tanınmaz hâle gelir. Amblemden üretilen tek renk
+   `@drawable/ic_notification` kullanılıyor artık (zaten üretiliyordu ama
+   hiç bağlanmamıştı).
+4. **Tam zamanlı alarm izni yoksa planlama ÇÖKÜYORDU.** Koddaki yorum
+   "Android daha gevşek bir modla karşılar" diyordu; gerçekte
+   `zonedSchedule` `exact_alarms_not_permitted` ile **fırlatıyor** ve
+   hatırlatma hiç kurulmuyordu. Artık yakalanıp `inexactAllowWhileIdle`
+   moduna düşülüyor ve İlaçlar ekranında "hatırlatmalar birkaç dakika
+   kayabilir" uyarısı gösteriliyor.
+
+Ayrıca iOS'ta ilaç ve randevu bildirimleri **Time Sensitive** olarak
+işaretleniyor (odak modlarını delebilsin diye).
+
+### Renk — "aşırı renksiz" eleştirisine karşılık
+
+Önceki turda sadeleştirirken renk fazla kaçmıştı. Ama çözüm rastgele renk
+serpmek değil: uygulama **beş ayrı besin bütçesi** tutuyor ve hepsi tek
+yeşille çizildiğinde ekranı tarayan biri potasyumu fosfordan ayırt
+edemiyordu. Yani renksizlik aynı zamanda işlevsel bir kayıptı.
+
+Her takip alanına kendi rengi verildi (`AppAccents`): enerji kehribar,
+protein kiremit, sodyum çivit, potasyum erik, fosfor zeytin, sıvı
+deniz mavisi, ilaç yeşil, tahlil indigo, kilo bronz, hareket gül,
+randevu mor.
+
+Kurallar:
+
+- **Ana eylem rengi renk paletinin dışında.** Buton rengi süse
+  harcanmaz; birincil eylem her zaman aynı yeşille bulunur.
+- Kırmızı/kehribar anlamlarına dokunulmadı: hedef aşılınca ölçek
+  kırmızıya, eşiğe yaklaşınca kehribara döner — kategori rengi geri
+  çekilir.
+- **Renk tek başına bilgi taşımaz**: her satırda adı ve sayısı yazar.
+- Boş kanallar bile besinin soluk rengiyle çizilir, böylece veri
+  sıfırken de satırın neye ait olduğu görünür.
+- Alt sekmeler gittikleri bölümün rengiyle yanar (yön bulma).
+
+Tüm renkler **WCAG AA** (metin için ≥4,5:1) hesaplanarak seçildi; yüksek
+kontrast temalarında ≥7:1'e çekildi. Koyu tema mekanik ters çevirme
+değil, ayrı hesaplandı.
+
+### Güncelleme sistemi
+
+- `.github/workflows/release.yml` — `v*` etiketi itince Android APK'ları
+  GitHub Release'e, iOS yapısı TestFlight'a gider.
+- `lib/core/services/update_service.dart` — uygulama GitHub
+  Release'lerini denetler, Android'de APK'yı indirip kurulumu başlatır,
+  iOS'ta TestFlight'a yönlendirir.
+- Sürüm karşılaştırması sayısal (`1.10.0 > 1.9.0`), 9 testle korunuyor.
 
 ---
 
@@ -667,7 +795,7 @@ geliştirici hesabı seçmek de gerekir.
 flutter test
 ```
 
-**215 test, 14 dosya.** Kapsanan kritik mantık:
+**227 test, 16 dosya.** Kapsanan kritik mantık:
 
 | Dosya | Ne test ediliyor |
 |---|---|
@@ -680,6 +808,8 @@ flutter test
 | `report_aggregation_test.dart` | İlaç uyumu, tansiyon istatistikleri, **ortalamaların veri girilen güne bölünmesi** |
 | `cuisine_and_feed_test.dart` | Mutfak puanı (çoklu etikette en güvenli seçim), RSS/Atom ayrıştırma, tahlil OCR satır çözümleme, eski düz metin yemek yanıtı |
 | `nutrition_label_test.dart` | **Besin etiketi çözümleyici (18 test)**: iki sütunlu TR etiketi, kJ yerine kcal seçimi, **Tuz → sodyum türetmesi**, "doymuş yağ" satırının "yağ"ı ezmemesi, porsiyon ağırlığı, birim çevrimi (g↔mg), binlik/ondalık ayırıcı, alt satıra düşen değer, alakasız metinden değer uydurmama |
+| `theme_reactivity_test.dart` | **Tema tepkiselliği**: sistem teması değişince paletin anında dönmesi, "sistemi izle" kapalıyken dönmemesi, yüksek kontrastın korunması |
+| `update_version_test.dart` | **Sürüm karşılaştırma**: sayısal sıralama (1.10.0 > 1.9.0), derleme numarasının yok sayılması, bozuk metinde çökmeme |
 | `meal_vision_test.dart` | **Çok kalemli yemek analizi (11 test)**: JSON kalemleri, kalem başına güven, toplamların kalemlerden hesaplanması, porsiyon değişince orantılı ölçekleme, kalem çıkarma, bozuk JSON'da düz metne düşme, boş sonuçta sayı uydurmama |
 | `quiet_hours_test.dart` | Gece yarısını geçen sessiz saat aralığı, kritik/isteğe bağlı kategori ayrımı |
 | `phone_and_distance_test.dart` | Türkiye telefon numarası → WhatsApp biçimi, kuş uçuşu mesafe (haversine), Türkçe arama normalleştirme |

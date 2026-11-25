@@ -462,3 +462,39 @@ class PageBody extends StatelessWidget {
     );
   }
 }
+
+/// Renkli ikon karosu — bir kartın hangi alana ait olduğunu söyler.
+///
+/// Uygulamanın her takip alanının (besin, sıvı, ilaç, tahlil, kilo…) kendi
+/// rengi var; bu karo o rengi kartın başına koyar. Amaç süs değil yön
+/// bulma: ekranı tarayan biri kartın ne hakkında olduğunu okumadan anlar.
+/// Renk tek başına bilgi taşımaz — başlık zaten yanında yazar.
+class AccentTile extends StatelessWidget {
+  const AccentTile({
+    required this.icon,
+    required this.color,
+    this.size,
+    super.key,
+  });
+
+  final IconData icon;
+  final Color color;
+  final double? size;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    final r = Responsive.fromContext(context);
+    final dimension = size ?? r.s(24);
+    return Container(
+      padding: EdgeInsets.all(r.gapSm),
+      decoration: BoxDecoration(
+        // Zemine karışmayan, rengin kendi tonundan yumuşak bir dolgu.
+        color: color.withValues(alpha: p.isDark ? 0.20 : 0.13),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withValues(alpha: 0.22)),
+      ),
+      child: Icon(icon, color: color, size: dimension),
+    );
+  }
+}

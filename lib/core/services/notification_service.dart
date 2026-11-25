@@ -1,6 +1,9 @@
 import 'dart:convert';
+import 'dart:io' show Platform;
 
 import 'package:drift/drift.dart' show Value;
+import 'package:flutter/services.dart' show PlatformException;
+import 'package:flutter/painting.dart' show Color;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest_all.dart' as tzdata;
@@ -133,7 +136,23 @@ class NotificationService {
 
     await _plugin.initialize(
       const InitializationSettings(
-        android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+        // DİKKAT: Android bildirim ikonu BEYAZ SİLUET olmalıdır; renkli bir
+        // mipmap verilirse sistem onu maskeleyip gri/beyaz bir leke olarak
+        // çizer. Önceden '@mipmap/ic_launcher' veriliyordu ve bildirimler
+        // tanınmaz hâldeydi. '@drawable/ic_notification' amblemden üretilen
+        // tek renk sürümdür (tools/gen_icons.dart).
+        android: AndroidInitializationSettings('@drawable/ic_notification'),
+        // iOS tarafı HİÇ kurulmamıştı: Darwin ayarları verilmeden eklenti
+        // iOS'ta başlatılmıyor ve hiçbir bildirim görünmüyordu.
+        //
+        // İzinler burada İSTENMEZ (hepsi false): uygulama izni, kendi
+        // Türkçe gerekçesini gösterdikten SONRA ister. Böylece sistem
+        // penceresi kullanıcıya nedenini bilmeden çıkmaz.
+        iOS: DarwinInitializationSettings(
+          requestAlertPermission: false,
+          requestBadgePermission: false,
+          requestSoundPermission: false,
+        ),
       ),
     );
 
@@ -154,6 +173,34 @@ class NotificationService {
     }
 
     _initialized = true;
+  }
+
+  /// Bildirim görünümü — iki platform için tek yerden.
+  NotificationDetails _details(NotifCategory category, String body) {
+    final critical = category.isCritical;
+    return NotificationDetails(
+      android: AndroidNotificationDetails(
+        category.channelId,
+        category.channelNameTr,
+        channelDescription: category.channelDescTr,
+        importance: critical ? Importance.max : Importance.defaultImportance,
+        priority: critical ? Priority.high : Priority.defaultPriority,
+        styleInformation: BigTextStyleInformation(body),
+        // Tek renk ikonun arkasındaki vurgu rengi (uygulamanın yeşili).
+        color: const Color(0xFF3C6B54),
+        icon: '@drawable/ic_notification',
+      ),
+      iOS: DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+        // İlaç ve randevu odak modlarını da delip geçebilmeli.
+        // (Time Sensitive hakkı yoksa iOS bunu sessizce "active"e düşürür.)
+        interruptionLevel: critical
+            ? InterruptionLevel.timeSensitive
+            : InterruptionLevel.active,
+      ),
+    );
   }
 
   Future<QuietHours> readQuietHours() async {
@@ -220,17 +267,7 @@ class NotificationService {
       id ?? DateTime.now().millisecondsSinceEpoch.remainder(100000),
       title,
       body,
-      NotificationDetails(
-        android: AndroidNotificationDetails(
-          category.channelId,
-          category.channelNameTr,
-          channelDescription: category.channelDescTr,
-          importance:
-              category.isCritical ? Importance.max : Importance.defaultImportance,
-          priority: category.isCritical ? Priority.high : Priority.defaultPriority,
-          styleInformation: BigTextStyleInformation(body),
-        ),
-      ),
+      _details(category, body),
       payload: payload,
     );
 
@@ -259,26 +296,48 @@ class NotificationService {
     await init();
     if (when.isBefore(DateTime.now())) return;
 
-    await _plugin.zonedSchedule(
-      id,
-      title,
-      body,
-      tz.TZDateTime.from(when, tz.local),
-      NotificationDetails(
-        android: AndroidNotificationDetails(
-          category.channelId,
-          category.channelNameTr,
-          channelDescription: category.channelDescTr,
-          importance:
-              category.isCritical ? Importance.max : Importance.defaultImportance,
-          priority:
-              category.isCritical ? Priority.high : Priority.defaultPriority,
-          styleInformation: BigTextStyleInformation(body),
-        ),
-      ),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      payload: payload,
-    );
+    final at = tz.TZDateTime.from(when, tz.local);
+    final details = _details(category, body);
+
+    try {
+      await _plugin.zonedSchedule(
+        id,
+        title,
+        body,
+        at,
+        details,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        payload: payload,
+      );
+    } on PlatformException catch (e) {
+      // Android 14+ "tam zamanlı alarm" izni verilmemişse zonedSchedule
+      // exact_alarms_not_permitted ile FIRLATIR — eski yorumda sanıldığı
+      // gibi kendiliğinden gevşek moda düşmez. Bildirimi tamamen
+      // kaybetmektense birkaç dakika kayabilen moda düşüyoruz.
+      if (e.code != 'exact_alarms_not_permitted') rethrow;
+      await _plugin.zonedSchedule(
+        id,
+        title,
+        body,
+        at,
+        details,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        payload: payload,
+      );
+    }
+  }
+
+  /// Planlanan bildirimlerin dakikası dakikasına gelip gelmeyeceği.
+  ///
+  /// Android 14+ "tam zamanlı alarm" iznini kullanıcı kapatmış olabilir;
+  /// bu durumda ilaç saatleri birkaç dakika kayabilir. Arayüz bunu
+  /// kullanıcıya söyleyebilsin diye açıkta.
+  Future<bool> exactAlarmsAllowed() async {
+    if (!Platform.isAndroid) return true;
+    final android = _plugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    if (android == null) return true;
+    return await android.canScheduleExactNotifications() ?? true;
   }
 
   Future<void> cancel(int id) async {

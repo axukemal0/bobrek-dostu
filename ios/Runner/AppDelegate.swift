@@ -1,5 +1,6 @@
 import Flutter
 import UIKit
+import UserNotifications
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
@@ -7,6 +8,12 @@ import UIKit
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
+    // Uygulama ÖN PLANDAYKEN de bildirim görünsün.
+    // flutter_local_notifications bunun için merkezin delegesinin
+    // atanmasını ister; atanmazsa uygulama açıkken ilaç hatırlatması
+    // sessizce yutulur.
+    UNUserNotificationCenter.current().delegate = self
+
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 

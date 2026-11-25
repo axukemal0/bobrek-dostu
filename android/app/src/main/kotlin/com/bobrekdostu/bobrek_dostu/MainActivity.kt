@@ -2,6 +2,7 @@ package com.bobrekdostu.bobrek_dostu
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.telephony.SmsManager
@@ -28,6 +29,7 @@ class MainActivity : FlutterActivity() {
 
     private val smsChannel = "com.bobrekdostu.app/sms"
     private val ocrChannel = "com.bobrekdostu.app/ocr"
+    private val installChannel = "com.bobrekdostu.app/install"
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -53,6 +55,23 @@ class MainActivity : FlutterActivity() {
                         result.error("BAD_ARGS", "Dosya yolu verilmedi.", null)
                     } else {
                         recognizeText(path, result)
+                    }
+                }
+                else -> result.notImplemented()
+            }
+        }
+
+        MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            installChannel,
+        ).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "installApk" -> {
+                    val path = call.argument<String>("path")
+                    if (path.isNullOrBlank()) {
+                        result.error("BAD_ARGS", "Dosya yolu verilmedi.", null)
+                    } else {
+                        installApk(path, result)
                     }
                 }
                 else -> result.notImplemented()
@@ -170,5 +189,56 @@ class MainActivity : FlutterActivity() {
                 result.error("UNAVAILABLE", e.message, null)
                 recognizer.close()
             }
+    }
+
+    /**
+     * İndirilen APK için sistemin kurulum ekranını açar.
+     *
+     * Kurulumu uygulama YAPMAZ; yalnız başlatır, onayı kullanıcı verir.
+     * Android 8+ "bilinmeyen kaynak" izni uygulama başına verilir; izin
+     * yoksa kullanıcı doğrudan ilgili ayar ekranına götürülür.
+     */
+    private fun installApk(path: String, result: MethodChannel.Result) {
+        val file = File(path)
+        if (!file.exists()) {
+            result.error("BAD_FILE", "Kurulum dosyası bulunamadı.", path)
+            return
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+            !packageManager.canRequestPackageInstalls()
+        ) {
+            startActivity(
+                Intent(
+                    android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                    Uri.parse("package:$packageName"),
+                ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
+            result.error(
+                "PERMISSION_DENIED",
+                "Bilinmeyen kaynaklardan kurulum izni gerekiyor.",
+                null,
+            )
+            return
+        }
+
+        val uri = androidx.core.content.FileProvider.getUriForFile(
+            this,
+            "$packageName.fileprovider",
+            file,
+        )
+
+        try {
+            startActivity(
+                Intent(Intent.ACTION_VIEW).apply {
+                    setDataAndType(uri, "application/vnd.android.package-archive")
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                },
+            )
+            result.success(null)
+        } catch (e: Exception) {
+            result.error("INSTALL_FAILED", e.message, null)
+        }
     }
 }

@@ -50,6 +50,12 @@ class ShellFabLocation implements FloatingActionButtonLocation {
   String toString() => 'ShellFabLocation($lift)';
 }
 
+Color _homeTone(AppPalette p) => p.primary;
+Color _nutritionTone(AppPalette p) => p.accents.energy;
+Color _fluidTone(AppPalette p) => p.accents.fluid;
+Color _medicationTone(AppPalette p) => p.accents.medication;
+Color _moreTone(AppPalette p) => p.accents.appointment;
+
 /// Alt navigasyonlu kabuk. Tek elle kullanım için gezinme ALTTA.
 class AppShell extends StatelessWidget {
   const AppShell({required this.location, required this.child, super.key});
@@ -57,37 +63,51 @@ class AppShell extends StatelessWidget {
   final String location;
   final Widget child;
 
-  static const List<({String path, String label, IconData icon, IconData activeIcon})>
-      tabs = [
+  /// Sekmeler. `tone`, o bölümün rengini seçer (bkz. [AppAccents]) —
+  /// seçili sekme gideceği alanın rengiyle yanar, böylece alt çubuk da
+  /// yön bulmaya katkı verir.
+  static const List<
+      ({
+        String path,
+        String label,
+        IconData icon,
+        IconData activeIcon,
+        Color Function(AppPalette) tone,
+      })> tabs = [
     (
       path: Routes.home,
       label: 'Ana sayfa',
       icon: Icons.home_outlined,
-      activeIcon: Icons.home_rounded
+      activeIcon: Icons.home_rounded,
+      tone: _homeTone,
     ),
     (
       path: Routes.nutrition,
       label: 'Besin',
       icon: Icons.restaurant_outlined,
-      activeIcon: Icons.restaurant_rounded
+      activeIcon: Icons.restaurant_rounded,
+      tone: _nutritionTone,
     ),
     (
       path: Routes.fluid,
       label: 'Sıvı',
       icon: Icons.water_drop_outlined,
-      activeIcon: Icons.water_drop_rounded
+      activeIcon: Icons.water_drop_rounded,
+      tone: _fluidTone,
     ),
     (
       path: Routes.medications,
       label: 'İlaç',
       icon: Icons.medication_outlined,
-      activeIcon: Icons.medication_rounded
+      activeIcon: Icons.medication_rounded,
+      tone: _medicationTone,
     ),
     (
       path: Routes.more,
       label: 'Daha',
       icon: Icons.grid_view_outlined,
-      activeIcon: Icons.grid_view_rounded
+      activeIcon: Icons.grid_view_rounded,
+      tone: _moreTone,
     ),
   ];
 
@@ -122,8 +142,19 @@ class AppShell extends StatelessWidget {
             surfaceTintColor: Colors.transparent,
             shadowColor: Colors.transparent,
             elevation: 0,
-            indicatorColor: p.primarySoft,
+            indicatorColor:
+                tabs[_index].tone(p).withValues(alpha: p.isDark ? 0.26 : 0.16),
             labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+            // Seçili sekmenin yazısı da ikonuyla aynı renkte olsun;
+            // yoksa ikon renkli, etiket nötr kalıp kopuk duruyor.
+            labelTextStyle: WidgetStateProperty.resolveWith((states) {
+              final selected = states.contains(WidgetState.selected);
+              return Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: selected ? tabs[_index].tone(p) : p.textSecondary,
+                    fontWeight:
+                        selected ? FontWeight.w700 : FontWeight.w600,
+                  );
+            }),
             onDestinationSelected: (i) {
               if (i == _index) return;
               context.go(tabs[i].path);
@@ -132,7 +163,7 @@ class AppShell extends StatelessWidget {
               for (final t in tabs)
                 NavigationDestination(
                   icon: Icon(t.icon, color: p.textSecondary),
-                  selectedIcon: Icon(t.activeIcon, color: p.primary),
+                  selectedIcon: Icon(t.activeIcon, color: t.tone(p)),
                   label: t.label,
                   tooltip: t.label,
                 ),

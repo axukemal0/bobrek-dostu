@@ -41,11 +41,15 @@ class NutrientMeter extends StatelessWidget {
     final over = total.isOverTarget;
     final near = ratio != null && ratio >= 0.85 && !over;
 
+    // Renk hem KATEGORİ hem DURUM taşır: hedefin içindeyken besinin kendi
+    // rengi (potasyumu fosfordan tek bakışta ayırmak için), eşiğe
+    // yaklaşınca kehribar, aşınca kırmızı. Anlam renge emanet edilmez —
+    // adı ve sayısı zaten yanında yazıyor.
     final barColor = over
         ? p.danger
         : near
             ? p.warning
-            : p.primary;
+            : p.accents.forNutrient(total.key);
 
     final valueText = StringBuffer()
       ..write(total.isPartial ? 'en az ' : '')
@@ -63,6 +67,15 @@ class NutrientMeter extends StatelessWidget {
             children: [
               Row(
                 children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    margin: const EdgeInsets.only(right: 8),
+                    decoration: BoxDecoration(
+                      color: p.accents.forNutrient(total.key),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
                   Expanded(
                     child: Text(
                       total.labelTr,
@@ -88,7 +101,13 @@ class NutrientMeter extends StatelessWidget {
                 ],
               ),
               SizedBox(height: r.gapXs * 0.6),
-              _Bar(ratio: ratio, color: barColor),
+              _Bar(
+                ratio: ratio,
+                color: barColor,
+                track: p.accents
+                    .forNutrient(total.key)
+                    .withValues(alpha: p.isDark ? 0.22 : 0.16),
+              ),
               if (!total.hasTarget)
                 Padding(
                   padding: EdgeInsets.only(top: r.gapXs * 0.5),
@@ -103,14 +122,17 @@ class NutrientMeter extends StatelessWidget {
 }
 
 class _Bar extends StatelessWidget {
-  const _Bar({required this.ratio, required this.color});
+  const _Bar({required this.ratio, required this.color, required this.track});
 
   final double? ratio;
   final Color color;
 
+  /// Boş kanalın rengi — besinin kendi renginin soluk hâli. Veri sıfırken
+  /// bile satırın hangi besine ait olduğu görünsün diye.
+  final Color track;
+
   @override
   Widget build(BuildContext context) {
-    final p = context.palette;
     final motion = context.motion;
 
     // Hedef yoksa ölçek doldurulmaz; boş bir kanal gösterilir.
@@ -118,9 +140,9 @@ class _Bar extends StatelessWidget {
       return Container(
         height: 7,
         decoration: BoxDecoration(
-          color: p.backgroundDeep,
+          color: track,
           borderRadius: BorderRadius.circular(4),
-          border: Border.all(color: p.divider.withValues(alpha: 0.6)),
+          border: Border.all(color: color.withValues(alpha: 0.35)),
         ),
       );
     }
@@ -130,7 +152,7 @@ class _Bar extends StatelessWidget {
       borderRadius: BorderRadius.circular(4),
       child: Container(
         height: 7,
-        color: p.backgroundDeep,
+        color: track,
         child: Align(
           alignment: Alignment.centerLeft,
           child: LayoutBuilder(

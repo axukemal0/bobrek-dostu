@@ -5,6 +5,108 @@ import 'package:material_ui/material_ui.dart';
 /// Kontrast: gövde metni ve ikincil metin için zemine karşı
 /// WCAG AA (≥4.5:1) hedeflenmiştir. Yüksek kontrast modunda
 /// metin renkleri koyulaştırılır (≥7:1, AAA'ya yakın).
+
+/// Takip edilen her alanın kendi rengi.
+///
+/// Bu süs değil, **bilgi**: uygulama beş ayrı besin bütçesi tutuyor ve
+/// hepsi tek yeşille çizildiğinde ekranı tarayan biri potasyumu fosfordan
+/// ayırt edemiyordu. Renk burada yön bulma ve kategori işi yapıyor —
+/// "Operate" yüzeyinde rengin asıl görevi budur.
+///
+/// Kurallar:
+///  * Ana eylem rengi (yeşil) burada YOK. Buton rengi süse harcanmaz;
+///    birincil eylem her zaman aynı yeşille bulunur.
+///  * Kırmızı/kehribar anlamlarına dokunulmaz (tehlike, uyarı).
+///  * Renk tek başına bilgi taşımaz: her ölçeğin yanında adı ve sayısı
+///    yazar, aşım ayrıca kırmızıya döner.
+///
+/// Tüm değerler WCAG AA (metin için ≥4,5:1) hesaplanarak seçildi; yüksek
+/// kontrast temalarında ≥7:1'e çekilir.
+@immutable
+class AppAccents {
+  const AppAccents({
+    required this.energy,
+    required this.protein,
+    required this.sodium,
+    required this.potassium,
+    required this.phosphorus,
+    required this.fluid,
+    required this.medication,
+    required this.lab,
+    required this.weight,
+    required this.activity,
+    required this.appointment,
+  });
+
+  final Color energy;
+  final Color protein;
+  final Color sodium;
+  final Color potassium;
+  final Color phosphorus;
+  final Color fluid;
+  final Color medication;
+  final Color lab;
+  final Color weight;
+  final Color activity;
+  final Color appointment;
+
+  /// Besin anahtarına göre renk (`evaluator.dart` içindeki anahtarlar).
+  Color forNutrient(String key) => switch (key) {
+        'energy' || 'kcal' => energy,
+        'protein' => protein,
+        'sodium' => sodium,
+        'potassium' => potassium,
+        'phosphorus' => phosphorus,
+        'fluid' => fluid,
+        _ => medication,
+      };
+
+  static const AppAccents light = AppAccents(
+    energy: Color(0xFF8A6520),
+    protein: Color(0xFF9C5033),
+    sodium: Color(0xFF44608A),
+    potassium: Color(0xFF7A3F6B),
+    phosphorus: Color(0xFF55682C),
+    fluid: Color(0xFF1F6B7A),
+    medication: Color(0xFF3C6B54),
+    lab: Color(0xFF454F8C),
+    weight: Color(0xFF8A5230),
+    activity: Color(0xFFA0486B),
+    appointment: Color(0xFF5F4C9B),
+  );
+
+  static const AppAccents dark = AppAccents(
+    energy: Color(0xFFE0BC6E),
+    protein: Color(0xFFE8A182),
+    sodium: Color(0xFF9FB8E0),
+    potassium: Color(0xFFD59FC6),
+    phosphorus: Color(0xFFAFC47A),
+    fluid: Color(0xFF7FC4D4),
+    medication: Color(0xFF8FC2A6),
+    lab: Color(0xFFA4ADE6),
+    weight: Color(0xFFE0A882),
+    activity: Color(0xFFEC9BB8),
+    appointment: Color(0xFFB6A9E8),
+  );
+
+  static const AppAccents highContrastLight = AppAccents(
+    energy: Color(0xFF6E5019),
+    protein: Color(0xFF84432B),
+    sodium: Color(0xFF3D567C),
+    potassium: Color(0xFF7A3F6B),
+    phosphorus: Color(0xFF485825),
+    fluid: Color(0xFF1A5A67),
+    medication: Color(0xFF325A47),
+    lab: Color(0xFF454F8C),
+    weight: Color(0xFF7C492B),
+    activity: Color(0xFF8A3D5C),
+    appointment: Color(0xFF54438A),
+  );
+
+  /// Koyu temanın renkleri siyah zeminde zaten ≥9:1 çıkıyor.
+  static const AppAccents highContrastDark = dark;
+}
+
 @immutable
 class AppPalette {
   const AppPalette({
@@ -29,6 +131,7 @@ class AppPalette {
     required this.success,
     required this.info,
     required this.divider,
+    required this.accents,
   });
 
   final Brightness brightness;
@@ -67,6 +170,9 @@ class AppPalette {
   final Color info;
   final Color divider;
 
+  /// Takip alanlarının renkleri (besinler, sıvı, ilaç, tahlil, kilo).
+  final AppAccents accents;
+
   bool get isDark => brightness == Brightness.dark;
 
   /// Sıcak krem — varsayılan tema.
@@ -92,6 +198,7 @@ class AppPalette {
     success: Color(0xFF2F6349),
     info: Color(0xFF2F5668),
     divider: Color(0x33837860),
+    accents: AppAccents.light,
   );
 
   /// Yüksek kontrast (aynı sıcaklık, daha koyu metin ve net kenarlar).
@@ -117,6 +224,7 @@ class AppPalette {
     success: Color(0xFF1C4A34),
     info: Color(0xFF1C3D4C),
     divider: Color(0xFF8C8372),
+    accents: AppAccents.highContrastLight,
   );
 
   /// Gece modu — sıcaklığı koruyan koyu kahve/antrasit.
@@ -142,6 +250,7 @@ class AppPalette {
     success: Color(0xFF8FC2A6),
     info: Color(0xFF91BACE),
     divider: Color(0x33FFFFFF),
+    accents: AppAccents.dark,
   );
 
   /// Gece + yüksek kontrast.
@@ -167,6 +276,7 @@ class AppPalette {
     success: Color(0xFFB2E0C6),
     info: Color(0xFFAFD3E5),
     divider: Color(0xFFB5AC9B),
+    accents: AppAccents.highContrastDark,
   );
 
   static AppPalette resolve({

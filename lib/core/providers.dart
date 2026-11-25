@@ -1,8 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'dart:ui' show PlatformDispatcher;
-
 import 'package:drift/drift.dart' show OrderingTerm, Value;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
@@ -27,6 +25,7 @@ import 'services/secure_store.dart';
 import 'services/smart_notifications.dart';
 import 'services/sms_service.dart';
 import 'services/speech_service.dart';
+import 'services/update_service.dart';
 import 'services/sync_repository.dart';
 import 'services/weather_service.dart';
 import 'theme/app_colors.dart';
@@ -72,6 +71,19 @@ final scannerServiceProvider = Provider<ScannerService>((ref) {
 });
 
 final healthServiceProvider = Provider<HealthService>((ref) => HealthService());
+
+/// Yeni sürüm denetimi (GitHub Releases).
+final updateServiceProvider = Provider<UpdateService>((ref) => UpdateService());
+
+/// Açılışta bir kez denetlenir; hata yutulur (güncelleme denetimi
+/// uygulamanın çalışmasını engellememeli).
+final availableUpdateProvider = FutureProvider<AvailableUpdate?>((ref) async {
+  try {
+    return await ref.read(updateServiceProvider).check();
+  } on Object {
+    return null;
+  }
+});
 
 final notificationServiceProvider = Provider<NotificationService>(
   (ref) => NotificationService(ref.watch(databaseProvider)),
@@ -299,11 +311,43 @@ final preferencesProvider =
   PreferencesNotifier.new,
 );
 
+/// Sistemin açık/koyu teması — DİNLENİR, tek seferlik okunmaz.
+///
+/// Önceki sürümde palet `PlatformDispatcher.instance.platformBrightness`
+/// değerini doğrudan okuyordu. Bu bir `Provider` gövdesinde sabit bir
+/// okumadır: Riverpod'un o değeri yeniden hesaplaması için bir sebebi
+/// yoktur, dolayısıyla telefon karanlıktan aydınlığa geçtiğinde uygulama
+/// kapatılıp açılana kadar eski paleti kullanıyordu. (Kök widget'taki
+/// `didChangePlatformBrightness` yeniden çizim tetikliyordu ama provider
+/// önbellekten aynı paleti döndürdüğü için bir şey değişmiyordu.)
+///
+/// Burada değişim `WidgetsBindingObserver` ile dinlenir ve duruma yazılır;
+/// palet de bunu izlediği için tema anında döner.
+class SystemBrightnessNotifier extends Notifier<Brightness>
+    with WidgetsBindingObserver {
+  @override
+  Brightness build() {
+    final binding = WidgetsBinding.instance;
+    binding.addObserver(this);
+    ref.onDispose(() => binding.removeObserver(this));
+    return binding.platformDispatcher.platformBrightness;
+  }
+
+  @override
+  void didChangePlatformBrightness() {
+    state = WidgetsBinding.instance.platformDispatcher.platformBrightness;
+  }
+}
+
+final systemBrightnessProvider =
+    NotifierProvider<SystemBrightnessNotifier, Brightness>(
+  SystemBrightnessNotifier.new,
+);
+
 /// Renk paleti — ayarlara ve sistem temasına göre.
 final paletteProvider = Provider<AppPalette>((ref) {
   final prefs = ref.watch(preferencesProvider);
-  final systemDark =
-      PlatformDispatcher.instance.platformBrightness == Brightness.dark;
+  final systemDark = ref.watch(systemBrightnessProvider) == Brightness.dark;
   final dark = prefs.followSystemDark ? systemDark : prefs.darkMode;
   return AppPalette.resolve(dark: dark, highContrast: prefs.highContrast);
 });

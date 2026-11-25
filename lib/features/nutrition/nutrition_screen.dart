@@ -108,6 +108,9 @@ class NutritionScreen extends ConsumerWidget {
                                     n.value,
                                     n.unit,
                                   ),
+                                  // Her besinin kendi rengi — ana
+                                  // sayfadaki ölçeklerle aynı dil.
+                                  tone: p.accents.forNutrient(n.key),
                                   unitText: n.unit,
                                   size: r.s(88),
                                 ),

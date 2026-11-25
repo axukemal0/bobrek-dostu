@@ -53,11 +53,10 @@ class _BobrekDostuAppState extends ConsumerState<BobrekDostuApp>
     super.dispose();
   }
 
-  @override
-  void didChangePlatformBrightness() {
-    // Sistem teması değişince paleti yeniden hesapla.
-    setState(() {});
-  }
+  // NOT: Sistem teması değişimi artık `systemBrightnessProvider` tarafından
+  // dinleniyor (bkz. core/providers.dart). Burada `setState` çağırmak işe
+  // yaramıyordu: widget yeniden çiziliyor ama provider önbellekten aynı
+  // paleti döndürüyordu.
 
   @override
   Widget build(BuildContext context) {

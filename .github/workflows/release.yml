@@ -1,0 +1,162 @@
+# Sürüm yayınlama.
+#
+# Tetikleyici: `v` ile başlayan bir etiket itmek.
+#     git tag v1.0.1 && git push origin v1.0.1
+#
+# Ne yapar:
+#   * Android  -> APK'ları derler ve GitHub Release'e ekler.
+#                 Uygulama içindeki güncelleyici bu Release'i okur.
+#   * iOS      -> TestFlight'a yükler. iPhone'da OTOMATİK GÜNCELLEME
+#                 bunun üzerinden olur (TestFlight ayarlarında
+#                 "Automatic Updates" açık olmalı).
+#
+# iOS işi, App Store Connect API anahtarı tanımlanmadan ATLANIR; Android
+# tarafı her hâlükârda çalışır. Gerekli gizli anahtarlar README'de.
+
+name: Sürüm
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  FLUTTER_VERSION: '3.50.1'
+
+jobs:
+  android:
+    name: Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Bağımlılıklar
+        run: flutter pub get
+
+      - name: Denetim ve testler
+        run: |
+          flutter analyze
+          flutter test
+
+      - name: APK'ları derle
+        # Etiketten sürümü al: v1.0.1 -> 1.0.1, derleme numarası = çalışma sayısı
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          flutter build apk --release --split-per-abi \
+            --build-name="$VERSION" --build-number="${{ github.run_number }}"
+
+      - name: Release'e ekle
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/app/outputs/flutter-apk/*-release.apk
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+
+  ios:
+    name: iOS TestFlight
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Anahtar var mı?
+        id: gate
+        env:
+          KEY_ID: ${{ secrets.ASC_KEY_ID }}
+        run: |
+          if [ -z "$KEY_ID" ]; then
+            echo "App Store Connect anahtarı tanımlı değil; iOS işi atlanıyor."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: API anahtarını yaz
+        if: steps.gate.outputs.ready == 'true'
+        env:
+          ASC_PRIVATE_KEY: ${{ secrets.ASC_PRIVATE_KEY }}
+        run: |
+          mkdir -p ~/private_keys
+          printf '%s' "$ASC_PRIVATE_KEY" \
+            > ~/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8
+
+      - name: Bağımlılıklar
+        if: steps.gate.outputs.ready == 'true'
+        run: flutter pub get
+
+      - name: Flutter tarafını derle
+        if: steps.gate.outputs.ready == 'true'
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          flutter build ios --release --no-codesign \
+            --build-name="$VERSION" --build-number="${{ github.run_number }}"
+
+      - name: Arşivle ve dışa aktar
+        if: steps.gate.outputs.ready == 'true'
+        env:
+          TEAM_ID: ${{ secrets.ASC_TEAM_ID }}
+        run: |
+          set -euo pipefail
+
+          cat > ios/ExportOptions.plist <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>teamID</key><string>${TEAM_ID}</string>
+            <key>uploadSymbols</key><true/>
+            <key>signingStyle</key><string>automatic</string>
+            <key>destination</key><string>export</string>
+          </dict>
+          </plist>
+          PLIST
+
+          xcodebuild -workspace ios/Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -archivePath build/Runner.xcarchive \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath ~/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8 \
+            -authenticationKeyID "${{ secrets.ASC_KEY_ID }}" \
+            -authenticationKeyIssuerID "${{ secrets.ASC_ISSUER_ID }}" \
+            archive
+
+          xcodebuild -exportArchive \
+            -archivePath build/Runner.xcarchive \
+            -exportOptionsPlist ios/ExportOptions.plist \
+            -exportPath build/ipa \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath ~/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8 \
+            -authenticationKeyID "${{ secrets.ASC_KEY_ID }}" \
+            -authenticationKeyIssuerID "${{ secrets.ASC_ISSUER_ID }}"
+
+      - name: TestFlight'a yükle
+        if: steps.gate.outputs.ready == 'true'
+        run: |
+          xcrun altool --upload-app -f build/ipa/*.ipa -t ios \
+            --apiKey "${{ secrets.ASC_KEY_ID }}" \
+            --apiIssuer "${{ secrets.ASC_ISSUER_ID }}"
+
+      - name: Anahtarı sil
+        if: always()
+        run: rm -rf ~/private_keys

@@ -555,8 +555,6 @@ class _AiConnectionScreenState extends ConsumerState<AiConnectionScreen> {
                 ],
               ),
             ),
-
-            const MedicalDisclaimerBanner(),
           ],
         ),
       ),

@@ -14,6 +14,13 @@ class AppConfig {
   static const String userAgent =
       'BobrekDostu/$appVersion (kisisel saglik uygulamasi)';
 
+  /// Güncelleme denetiminin okuduğu depo ("sahip/depo").
+  ///
+  /// Uygulama mağazada olmadığı için yeni sürümler buradaki
+  /// GitHub "Releases" sayfasından duyurulur. Depo adresi değişirse
+  /// yalnız burası değiştirilir.
+  static const String githubRepo = 'axukemal0/bobrek-dostu';
+
   /// flutter_map için tile paketi kimliği (OSM politikası).
   static const String tileUserAgentPackage = 'com.bobrekdostu.app';
 

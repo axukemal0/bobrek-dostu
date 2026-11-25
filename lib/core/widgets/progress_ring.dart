@@ -41,7 +41,9 @@ class ProgressRing extends StatelessWidget {
 
     final Color color;
     if (ratio == null) {
-      color = p.textMuted;
+      // Hedef yokken de alanın kendi rengi kalsın (soluk): kart boş da
+      // olsa neye ait olduğu belli olsun.
+      color = (tone ?? p.textMuted).withValues(alpha: 0.55);
     } else if (ratio! > 1.0) {
       color = p.danger;
     } else if (ratio! >= 0.9) {
@@ -165,7 +167,7 @@ class _RingPainter extends CustomPainter {
         Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = strokeWidth * 0.5
-          ..color = trackColor,
+          ..color = color,
       );
       return;
     }
