@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'update_card.dart';
+import '../../core/services/permission_service.dart';
+import '../home/home_screen.dart' show showPermissionDialog;
 
 import '../../clinical/definitions.dart';
 import '../../core/config/app_config.dart';
@@ -241,6 +243,51 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     '${NotificationService.maxDiscretionaryPerDay} '
                     'tanedir ve sessiz saatlerde gönderilmez.',
                     style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  SizedBox(height: r.gapSm),
+                  // Bildirimlerin gerçekten geldiğini kullanıcı kendi
+                  // telefonunda görebilsin: izin, kanal ve ikon zinciri
+                  // tek dokunuşla sınanır.
+                  NeuButton(
+                    label: 'Bildirimi dene',
+                    icon: Icons.notifications_active_outlined,
+                    filled: false,
+                    tone: NeuTone.neutral,
+                    expanded: true,
+                    onPressed: () async {
+                      final service = ref.read(permissionServiceProvider);
+                      if (await service.status(AppPermission.notifications) !=
+                          AppPermissionStatus.granted) {
+                        if (!context.mounted) return;
+                        final ok = await showPermissionDialog(
+                          context,
+                          permissionInfo(AppPermission.notifications),
+                        );
+                        if (!ok) return;
+                        if (await service
+                                .request(AppPermission.notifications) !=
+                            AppPermissionStatus.granted) {
+                          if (context.mounted) {
+                            setState(() => _statusTr =
+                                'Bildirim izni verilmedi.');
+                          }
+                          return;
+                        }
+                      }
+                      final sent = await ref
+                          .read(notificationServiceProvider)
+                          .show(
+                            category: NotifCategory.medication,
+                            title: 'Böbrek Dostu',
+                            body: 'Bildirimler çalışıyor. İlaç ve randevu '
+                                'hatırlatmaların bu şekilde gelecek.',
+                          );
+                      if (context.mounted) {
+                        setState(() => _statusTr = sent
+                            ? 'Deneme bildirimi gönderildi.'
+                            : 'Bildirim gönderilemedi.');
+                      }
+                    },
                   ),
                   SwitchListTile.adaptive(
                     value: prefs.smartNotifications,
