@@ -103,21 +103,61 @@ GitHub Release'e eklenir.
 > Gizli değerler tanımlı değilse iOS işi sessizce atlanır, Android
 > tarafı çalışmaya devam eder.
 
-#### B) Ücretsiz Apple kimliğiyle yan yükleme (otomatik güncelleme YOK)
+#### B) Ücretsiz Apple kimliğiyle yan yükleme (üyelik gerekmez)
 
-Ücretsiz bir Apple kimliğiyle de kurulabilir ama imza **7 günde bir
-dolar** ve uygulama açılmaz olur; her hafta Xcode'a takıp yeniden
-yüklemek gerekir. Otomatik güncelleme olmaz.
+Üyelik beklerken bugün kullanmaya başlamanın yolu. Uygulamanın
+**tamamı çalışır**, iki istisna dışında (aşağıda).
 
-1. Xcode'da `ios/Runner.xcworkspace` açılır.
-2. Runner hedefi → **Signing & Capabilities** → Team olarak kendi Apple
-   kimliğin seçilir.
-3. iPhone USB ile bağlanır, hedef olarak seçilir, çalıştırılır.
-4. iPhone'da **Ayarlar → Genel → VPN ve Cihaz Yönetimi** altından
-   geliştiriciye güven verilir.
+**Bir kez yapılacaklar**
 
-> HealthKit'in gerçek cihazda çalışması için de bu adımda bir Apple
-> hesabı seçilmiş olması gerekir.
+1. iPhone'u Mac'e kabloyla bağla, telefonun kilidini aç,
+   **"Bu bilgisayara güven"** de.
+2. Xcode'da projeyi aç:
+
+```bash
+open ios/Runner.xcworkspace
+```
+
+3. Sol panelden **Runner** hedefi → **Signing & Capabilities** sekmesi →
+   **Team** kutusundan kendi Apple kimliğini seç. (Listede yoksa:
+   Xcode → Settings → Accounts → `+` → Apple kimliğinle gir. Ücretsiz
+   hesap yeterli.)
+4. Üst çubuktan hedef cihaz olarak iPhone'unu seç ve **▶ Run**'a bas.
+   İlk kurulumu Xcode yapsın — provizyon profilini o oluşturur.
+5. Telefon "Güvenilmeyen Geliştirici" derse:
+   **Ayarlar → Genel → VPN ve Cihaz Yönetimi** → kendi Apple kimliğin →
+   **Güven**.
+
+**Sonraki her hafta** (imza 7 günde bir dolar) tek komut:
+
+```bash
+tools/ios_sideload.sh
+```
+
+Telefon bağlıyken bu betik release derlemesini yapar ve yeniden kurar.
+Veriler silinmez — aynı uygulama üzerine yazılır.
+
+**Ücretsiz yolun sınırları** (Apple'ın koyduğu, aşılamaz):
+
+| Sınır | Anlamı |
+|---|---|
+| İmza 7 gün geçerli | Haftada bir `tools/ios_sideload.sh` çalıştırmak gerekir; yoksa uygulama açılmaz |
+| Otomatik güncelleme yok | Yeni sürümü sen kurarsın |
+| En fazla 3 yan yüklü uygulama | Aynı Apple kimliğiyle |
+| **HealthKit çalışmaz** | Apple bu izni yalnız ücretli üyeliğe veriyor |
+
+HealthKit kısıtı yüzünden **Sağlık ekranı iPhone'da veri okuyamaz**;
+uygulama bunu açıkça söyler ve seni elle girişe yönlendirir. Nabız,
+tansiyon, kilo ve SpO2'yi "Kilo, ödem ve tansiyon" ekranından
+girebilirsin — uygulamanın geri kalanı (besin, sıvı, ilaç, tahlil,
+barkod/etiket okuma, yapay zeka, doktor raporu) tam çalışır.
+
+> Bu yüzden `ios/Runner/Runner.entitlements` içinde HealthKit **yoktur**:
+> hak dosyada dururken ücretsiz kimlikle imzalama "Provisioning profile
+> doesn't support the HealthKit capability" hatasıyla başarısız olur ve
+> uygulama telefona hiç kurulamaz. Üyelik gelince TestFlight hattı
+> otomatik olarak `Runner-AppStore.entitlements` kullanır ve HealthKit
+> açılır — kodda değişiklik gerekmez.
 
 #### Simülatörde denemek (hesap gerekmez)
 

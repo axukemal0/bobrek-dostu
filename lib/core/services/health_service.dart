@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:health/health.dart';
 
 /// Health Connect üzerinden akıllı saat / telefon sağlık verisi.
@@ -88,6 +90,23 @@ class HealthService {
     HealthDataType.SLEEP_SESSION,
     HealthDataType.WEIGHT,
   ];
+
+  /// Platformun sağlık servisinin kullanıcıya görünen adı.
+  static String get providerNameTr =>
+      Platform.isIOS ? 'Sağlık uygulaması' : 'Health Connect';
+
+  /// iOS'ta izin isteğinin sessizce başarısız olmasının en sık sebebi,
+  /// uygulamanın HealthKit hakkı OLMADAN imzalanmış olmasıdır. Ücretsiz
+  /// Apple kimliğiyle imzalanan derlemeler böyledir: Apple bu yeteneği
+  /// yalnız ücretli üyelikteki provizyon profillerine verir. Kullanıcıya
+  /// "izin vermedin" demek yanıltıcı olurdu.
+  static String? get entitlementNoteTr => Platform.isIOS
+      ? 'Not: Bu uygulama ücretsiz bir Apple kimliğiyle kurulduysa '
+          'iPhone Sağlık verisine hiç erişemez — Apple bu izni yalnız '
+          'ücretli geliştirici üyeliğiyle imzalanmış uygulamalara verir. '
+          'Ölçümlerini "Kilo, ödem ve tansiyon" ekranından elle '
+          'girebilirsin.'
+      : null;
 
   Future<void> _configure() async {
     if (_configured) return;

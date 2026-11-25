@@ -82,8 +82,12 @@ class _HealthScreenState extends ConsumerState<HealthScreen> {
       await _load();
     } else {
       setState(
-        () => _errorTr = 'Health Connect izinleri verilmedi. '
-            'Health Connect uygulamasından da izin verebilirsin.',
+        () => _errorTr = [
+          '${HealthService.providerNameTr} izinleri verilmedi. '
+              '${HealthService.providerNameTr} uygulamasından da izin '
+              'verebilirsin.',
+          ?HealthService.entitlementNoteTr,
+        ].join('\n\n'),
       );
     }
   }
@@ -327,7 +331,7 @@ class _HealthScreenState extends ConsumerState<HealthScreen> {
                     ),
                     SizedBox(height: r.gapMd),
                     NeuButton(
-                      label: 'Health Connect izni ver',
+                      label: '${HealthService.providerNameTr} izni ver',
                       icon: Icons.health_and_safety_outlined,
                       expanded: true,
                       onPressed: _requestPermission,

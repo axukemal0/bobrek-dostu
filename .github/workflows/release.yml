@@ -131,10 +131,14 @@ jobs:
           </plist>
           PLIST
 
+          # HealthKit yalnız ücretli üyelikle imzalanabildiği için
+          # varsayılan hak dosyasında yok; TestFlight yapısı App Store
+          # sürümünü kullanır.
           xcodebuild -workspace ios/Runner.xcworkspace \
             -scheme Runner \
             -configuration Release \
             -archivePath build/Runner.xcarchive \
+            CODE_SIGN_ENTITLEMENTS=Runner/Runner-AppStore.entitlements \
             -allowProvisioningUpdates \
             -authenticationKeyPath ~/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8 \
             -authenticationKeyID "${{ secrets.ASC_KEY_ID }}" \

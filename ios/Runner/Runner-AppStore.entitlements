@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  ÜCRETLİ Apple Developer üyeliğiyle imzalanan derlemelerin hakları
+  (TestFlight / App Store). Varsayılanın üstüne HealthKit ekler.
+
+  Ücretsiz kimlikle İMZALANAMAZ; bu yüzden varsayılan değildir.
+  TestFlight hattı bunu xcodebuild'e CODE_SIGN_ENTITLEMENTS ile verir.
+-->
+<plist version="1.0">
+<dict>
+	<key>keychain-access-groups</key>
+	<array>
+		<string>$(AppIdentifierPrefix)com.bobrekdostu.bobrekDostu</string>
+	</array>
+
+	<!-- Sağlık verisi OKUMA. Yazma yok. -->
+	<key>com.apple.developer.healthkit</key>
+	<true/>
+	<key>com.apple.developer.healthkit.access</key>
+	<array/>
+</dict>
+</plist>

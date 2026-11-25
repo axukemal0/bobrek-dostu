@@ -1,5 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  VARSAYILAN haklar — ÜCRETSİZ Apple kimliğiyle de imzalanabilir.
+
+  Burada yalnız Keychain var. HealthKit BİLEREK yok: ücretsiz Apple
+  kimliğiyle oluşturulan provizyon profilleri HealthKit yeteneğini
+  TAŞIYAMAZ ve bu hak dosyada durursa imzalama "Provisioning profile
+  doesn't support the HealthKit capability" hatasıyla başarısız olur —
+  yani uygulama telefona hiç kurulamaz.
+
+  Apple Developer üyeliği alındığında HealthKit için
+  Runner-AppStore.entitlements kullanılır (TestFlight hattı zaten onu
+  kullanıyor, bkz. .github/workflows/release.yml).
+-->
 <plist version="1.0">
 <dict>
 	<!-- Keychain erişimi.
@@ -11,13 +24,5 @@
 	<array>
 		<string>$(AppIdentifierPrefix)com.bobrekdostu.bobrekDostu</string>
 	</array>
-
-	<!-- Sağlık verisi OKUMA. Yazma yok.
-	     Gerçek cihazda bu hakkın çalışması için Xcode'da bir geliştirici
-	     hesabı seçilmeli (HealthKit yeteneği provizyon profiline girer). -->
-	<key>com.apple.developer.healthkit</key>
-	<true/>
-	<key>com.apple.developer.healthkit.access</key>
-	<array/>
 </dict>
 </plist>
