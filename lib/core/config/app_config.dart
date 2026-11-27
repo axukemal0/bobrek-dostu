@@ -45,8 +45,20 @@ class Endpoints {
   static const String nominatimReverse =
       'https://nominatim.openstreetmap.org/reverse';
 
-  // Yakın mekan — Overpass API. Ana sunucu sık doluyor; yedekler denenir.
+  // Yakın mekan — Overpass API.
+  //
+  // DİKKAT — ESKİ HATA (27 Kasım 2026'da ölçüldü): sıralama yanlıştı ve
+  // "Yakındaki restoranlar" ekranı pratikte hiç çalışmıyordu.
+  //   overpass-api.de      -> HTTP 502, "all query workers are busy"
+  //   overpass.kumi.systems-> bağlantıyı kabul edip HİÇ yanıt vermiyor
+  //   overpass.private.coffee -> aynı şekilde sessiz
+  //   overpass.osm.ch      -> HTTP 200, yarım saniyede
+  // Uygulama üç ölü sunucuyu 35'er saniye beklediği için kullanıcı
+  // ~70 saniye sonra hata görüyordu. Çalışan sunucu başa alındı.
+  // Ölüler listeden SİLİNMEDİ: bunlar gönüllü topluluk sunucularıdır,
+  // bakımdan sonra geri gelirler; sadece en sona atıldılar.
   static const List<String> overpassMirrors = [
+    'https://overpass.osm.ch/api/interpreter',
     'https://overpass-api.de/api/interpreter',
     'https://overpass.kumi.systems/api/interpreter',
     'https://overpass.private.coffee/api/interpreter',

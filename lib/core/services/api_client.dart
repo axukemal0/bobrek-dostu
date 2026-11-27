@@ -137,16 +137,33 @@ class ApiClient {
   ///
   /// Overpass'ın genel sunucusu sık "at capacity" döner; bu normaldir
   /// ve kullanıcıya dürüstçe söylenir.
+  /// [perMirrorTimeout] tek bir sunucuya tanınan süre, [totalBudget]
+  /// ise tüm denemelerin toplam üst sınırıdır.
+  ///
+  /// DİKKAT — ESKİ HATA: sunucu başına 35 saniye vardı, toplam sınır
+  /// yoktu. Üç sunucu birden sessiz kaldığında kullanıcı 105 saniye
+  /// bekleyip hata görüyordu; ekran donmuş sanılıyordu. Artık toplam
+  /// süre sınırlı: bütçe dolunca kalan sunucular hiç denenmez ve
+  /// varsa eski önbellek gösterilir.
   Future<String> overpassQuery(
     String query, {
     Duration maxAge = const Duration(hours: 6),
+    Duration perMirrorTimeout = const Duration(seconds: 15),
+    Duration totalBudget = const Duration(seconds: 40),
   }) async {
     final key = 'overpass:${query.hashCode}';
     final cached = await db.cacheGet(key, maxAge);
     if (cached != null) return cached;
 
+    final deadline = DateTime.now().add(totalBudget);
     final errors = <String>[];
     for (final mirror in Endpoints.overpassMirrors) {
+      final left = deadline.difference(DateTime.now());
+      if (left <= Duration.zero) {
+        errors.add('kalan sunucular denenmedi: süre doldu');
+        break;
+      }
+      final slice = left < perMirrorTimeout ? left : perMirrorTimeout;
       try {
         final res = await _client
             .post(
@@ -157,7 +174,7 @@ class ApiClient {
               },
               body: {'data': query},
             )
-            .timeout(const Duration(seconds: 35));
+            .timeout(slice);
 
         if (res.statusCode == 200 && res.bodyBytes.isNotEmpty) {
           final body = utf8.decode(res.bodyBytes);

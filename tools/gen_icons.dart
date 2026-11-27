@@ -15,6 +15,7 @@ import 'package:bobrek_dostu/core/brand/brand_mark.dart';
 import 'package:bobrek_dostu/core/theme/app_colors.dart';
 import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:image/image.dart' as img;
 
 const _android = 'android/app/src/main/res';
 const _ios = 'ios/Runner/Assets.xcassets';
@@ -85,6 +86,21 @@ Future<Uint8List> _render({
   return data!.buffer.asUint8List();
 }
 
+/// Ana (açık) iOS ikonundan alfa kanalını düşürür.
+///
+/// App Store Connect ve TestFlight, ANA uygulama ikonunda alfa kanalı
+/// kabul etmez: "Invalid large app icon. The large app icon ... can't be
+/// transparent nor contain an alpha channel." Flutter'ın tuvali her
+/// zaman RGBA PNG üretir, bu yüzden alfa burada düşürülür.
+///
+/// Koyu ve tinted varyantlar bunun DIŞINDADIR — Apple onların saydam
+/// olmasını ister.
+Uint8List _opaque(Uint8List png) {
+  final decoded = img.decodePng(png);
+  if (decoded == null) return png;
+  return img.encodePng(decoded.convert(numChannels: 3));
+}
+
 void _writeText(String path, String content) {
   final file = File(path);
   file.parent.createSync(recursive: true);
@@ -153,18 +169,40 @@ void main() {
 }
 ''');
 
-    _write('$_ios/AppIcon.appiconset/Icon-App-1024x1024@1x.png',
-        await _render(canvas: 1024, markFraction: 0.64,
-            background: AppPalette.warmLight.background, vignette: true));
-    // iOS 18+ karanlık ve şeffaf (tinted) varyantları
-    _write('$_ios/AppIcon.appiconset/Icon-App-Dark-1024.png',
-        await _render(canvas: 1024, markFraction: 0.64,
-            background: AppPalette.warmDark.background, vignette: true,
-            palette: AppPalette.warmDark));
-    _write('$_ios/AppIcon.appiconset/Icon-App-Tinted-1024.png',
-        await _render(canvas: 1024, markFraction: 0.64,
-            background: const Color(0xFF000000),
-            monochrome: const Color(0xFFFFFFFF)));
+    _write(
+      '$_ios/AppIcon.appiconset/Icon-App-1024x1024@1x.png',
+      _opaque(await _render(canvas: 1024, markFraction: 0.64,
+          background: AppPalette.warmLight.background, vignette: true)),
+    );
+
+    // iOS 18+ karanlık ve tinted varyantları — İKİSİ DE SAYDAM ZEMİNLİ.
+    //
+    // DİKKAT — ESKİ HATA: ikisi de opak zeminle çiziliyordu ve bu yüzden
+    // ana ekranda düzgün çalışmıyordu.
+    //  * Karanlık varyant opak gri bir kareydi; Apple'ın şartı saydam
+    //    zemindir, koyu zemini sistem kendi çizer. Opak kare, yanındaki
+    //    simgelerden açık durup yama gibi görünüyordu.
+    //  * Tinted varyant opak SİYAH zemin üzerine beyaz amblemdi. iOS
+    //    tinted modda görüntünün parlaklığını kullanıcının seçtiği renge
+    //    eşler; opak siyah zemin bütün kareyi simgenin parçası yapıyor,
+    //    ana ekranda logo yerine koyu bir kare çıkıyordu.
+    _write(
+      '$_ios/AppIcon.appiconset/Icon-App-Dark-1024.png',
+      await _render(
+        canvas: 1024,
+        markFraction: 0.64,
+        palette: AppPalette.warmDark,
+      ),
+    );
+    _write(
+      '$_ios/AppIcon.appiconset/Icon-App-Tinted-1024.png',
+      await _render(
+        canvas: 1024,
+        markFraction: 0.64,
+        monochrome: const Color(0xFFFFFFFF),
+        shadow: false,
+      ),
+    );
 
     // iOS açılış ekranı görseli
     for (final e in {'': 1.0, '@2x': 2.0, '@3x': 3.0}.entries) {

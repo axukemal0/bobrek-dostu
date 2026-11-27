@@ -38,6 +38,9 @@ class _PlacesScreenState extends ConsumerState<PlacesScreen> {
   bool _showMap = true;
   bool _routesLoaded = false;
 
+  /// Liste Overpass'tan değil yedek kaynaktan geldi.
+  bool _limited = false;
+
   @override
   void initState() {
     super.initState();
@@ -87,6 +90,7 @@ class _PlacesScreenState extends ConsumerState<PlacesScreen> {
       _loading = true;
       _errorTr = null;
       _routesLoaded = false;
+      _limited = false;
     });
 
     await _ensureLocation();
@@ -101,14 +105,15 @@ class _PlacesScreenState extends ConsumerState<PlacesScreen> {
     }
 
     try {
-      final places = await ref.read(placesServiceProvider).nearbyRestaurants(
+      final result = await ref.read(placesServiceProvider).nearbyRestaurants(
             latitude: loc.latitude,
             longitude: loc.longitude,
             radiusMeters: _radius,
           );
       if (!mounted) return;
       setState(() {
-        _places = places;
+        _places = result.places;
+        _limited = result.limited;
         _loading = false;
       });
     } on ServiceFailure catch (e) {
@@ -279,6 +284,31 @@ class _PlacesScreenState extends ConsumerState<PlacesScreen> {
                             filled: false,
                             expanded: true,
                             onPressed: _load,
+                          ),
+                        ],
+                      ),
+                    ),
+
+                  if (_limited)
+                    NeuCard(
+                      color: p.info.withValues(alpha: 0.09),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            Icons.info_outline_rounded,
+                            size: 20,
+                            color: p.info,
+                          ),
+                          SizedBox(width: r.gapSm),
+                          Expanded(
+                            child: Text(
+                              'Ayrıntılı mekan servisi (Overpass) şu an '
+                              'yanıt vermiyor. Liste yedek kaynaktan '
+                              'geldi: daha az mekan ve daha az bilgi '
+                              'içerebilir.',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
                           ),
                         ],
                       ),

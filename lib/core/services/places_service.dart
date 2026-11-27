@@ -69,17 +69,62 @@ class NearbyPlace {
       );
 }
 
+/// Yakın mekan aramasının sonucu.
+///
+/// [limited] true ise liste Overpass'tan değil, yedek kaynaktan
+/// (Nominatim) geldi: daha az mekan ve daha seyrek etiket içerir.
+/// Ekran bunu kullanıcıya dürüstçe söyler.
+class NearbyResult {
+  const NearbyResult({required this.places, this.limited = false});
+
+  final List<NearbyPlace> places;
+  final bool limited;
+}
+
 class PlacesService {
   PlacesService(this._api);
 
   final ApiClient _api;
 
   /// Yakındaki restoran/kafe/fırın.
-  Future<List<NearbyPlace>> nearbyRestaurants({
+  ///
+  /// Önce Overpass denenir: zengin etiket verir. Ama Overpass gönüllü
+  /// topluluk sunucularında çalışır ve sık sık tamamen sessiz kalır —
+  /// o zaman ekranı boş bırakmak yerine Nominatim'in sınırlı alan
+  /// aramasına düşülür (bkz. [_nominatimNearby]).
+  Future<NearbyResult> nearbyRestaurants({
     required double latitude,
     required double longitude,
     int radiusMeters = 2000,
     int limit = 40,
+  }) async {
+    try {
+      return NearbyResult(
+        places: await _overpassNearby(
+          latitude: latitude,
+          longitude: longitude,
+          radiusMeters: radiusMeters,
+          limit: limit,
+        ),
+      );
+    } on ServiceFailure {
+      final fallback = await _nominatimNearby(
+        latitude: latitude,
+        longitude: longitude,
+        radiusMeters: radiusMeters,
+      );
+      // Yedek de boşsa asıl hatayı göster: kullanıcıya "sonuç yok"
+      // demek, servisin çöktüğünü gizlemek olurdu.
+      if (fallback.isEmpty) rethrow;
+      return NearbyResult(places: fallback, limited: true);
+    }
+  }
+
+  Future<List<NearbyPlace>> _overpassNearby({
+    required double latitude,
+    required double longitude,
+    required int radiusMeters,
+    required int limit,
   }) async {
     final lat = latitude.toStringAsFixed(4);
     final lon = longitude.toStringAsFixed(4);
@@ -146,6 +191,114 @@ out center $limit;
     places.sort(
       (a, b) => a.straightLineMeters.compareTo(b.straightLineMeters),
     );
+    return places;
+  }
+
+  /// Overpass çöktüğünde devreye giren yedek kaynak.
+  ///
+  /// Nominatim OSMF'nin kendi sunucusudur ve Overpass aynalarından çok
+  /// daha ayaktadır. Karşılığında sorgu başına daha az sonuç ve daha
+  /// seyrek etiket verir; bu yüzden YEDEKTİR, birinci kaynak değil.
+  /// Saniyede bir istek sınırı olduğu için yalnız üç kategori sorulur.
+  Future<List<NearbyPlace>> _nominatimNearby({
+    required double latitude,
+    required double longitude,
+    required int radiusMeters,
+  }) async {
+    // Yarıçapı enlem/boylam kutusuna çevir. Boylamda bir derecenin
+    // metre karşılığı enleme göre daralır, o yüzden kosinüsle bölünür.
+    final dLat = radiusMeters / 111320.0;
+    final dLon = radiusMeters /
+        (111320.0 * math.max(0.1, math.cos(_rad(latitude))));
+    final viewbox = [
+      (longitude - dLon).toStringAsFixed(5),
+      (latitude + dLat).toStringAsFixed(5),
+      (longitude + dLon).toStringAsFixed(5),
+      (latitude - dLat).toStringAsFixed(5),
+    ].join(',');
+
+    const terms = ['restaurant', 'cafe', 'fast food'];
+    final byId = <String, NearbyPlace>{};
+
+    for (final term in terms) {
+      final uri = Uri.parse(Endpoints.nominatimSearch).replace(
+        queryParameters: {
+          'q': term,
+          'format': 'json',
+          'limit': '20',
+          'bounded': '1',
+          'viewbox': viewbox,
+          'extratags': '1',
+          'addressdetails': '1',
+        },
+      );
+      final String raw;
+      try {
+        raw = await _api.cachedGet(
+          uri,
+          maxAge: const Duration(hours: 6),
+          rateLimitNominatim: true,
+          timeout: const Duration(seconds: 15),
+        );
+      } on ServiceFailure {
+        continue;
+      }
+
+      final Object? list;
+      try {
+        list = jsonDecode(raw);
+      } on FormatException {
+        continue;
+      }
+      if (list is! List) continue;
+
+      for (final e in list) {
+        if (e is! Map) continue;
+        if (e['class'] != 'amenity' && e['class'] != 'shop') continue;
+        final name = (e['name'] as String?)?.trim();
+        if (name == null || name.isEmpty) continue;
+        final plat = double.tryParse('${e['lat']}');
+        final plon = double.tryParse('${e['lon']}');
+        if (plat == null || plon == null) continue;
+
+        final id = '${e['osm_type'] ?? 'node'}/${e['osm_id']}';
+        if (byId.containsKey(id)) continue;
+
+        final tags = (e['extratags'] as Map?) ?? const {};
+        final addr = (e['address'] as Map?) ?? const {};
+        final street = addr['road'] as String?;
+        final number = addr['house_number'] as String?;
+        final city =
+            (addr['city'] ?? addr['town'] ?? addr['village']) as String?;
+        final addressParts = <String>[
+          if (street != null) [street, number].whereType<String>().join(' '),
+          ?city,
+        ];
+
+        byId[id] = NearbyPlace(
+          id: id,
+          name: name,
+          latitude: plat,
+          longitude: plon,
+          straightLineMeters:
+              haversineMeters(latitude, longitude, plat, plon),
+          cuisine: tags['cuisine'] as String?,
+          amenity: e['type'] as String?,
+          phone: (tags['phone'] ?? tags['contact:phone']) as String?,
+          website: (tags['website'] ?? tags['contact:website']) as String?,
+          openingHours: tags['opening_hours'] as String?,
+          address: addressParts.isEmpty ? null : addressParts.join(', '),
+        );
+      }
+    }
+
+    // Kutu köşeleri yarıçapın dışına taşar; gerçek mesafeyle ele.
+    final places = byId.values
+        .where((p) => p.straightLineMeters <= radiusMeters * 1.15)
+        .toList()
+      ..sort(
+        (a, b) => a.straightLineMeters.compareTo(b.straightLineMeters),
+      );
     return places;
   }
 
