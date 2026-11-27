@@ -25,6 +25,7 @@ import 'barcode_scanner_view.dart';
 import 'meal_vision_parser.dart';
 import 'nutrition_label_parser.dart';
 import '../../core/i18n/text.dart';
+import '../../core/i18n/i18n.dart';
 
 Future<void> showAddFoodSheet(BuildContext context, WidgetRef ref) {
   return showModalBottomSheet<void>(
@@ -237,11 +238,16 @@ class _SearchTabState extends ConsumerState<_SearchTab> {
                           ),
                           SizedBox(height: r.s(2)),
                           Text(
-                            '${f.category} · 100 g: '
-                            '${f.kcal.round()} kcal, '
-                            'Na ${f.sodiumMg.round()}, '
-                            'K ${f.potassiumMg.round()}, '
-                            'P ${f.phosphorusMg.round()} mg',
+                            tf(
+                              '{0} · 100 g: {1} kcal, Na {2}, K {3}, P {4} mg',
+                              [
+                                f.category,
+                                f.kcal.round(),
+                                f.sodiumMg.round(),
+                                f.potassiumMg.round(),
+                                f.phosphorusMg.round(),
+                              ],
+                            ),
                             style:
                                 Theme.of(context).textTheme.labelSmall,
                           ),
@@ -350,7 +356,7 @@ class _PortionSheetState extends ConsumerState<_PortionSheet> {
               label: 'Miktar',
               hint: f.portionLabel == null
                   ? null
-                  : 'Tipik porsiyon: ${f.portionLabel}',
+                  : tf('Tipik porsiyon: {0}', [f.portionLabel]),
               child: NumberField(
                 controller: _grams,
                 suffix: 'g',
@@ -393,10 +399,10 @@ class _PortionSheetState extends ConsumerState<_PortionSheet> {
                   for (final line in [
                     'Enerji: ${(f.kcal * factor).round()} kcal',
                     'Protein: ${(f.proteinG * factor).toStringAsFixed(1)} g',
-                    'Sodyum: ${(f.sodiumMg * factor).round()} mg',
-                    'Potasyum: ${(f.potassiumMg * factor).round()} mg',
-                    'Fosfor: ${(f.phosphorusMg * factor).round()} mg',
-                    'Sıvı katkısı: ${(f.fluidMl * factor).round()} mL',
+                    tf('Sodyum: {0} mg', [(f.sodiumMg * factor).round()]),
+                    tf('Potasyum: {0} mg', [(f.potassiumMg * factor).round()]),
+                    tf('Fosfor: {0} mg', [(f.phosphorusMg * factor).round()]),
+                    tf('Sıvı katkısı: {0} mL', [(f.fluidMl * factor).round()]),
                   ])
                     Text(
                       line,
@@ -496,7 +502,7 @@ class _BarcodeTabState extends ConsumerState<_BarcodeTab> {
       if (mounted) {
         setState(() {
           _busy = false;
-          _statusTr = 'Okuma başarısız: $e';
+          _statusTr = tf('Okuma başarısız: {0}', [e]);
         });
       }
     }
@@ -530,8 +536,11 @@ class _BarcodeTabState extends ConsumerState<_BarcodeTab> {
       if (product == null) {
         setState(() {
           _busy = false;
-          _statusTr = 'Bu barkod ($code) Open Food Facts\'te bulunamadı. '
-              '"Elle gir" sekmesinden etiket değerlerini yazabilirsin.';
+          _statusTr = tf(
+                        'Bu barkod ({0}) Open Food Facts\'te bulunamadı. "Elle '
+                        'gir" sekmesinden etiket değerlerini yazabilirsin.',
+                        [code],
+                      );
         });
         return;
       }
@@ -575,8 +584,13 @@ class _BarcodeTabState extends ConsumerState<_BarcodeTab> {
             note: Value(
               product.missingFieldsTr.isEmpty
                   ? 'Barkod: ${product.barcode}'
-                  : 'Barkod: ${product.barcode} · Etiketten okunamayan: '
-                      '${product.missingFieldsTr.join(", ")}',
+                  : tf(
+                      'Barkod: {0} · Etiketten okunamayan: {1}',
+                      [
+                        product.barcode,
+                        product.missingFieldsTr.join(', '),
+                      ],
+                    ),
             ),
             consumedAt: DateTime(
               day.year,
@@ -704,9 +718,11 @@ class _BarcodeTabState extends ConsumerState<_BarcodeTab> {
                   if (_product!.missingFieldsTr.isNotEmpty) ...[
                     SizedBox(height: r.gapSm),
                     Text(
-                      'Etikette olmayan değerler "bilinmiyor" olarak '
-                      'kaydedilir, sıfır sayılmaz: '
-                      '${_product!.missingFieldsTr.join(", ")}.',
+                      tf(
+                        'Etikette olmayan değerler "bilinmiyor" olarak '
+                        'kaydedilir, sıfır sayılmaz: {0}.',
+                        [_product!.missingFieldsTr.join(', ')],
+                      ),
                       style: Theme.of(context)
                           .textTheme
                           .labelSmall
@@ -830,7 +846,7 @@ class _LabelOcrTabState extends ConsumerState<_LabelOcrTab> {
       if (mounted) {
         setState(() {
           _busy = false;
-          _statusTr = 'Okuma başarısız: $e';
+          _statusTr = tf('Okuma başarısız: {0}', [e]);
         });
       }
     }
@@ -1340,7 +1356,7 @@ class _PhotoTabState extends ConsumerState<_PhotoTab> {
                   child: Text('Tabaktaki kalemler', style: text.titleMedium),
                 ),
                 Text(
-                  '${selected.length}/${_items.length} seçili',
+                  tf('{0}/{1} seçili', [selected.length, _items.length]),
                   style: text.labelSmall,
                 ),
               ],
@@ -1453,7 +1469,7 @@ class _MealItemCard extends StatelessWidget {
           Row(
             children: [
               Semantics(
-                label: '${editable.item.name} kalemini dahil et',
+                label: tf('{0} kalemini dahil et', [editable.item.name]),
                 child: Checkbox(
                   value: editable.include,
                   onChanged: (v) {
@@ -1564,10 +1580,12 @@ class _LabelReadout extends StatelessWidget {
           SizedBox(height: r.gapXs),
           Text(
             parsed.basis == NutrientBasis.perPortion && normalizationFactor != 1
-                ? 'Etiket porsiyon sütununu veriyor '
-                    '(${parsed.portionG?.toStringAsFixed(0)} g). Değerler '
-                    '100 g\'a çevrildi.'
-                : 'Sütun: ${parsed.basis.labelTr}.',
+                ? tf(
+                    'Etiket porsiyon sütununu veriyor ({0} g). Değerler '
+                    '100 g\'a çevrildi.',
+                    [parsed.portionG?.toStringAsFixed(0)],
+                  )
+                : tf('Sütun: {0}.', [parsed.basis.labelTr]),
             style: text.bodySmall,
           ),
           SizedBox(height: r.gapSm),
@@ -1617,9 +1635,12 @@ class _LabelReadout extends StatelessWidget {
           if (parsed.missingCriticalTr.isNotEmpty) ...[
             SizedBox(height: r.gapSm),
             Text(
-              'Etikette yazmayanlar: ${parsed.missingCriticalTr.join(", ")}. '
-              'Potasyum ve fosfor Türkiye\'de genelde etikete yazılmaz; '
-              'boş bırakılırsa sıfır değil "bilinmiyor" olarak kaydedilir.',
+              tf(
+                'Etikette yazmayanlar: {0}. Potasyum ve fosfor '
+                'Türkiye\'de genelde etikete yazılmaz; boş bırakılırsa '
+                'sıfır değil "bilinmiyor" olarak kaydedilir.',
+                [parsed.missingCriticalTr.join(', ')],
+              ),
               style: text.labelSmall?.copyWith(color: p.warning),
             ),
           ],

@@ -75,7 +75,7 @@ class MedicalDisclaimerBanner extends StatelessWidget {
     final p = context.palette;
     final r = Responsive.fromContext(context);
     return Semantics(
-      label: 'Tıbbi uyarı: $kMedicalDisclaimerTr',
+      label: tf('Tıbbi uyarı: {0}', [kMedicalDisclaimerTr]),
       child: Container(
         width: double.infinity,
         padding: EdgeInsets.symmetric(

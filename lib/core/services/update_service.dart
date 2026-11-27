@@ -7,6 +7,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../config/app_config.dart';
+import '../i18n/i18n.dart';
 
 /// Yeni sürüm denetimi.
 ///
@@ -51,8 +52,11 @@ class UpdateService {
     if (res.statusCode == 404) return null; // henüz hiç sürüm yayınlanmamış
     if (res.statusCode != 200) {
       throw UpdateFailure(
-        'Sürüm bilgisi alınamadı (HTTP ${res.statusCode}). '
-        'İnternet bağlantını kontrol edip tekrar dene.',
+        tf(
+          'Sürüm bilgisi alınamadı (HTTP {0}). İnternet '
+          'bağlantını kontrol edip tekrar dene.',
+          [res.statusCode],
+        ),
       );
     }
 
@@ -105,7 +109,10 @@ class UpdateService {
       ..headers['User-Agent'] = 'bobrek-dostu-app';
     final response = await _client.send(request);
     if (response.statusCode != 200) {
-      throw UpdateFailure('İndirme başarısız (HTTP ${response.statusCode}).');
+      throw UpdateFailure(tf(
+                            'İndirme başarısız (HTTP {0}).',
+                            [response.statusCode],
+                          ));
     }
 
     final dir = await getTemporaryDirectory();
@@ -135,7 +142,7 @@ class UpdateService {
             'Kurulum için "bilinmeyen kaynaklardan uygulama yükleme" '
                 'izni gerekiyor. Açılan ayar ekranından Böbrek Dostu\'na '
                 'izin verip tekrar dene.',
-          _ => 'Kurulum başlatılamadı: ${e.message ?? e.code}',
+          _ => tf('Kurulum başlatılamadı: {0}', [e.message ?? e.code]),
         },
       );
     }

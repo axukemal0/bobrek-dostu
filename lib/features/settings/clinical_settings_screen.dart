@@ -13,6 +13,7 @@ import '../../core/widgets/common.dart';
 import '../../core/widgets/form_fields.dart';
 import '../../core/widgets/responsive.dart';
 import '../../core/i18n/text.dart';
+import '../../core/i18n/i18n.dart';
 
 /// Klinik Ayarlar — uygulamanın en önemli ekranı.
 ///
@@ -95,10 +96,12 @@ class _ClinicalSettingsScreenState
                             ),
                             SizedBox(height: r.gapXs),
                             Text(
-                              'Uygulama hiçbir alt/üst sınır dayatmaz. '
-                              'Varsayılanlar kılavuz referanslarıdır ve '
-                              'her birinin yanında kaynağı, yılı ve '
-                              'doğrulama durumu yazar. $kReferenceCaveatTr',
+                              tf(
+                                'Uygulama hiçbir alt/üst sınır dayatmaz. '
+                                'Varsayılanlar kılavuz referanslarıdır ve her birinin '
+                                'yanında kaynağı, yılı ve doğrulama durumu yazar. {0}',
+                                [kReferenceCaveatTr],
+                              ),
                               style: Theme.of(context).textTheme.bodySmall,
                             ),
                           ],
@@ -618,13 +621,21 @@ class _ClinicalValueTileState extends ConsumerState<ClinicalValueTile> {
               ),
               child: Text(
                 absoluteSingle != null
-                    ? 'Günlük hedef: '
-                        '${absoluteSingle.toStringAsFixed(0)} g '
-                        '(${resolved.formatted()} × '
-                        '${widget.settings.bodyWeightKg?.toStringAsFixed(1)} kg)'
-                    : 'Günlük hedef: '
-                        '${absolute!.min.toStringAsFixed(0)}'
-                        '-${absolute.max.toStringAsFixed(0)} kcal',
+                    ? tf(
+                        'Günlük hedef: {0} g ({1} × {2} kg)',
+                        [
+                          absoluteSingle.toStringAsFixed(0),
+                          resolved.formatted(),
+                          widget.settings.bodyWeightKg?.toStringAsFixed(1),
+                        ],
+                      )
+                    : tf(
+                        'Günlük hedef: {0}-{1} kcal',
+                        [
+                          absolute!.min.toStringAsFixed(0),
+                          absolute.max.toStringAsFixed(0),
+                        ],
+                      ),
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: p.textSecondary,
                       fontWeight: FontWeight.w700,
@@ -902,7 +913,7 @@ class _HistorySection extends ConsumerWidget {
     return history.when(
       loading: () => const SizedBox.shrink(),
       error: (e, _) => Text(
-        'Geçmiş okunamadı: $e',
+        tf('Geçmiş okunamadı: {0}', [e]),
         style: Theme.of(context).textTheme.labelSmall,
       ),
       data: (rows) {
@@ -916,7 +927,7 @@ class _HistorySection extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Değişiklik geçmişi (${rows.length})',
+              tf('Değişiklik geçmişi ({0})', [rows.length]),
               style: Theme.of(context).textTheme.titleSmall,
             ),
             SizedBox(height: r.gapXs),

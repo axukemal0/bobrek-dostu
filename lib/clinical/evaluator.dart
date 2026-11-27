@@ -7,6 +7,7 @@ library;
 
 import 'definitions.dart';
 import 'settings.dart';
+import '../core/i18n/i18n.dart';
 
 enum AlertLevel { none, info, warning, urgent }
 
@@ -117,23 +118,31 @@ String fluidAdviceTr(FluidBudget b, {bool hotWeather = false}) {
   }
   final remaining = b.remainingMl!;
   if (b.isOverLimit) {
-    return 'Günlük limitini ${b.overshootMl} mL aştın. '
-        'Bugün sıvıyı azaltmak ve kiloyu izlemek iyi olur. '
-        'Ağız kuruluğu için buz parçası emmeyi veya şekersiz sakız '
-        'çiğnemeyi dene.';
+    return tf(
+             'Günlük limitini {0} mL aştın. Bugün sıvıyı azaltmak '
+             've kiloyu izlemek iyi olur. Ağız kuruluğu için buz '
+             'parçası emmeyi veya şekersiz sakız çiğnemeyi dene.',
+             [b.overshootMl],
+           );
   }
   final r = b.ratio ?? 0;
   if (hotWeather) {
-    return 'Hava sıcak; limitin ${b.limitMl} mL, kalan $remaining mL. '
-        'Susuzluk için buz parçası, şekersiz sakız veya '
-        'limon dilimi dene — bunlar sıvı bütçesini tüketmez.';
+    return tf(
+             'Hava sıcak; limitin {0} mL, kalan {1} mL. Susuzluk '
+             'için buz parçası, şekersiz sakız veya limon dilimi '
+             'dene — bunlar sıvı bütçesini tüketmez.',
+             [b.limitMl, remaining],
+           );
   }
   if (r >= 0.9) {
-    return 'Limitine çok yaklaştın: kalan $remaining mL. '
-        'Kalanı ilaç saatlerine ayırmak isteyebilirsin.';
+    return tf(
+             'Limitine çok yaklaştın: kalan {0} mL. Kalanı ilaç '
+             'saatlerine ayırmak isteyebilirsin.',
+             [remaining],
+           );
   }
   if (r >= 0.6) {
-    return 'Bugünün yarısını geçtin: kalan $remaining mL.';
+    return tf('Bugünün yarısını geçtin: kalan {0} mL.', [remaining]);
   }
   return 'Kalan $remaining mL.';
 }
@@ -327,7 +336,7 @@ DailyNutrition computeDailyNutrition({
 /// Hedef aşımı için yumuşak uyarı metni.
 String nutrientExceededAdviceTr(NutrientTotal n) {
   final over = (n.value - (n.target ?? 0)).round();
-  final base = '${n.labelTr} hedefini $over ${n.unit} aştın.';
+  final base = tf('{0} hedefini {1} {2} aştın.', [n.labelTr, over, n.unit]);
   final extra = switch (n.key) {
     'sodium' => ' Yarın turşu, salça, hazır çorba ve şarküteri '
         'ürünlerini azaltmak hızlı etki eder.',
@@ -339,7 +348,10 @@ String nutrientExceededAdviceTr(NutrientTotal n) {
         'yaratır; tek günlük aşım genelde önemli değildir.',
     _ => '',
   };
-  return '$base$extra Bu bir uyarı değil, bilgi — $kReferenceCaveatTr';
+  return tf(
+           '{0}{1} Bu bir uyarı değil, bilgi — {2}',
+           [base, extra, kReferenceCaveatTr],
+         );
 }
 
 /// ---------------------------------------------------------------------------
@@ -414,11 +426,19 @@ Alert evaluateBloodPressure({
     return Alert(
       level: AlertLevel.urgent,
       titleTr: 'Çok yüksek tansiyon',
-      messageTr: '$systolic/$diastolic mmHg — alarm eşiğinin '
-          '(${sh?.toStringAsFixed(0)}/${dh?.toStringAsFixed(0)}) '
-          'üstünde. Hipertansif kriz aralığında. Doktoruna hemen '
-          'başvur; göğüs ağrısı, nefes darlığı, görme bozukluğu, '
-          'konuşma güçlüğü veya şiddetli baş ağrısı varsa 112\'yi ara.',
+      messageTr: tf(
+                   '{0}/{1} mmHg — alarm eşiğinin ({2}/{3}) üstünde. '
+                   'Hipertansif kriz aralığında. Doktoruna hemen başvur; '
+                   'göğüs ağrısı, nefes darlığı, görme bozukluğu, '
+                   'konuşma güçlüğü veya şiddetli baş ağrısı varsa '
+                   '112\'yi ara.',
+                   [
+                     systolic,
+                     diastolic,
+                     sh?.toStringAsFixed(0),
+                     dh?.toStringAsFixed(0),
+                   ],
+                 ),
       definitionKey: 'bp_systolic_high',
       shouldNotifyEmergencyContacts: true,
       sourceIds: sysHigh.definition.sourceIds,
@@ -430,11 +450,13 @@ Alert evaluateBloodPressure({
     return Alert(
       level: AlertLevel.warning,
       titleTr: 'Düşük tansiyon',
-      messageTr: '$systolic/$diastolic mmHg — alt alarm eşiğinin '
-          '(${sl.toStringAsFixed(0)}) altında. Baş dönmesi, '
-          'bayılma hissi veya halsizlik varsa otur/uzan ve '
-          'doktoruna haber ver. Diyaliz seansı sonrası düşük '
-          'tansiyon sık görülür.',
+      messageTr: tf(
+                   '{0}/{1} mmHg — alt alarm eşiğinin ({2}) altında. Baş '
+                   'dönmesi, bayılma hissi veya halsizlik varsa '
+                   'otur/uzan ve doktoruna haber ver. Diyaliz seansı '
+                   'sonrası düşük tansiyon sık görülür.',
+                   [systolic, diastolic, sl.toStringAsFixed(0)],
+                 ),
       definitionKey: 'bp_systolic_low',
       shouldNotifyEmergencyContacts: true,
       sourceIds: sysLow.definition.sourceIds,
@@ -447,8 +469,15 @@ Alert evaluateBloodPressure({
     return Alert(
       level: AlertLevel.info,
       titleTr: 'Hedefin üstünde',
-      messageTr: '$systolic/$diastolic mmHg. Tedavi hedefi sistolik '
-          '<${target.toStringAsFixed(0)} mmHg. $kReferenceCaveatTr',
+      messageTr: tf(
+                   '{0}/{1} mmHg. Tedavi hedefi sistolik <{2} mmHg. {3}',
+                   [
+                     systolic,
+                     diastolic,
+                     target.toStringAsFixed(0),
+                     kReferenceCaveatTr,
+                   ],
+                 ),
       definitionKey: 'bp_systolic_target',
       sourceIds: const ['kdigo_ckd_2024'],
       verification: Verification.verified,
@@ -481,10 +510,16 @@ Alert evaluateSerumPotassium({
     return Alert(
       level: AlertLevel.urgent,
       titleTr: 'Ağır hiperkalemi aralığı',
-      messageTr: 'Serum K ${mEqPerL.toStringAsFixed(1)} mEq/L — '
-          'ağır kademe (>${s.toStringAsFixed(1)}). '
-          'Çarpıntı, ciddi kas güçsüzlüğü, uyuşma veya nefes darlığı '
-          'varsa HEMEN 112\'yi ara. $caveat',
+      messageTr: tf(
+                   'Serum K {0} mEq/L — ağır kademe (>{1}). Çarpıntı, '
+                   'ciddi kas güçsüzlüğü, uyuşma veya nefes darlığı '
+                   'varsa HEMEN 112\'yi ara. {2}',
+                   [
+                     mEqPerL.toStringAsFixed(1),
+                     s.toStringAsFixed(1),
+                     caveat,
+                   ],
+                 ),
       definitionKey: 'potassium_severe',
       shouldNotifyEmergencyContacts: true,
       sourceIds: sev.definition.sourceIds,
@@ -497,9 +532,15 @@ Alert evaluateSerumPotassium({
     return Alert(
       level: AlertLevel.warning,
       titleTr: 'Orta hiperkalemi aralığı',
-      messageTr: 'Serum K ${mEqPerL.toStringAsFixed(1)} mEq/L — '
-          'orta kademe (>${m.toStringAsFixed(1)}). '
-          'Doktoruna bugün haber ver. $caveat',
+      messageTr: tf(
+                   'Serum K {0} mEq/L — orta kademe (>{1}). Doktoruna '
+                   'bugün haber ver. {2}',
+                   [
+                     mEqPerL.toStringAsFixed(1),
+                     m.toStringAsFixed(1),
+                     caveat,
+                   ],
+                 ),
       definitionKey: 'potassium_moderate',
       shouldNotifyEmergencyContacts: true,
       sourceIds: mod.definition.sourceIds,
@@ -512,9 +553,15 @@ Alert evaluateSerumPotassium({
     return Alert(
       level: AlertLevel.info,
       titleTr: 'Hafif hiperkalemi aralığı',
-      messageTr: 'Serum K ${mEqPerL.toStringAsFixed(1)} mEq/L — '
-          'hafif kademe (>${mi.toStringAsFixed(1)}). '
-          'Diyet potasyumunu gözden geçirmek isteyebilirsin. $caveat',
+      messageTr: tf(
+                   'Serum K {0} mEq/L — hafif kademe (>{1}). Diyet '
+                   'potasyumunu gözden geçirmek isteyebilirsin. {2}',
+                   [
+                     mEqPerL.toStringAsFixed(1),
+                     mi.toStringAsFixed(1),
+                     caveat,
+                   ],
+                 ),
       definitionKey: 'potassium_mild',
       sourceIds: mild.definition.sourceIds,
       verification: mild.definition.verification,
@@ -526,8 +573,10 @@ Alert evaluateSerumPotassium({
     return Alert(
       level: AlertLevel.warning,
       titleTr: 'Hipokalemi aralığı',
-      messageTr: 'Serum K ${mEqPerL.toStringAsFixed(1)} mEq/L — '
-          'alt eşiğin (${l.toStringAsFixed(1)}) altında.',
+      messageTr: tf(
+                   'Serum K {0} mEq/L — alt eşiğin ({1}) altında.',
+                   [mEqPerL.toStringAsFixed(1), l.toStringAsFixed(1)],
+                 ),
       definitionKey: 'potassium_low',
       sourceIds: low.definition.sourceIds,
       verification: low.definition.verification,
@@ -537,7 +586,7 @@ Alert evaluateSerumPotassium({
   return Alert(
     level: AlertLevel.none,
     titleTr: 'Aralıkta',
-    messageTr: 'Serum K ${mEqPerL.toStringAsFixed(1)} mEq/L.',
+    messageTr: tf('Serum K {0} mEq/L.', [mEqPerL.toStringAsFixed(1)]),
   );
 }
 
@@ -569,11 +618,19 @@ Alert evaluateSingleThreshold({
   return Alert(
     level: def.triggersEmergencySms ? AlertLevel.urgent : AlertLevel.warning,
     titleTr: def.labelTr,
-    messageTr: '$displayLabelTr ${_fmt(measured, def.decimals)} $unit — '
-        'eşik ${_fmt(t, def.decimals)} $unit '
-        '(${def.higherIsWorse ? "üst" : "alt"} alarm). '
-        '${def.verification == Verification.startingPoint ? "Bu eşik bir "
-            "başlangıç değeridir; Klinik Ayarlar'dan değiştirebilirsin." : ""}',
+    messageTr: tf(
+                 '{0} {1} {2} — eşik {3} {4} ({5} alarm). {6}',
+                 [
+                   displayLabelTr,
+                   _fmt(measured, def.decimals),
+                   unit,
+                   _fmt(t, def.decimals),
+                   unit,
+                   def.higherIsWorse ? 'üst' : 'alt',
+                   def.verification == Verification.startingPoint ? 'Bu eşik bir '
+            "başlangıç değeridir; Klinik Ayarlar'dan değiştirebilirsin." : '',
+                 ],
+               ),
     definitionKey: definitionKey,
     shouldNotifyEmergencyContacts: def.triggersEmergencySms,
     sourceIds: def.sourceIds,
@@ -664,10 +721,12 @@ Alert? detectRedFlags(String text) {
   return Alert(
     level: AlertLevel.urgent,
     titleTr: 'Hemen 112\'yi ara',
-    messageTr: 'Yazdıklarında acil değerlendirme gerektirebilecek '
-        'belirti var (${found.join(", ")}). '
-        'Beklemeden 112\'yi ara ya da en yakın acile git. '
-        'Bu uygulama teşhis koymaz.',
+    messageTr: tf(
+                 'Yazdıklarında acil değerlendirme gerektirebilecek '
+                 'belirti var ({0}). Beklemeden 112\'yi ara ya da en '
+                 'yakın acile git. Bu uygulama teşhis koymaz.',
+                 [found.join(', ')],
+               ),
     shouldNotifyEmergencyContacts: true,
   );
 }

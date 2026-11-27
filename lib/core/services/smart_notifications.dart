@@ -6,6 +6,7 @@ import '../db/database.dart';
 import 'api_client.dart';
 import 'notification_service.dart';
 import 'weather_service.dart';
+import '../i18n/i18n.dart';
 
 /// Akıllı bildirimler: hava/UV/hava kalitesi uyarıları ve günlük özet.
 ///
@@ -123,7 +124,7 @@ class SmartNotifications {
       title: 'Diyet uyumu',
       body: remaining == total
           ? 'Bugünün öğünlerini henüz işaretlemedin.'
-          : '$remaining öğün işaretlenmeyi bekliyor.',
+          : tf('{0} öğün işaretlenmeyi bekliyor.', [remaining]),
       when: when,
     );
   }
@@ -231,16 +232,22 @@ class SmartNotifications {
       final pending = doses
           .where((d) => d.status == 'pending' || d.status == 'snoozed')
           .length;
-      lines.add('İlaç: $taken/${doses.length} alındı'
-          '${pending > 0 ? ", $pending doz bekliyor" : ""}');
+      lines.add(tf(
+                  'İlaç: {0}/{1} alındı{2}',
+                  [
+                    taken,
+                    doses.length,
+                    pending > 0 ? ', $pending doz bekliyor' : '',
+                  ],
+                ));
     }
 
     if (budget.hasLimit) {
       lines.add(budget.isOverLimit
-          ? 'Sıvı: limiti ${budget.overshootMl} mL aştın'
-          : 'Sıvı: ${budget.consumedMl} / ${budget.limitMl} mL');
+          ? tf('Sıvı: limiti {0} mL aştın', [budget.overshootMl])
+          : tf('Sıvı: {0} / {1} mL', [budget.consumedMl, budget.limitMl]));
     } else if (budget.consumedMl > 0) {
-      lines.add('Sıvı: ${budget.consumedMl} mL kaydedildi');
+      lines.add(tf('Sıvı: {0} mL kaydedildi', [budget.consumedMl]));
     }
 
     if (foods.isEmpty) lines.add('Bugün yemek kaydı girilmedi');
@@ -255,9 +262,14 @@ class SmartNotifications {
           ..limit(2))
         .get();
     for (final a in upcoming) {
-      lines.add('Yarın: ${a.title} '
-          '${a.startsAt.hour.toString().padLeft(2, '0')}:'
-          '${a.startsAt.minute.toString().padLeft(2, '0')}');
+      lines.add(tf(
+                  'Yarın: {0} {1}:{2}',
+                  [
+                    a.title,
+                    a.startsAt.hour.toString().padLeft(2, '0'),
+                    a.startsAt.minute.toString().padLeft(2, '0'),
+                  ],
+                ));
     }
 
     return lines.isEmpty ? null : lines.join('\n');

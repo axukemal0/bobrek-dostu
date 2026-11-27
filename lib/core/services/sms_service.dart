@@ -2,6 +2,7 @@ import 'dart:io' show Platform;
 
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../i18n/i18n.dart';
 
 /// SMS gönderimi.
 ///
@@ -61,7 +62,7 @@ class SmsService {
           'NO_SMS_MANAGER' =>
             'Bu cihazda SMS gönderilemiyor (SIM kart yok veya '
                 'telefon özelliği kapalı).',
-          _ => 'SMS gönderilemedi: ${e.message ?? e.code}',
+          _ => tf('SMS gönderilemedi: {0}', [e.message ?? e.code]),
         },
       );
     } on MissingPluginException {

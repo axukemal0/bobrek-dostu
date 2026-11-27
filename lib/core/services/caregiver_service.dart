@@ -2,6 +2,7 @@ import '../../clinical/evaluator.dart';
 import '../../clinical/settings.dart';
 import '../db/database.dart';
 import 'report_service.dart';
+import '../i18n/i18n.dart';
 
 /// Acil durum mesajı ve yakın modu özeti üretir.
 ///
@@ -28,9 +29,9 @@ class CaregiverService {
     final meds = await _db.getActiveMedications();
 
     final sb = StringBuffer();
-    sb.write('ACİL — ${profile?.name ?? "Hasta"}');
+    sb.write(tf('ACİL — {0}', [profile?.name ?? 'Hasta']));
     if (profile?.birthYear != null) {
-      sb.write(' (${DateTime.now().year - profile!.birthYear!} yaş)');
+      sb.write(tf(' ({0} yaş)', [DateTime.now().year - profile!.birthYear!]));
     }
     sb.write('. ');
 
@@ -38,20 +39,20 @@ class CaregiverService {
       sb.write('$triggerReasonTr ');
     }
 
-    sb.write('Böbrek hastası: ${settings.treatmentMode.labelTr}. ');
+    sb.write(tf('Böbrek hastası: {0}. ', [settings.treatmentMode.labelTr]));
 
     if (profile?.comorbidities?.isNotEmpty == true) {
-      sb.write('Ek hastalık: ${profile!.comorbidities}. ');
+      sb.write(tf('Ek hastalık: {0}. ', [profile!.comorbidities]));
     }
     if (profile?.allergies?.isNotEmpty == true) {
-      sb.write('ALERJİ: ${profile!.allergies}. ');
+      sb.write(tf('ALERJİ: {0}. ', [profile!.allergies]));
     } else {
       sb.write('Bilinen alerji yok. ');
     }
 
     if (meds.isNotEmpty) {
       final names = meds.map((m) => m.name).take(8).join(', ');
-      sb.write('İlaçlar: $names');
+      sb.write(tf('İlaçlar: {0}', [names]));
       if (meds.length > 8) sb.write(' (+${meds.length - 8})');
       sb.write('. ');
     }
@@ -120,8 +121,13 @@ class CaregiverService {
 
     final isWeek = window.inDays > 2;
     final sb = StringBuffer()
-      ..writeln('${profile?.name ?? "Hasta"} — '
-          '${isWeek ? "haftalık" : "günlük"} özet')
+      ..writeln(tf(
+                  '{0} — {1} özet',
+                  [
+                    profile?.name ?? 'Hasta',
+                    isWeek ? 'haftalık' : 'günlük',
+                  ],
+                ))
       ..writeln('${_fmtDate(from)} – ${_fmtDate(now)}')
       ..writeln();
 
@@ -130,11 +136,17 @@ class CaregiverService {
     if (adherence.totalDoses > 0) {
       sb.writeln('İLAÇ');
       sb.writeln(
-        '${adherence.taken}/${adherence.totalDoses} doz alındı '
-        '(%${(adherence.takenRatio * 100).round()})',
+        tf(
+          '{0}/{1} doz alındı (%{2})',
+          [
+            adherence.taken,
+            adherence.totalDoses,
+            (adherence.takenRatio * 100).round(),
+          ],
+        ),
       );
       if (adherence.skipped > 0) {
-        sb.writeln('${adherence.skipped} doz atlandı');
+        sb.writeln(tf('{0} doz atlandı', [adherence.skipped]));
       }
       sb.writeln();
     }
@@ -146,13 +158,20 @@ class CaregiverService {
       targetSystolic: settings.resolve('bp_systolic_target').value ?? 120,
     );
     if (bp != null) {
-      sb.writeln('TANSİYON (${bp.count} ölçüm)');
+      sb.writeln(tf('TANSİYON ({0} ölçüm)', [bp.count]));
       sb.writeln(
-        'Ortalama ${bp.meanSystolic.round()}/${bp.meanDiastolic.round()} '
-        'mmHg · en yüksek ${bp.maxSystolic}/${bp.maxDiastolic}',
+        tf(
+          'Ortalama {0}/{1} mmHg · en yüksek {2}/{3}',
+          [
+            bp.meanSystolic.round(),
+            bp.meanDiastolic.round(),
+            bp.maxSystolic,
+            bp.maxDiastolic,
+          ],
+        ),
       );
       if (bp.aboveAlarm > 0) {
-        sb.writeln('⚠ ${bp.aboveAlarm} ölçüm alarm eşiğinin üstünde');
+        sb.writeln(tf('⚠ {0} ölçüm alarm eşiğinin üstünde', [bp.aboveAlarm]));
       }
       sb.writeln();
     }
@@ -175,9 +194,14 @@ class CaregiverService {
         );
         if (idwg != null) {
           sb.writeln(
-            'Kuru ağırlık üstü: ${idwg.gainKg.toStringAsFixed(1)} kg '
-            '(%${idwg.percent.toStringAsFixed(1)})'
-            '${idwg.isOverThreshold ? " ⚠ eşik üstü" : ""}',
+            tf(
+              'Kuru ağırlık üstü: {0} kg (%{1}){2}',
+              [
+                idwg.gainKg.toStringAsFixed(1),
+                idwg.percent.toStringAsFixed(1),
+                idwg.isOverThreshold ? ' ⚠ eşik üstü' : '',
+              ],
+            ),
           );
         }
       }
@@ -189,7 +213,7 @@ class CaregiverService {
       final avg = computeFluidAverage(fluids, from, now);
       final limit = settings.resolve('fluid_ml');
       sb.writeln('SIVI');
-      sb.writeln('Günlük ortalama ${avg.round()} mL');
+      sb.writeln(tf('Günlük ortalama {0} mL', [avg.round()]));
       if (limit.hasValue && !limit.isCleared) {
         sb.writeln('Limit ${limit.value!.round()} mL');
       } else {

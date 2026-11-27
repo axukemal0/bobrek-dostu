@@ -12,6 +12,7 @@ import '../../core/theme/neumorphic.dart';
 import '../../core/widgets/common.dart';
 import '../../core/widgets/responsive.dart';
 import '../../core/i18n/text.dart';
+import '../../core/i18n/i18n.dart';
 
 /// Sürüm ve güncelleme kartı.
 ///
@@ -134,8 +135,8 @@ class _UpdateCardState extends ConsumerState<UpdateCard> {
                     ),
                     Text(
                       update == null
-                          ? 'Yüklü: $_current'
-                          : 'Yüklü $_current → ${update.version}',
+                          ? tf('Yüklü: {0}', [_current])
+                          : tf('Yüklü {0} → {1}', [_current, update.version]),
                       style: text.bodySmall,
                     ),
                   ],

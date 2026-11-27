@@ -5,6 +5,8 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 
 import '../config/ai_config.dart';
+import '../i18n/i18n.dart';
+import '../i18n/languages.dart';
 import 'secure_store.dart';
 
 /// Yapay zeka bağlantı durumu.
@@ -71,6 +73,25 @@ class AiService {
 
   final SecureStore secureStore;
   final http.Client _client;
+
+  /// İstemin sonuna "şu dilde yanıt ver" satırını ekler.
+  ///
+  /// İstem metinleri (yedi tane, bazıları uzun) kaynakta Türkçe yazılı.
+  /// Bunları dokuz dile çevirmek yerine modelden kullanıcının dilinde
+  /// yanıt vermesi istenir: model tıbbi terimleri o dilin yerleşik
+  /// karşılıklarıyla yazar, biz de çeviri sözlüğünü istem metinleriyle
+  /// şişirmeyiz. Türkçede hiçbir şey eklenmez.
+  ///
+  /// NOT: bu metin kullanıcıdan DEĞİL, uygulamanın kendi ayarından
+  /// geliyor; dışarıdan gelen bir içerik istemi değiştiremez.
+  String _withLanguage(String systemPrompt) {
+    final language = I18n.active;
+    if (language == AppLanguage.tr) return systemPrompt;
+    return '$systemPrompt\n\n'
+        'DİL: Kullanıcının arayüz dili ${language.nativeName} '
+        '(${language.code}). Yanıtını TAMAMEN bu dilde yaz; tıbbi '
+        'terimleri o dilin yerleşik karşılıklarıyla kullan.';
+  }
 
   Future<Map<String, String>> _headers(String apiKey) async => {
         'x-api-key': apiKey,
@@ -141,13 +162,16 @@ class AiService {
 
         final msg = StringBuffer('Bağlantı başarılı. Anahtar geçerli.');
         if (ids.isNotEmpty) {
-          msg.write(' Erişebildiğin model sayısı: ${ids.length}.');
+          msg.write(tf(' Erişebildiğin model sayısı: {0}.', [ids.length]));
         }
         if (hasTarget == false) {
           msg.write(
-            ' DİKKAT: Seçili model ($target) bu anahtarla '
-            'erişilebilir modeller arasında görünmüyor. '
-            'Ayarlardan başka bir model seç.',
+            tf(
+              'DİKKAT: Seçili model ({0}) bu anahtarla erişilebilir '
+              'modeller arasında görünmüyor. Ayarlardan başka bir '
+              'model seç.',
+              [target],
+            ),
           );
         }
         return AiTestResult(
@@ -174,7 +198,7 @@ class AiService {
     } on http.ClientException catch (e) {
       return AiTestResult(
         ok: false,
-        messageTr: 'Bağlantı kurulamadı: ${e.message}',
+        messageTr: tf('Bağlantı kurulamadı: {0}', [e.message]),
       );
     }
   }
@@ -190,7 +214,7 @@ class AiService {
     final target = model ?? AiConfig.defaultModel;
     try {
       final reply = await sendChat(
-        systemPrompt: 'Türkçe yanıt ver. Yalnızca "hazır" yaz.',
+        systemPrompt: 'Yalnızca "hazır" yaz.',
         messages: const [(role: 'user', text: 'Bağlantı testi.')],
         model: target,
         maxTokens: 2048,
@@ -198,9 +222,11 @@ class AiService {
       final used = (reply.inputTokens ?? 0) + (reply.outputTokens ?? 0);
       return AiTestResult(
         ok: true,
-        messageTr: 'Mesaj gönderildi ve yanıt alındı. '
-            'Model: $target. Harcanan jeton: $used.\n\n'
-            'Modelin yanıtı: "${reply.text.trim()}"',
+        messageTr: tf(
+                     'Mesaj gönderildi ve yanıt alındı. Model: {0}. '
+                     'Harcanan jeton: {1}.\n\nModelin yanıtı: "{2}"',
+                     [target, used, reply.text.trim()],
+                   ),
       );
     } on AiFailure catch (e) {
       return AiTestResult(
@@ -211,7 +237,7 @@ class AiService {
     } on Object catch (e) {
       return AiTestResult(
         ok: false,
-        messageTr: 'Beklenmedik hata: $e',
+        messageTr: tf('Beklenmedik hata: {0}', [e]),
       );
     }
   }
@@ -232,7 +258,7 @@ class AiService {
     final payload = <String, dynamic>{
       'model': model ?? AiConfig.defaultModel,
       'max_tokens': maxTokens,
-      'system': systemPrompt,
+      'system': _withLanguage(systemPrompt),
       'output_config': {'effort': AiConfig.chatEffort},
       'messages': [
         for (final m in messages)
@@ -274,7 +300,7 @@ class AiService {
     final payload = <String, dynamic>{
       'model': model ?? AiConfig.defaultModel,
       'max_tokens': maxTokens,
-      'system': systemPrompt,
+      'system': _withLanguage(systemPrompt),
       'output_config': {'effort': AiConfig.visionEffort},
       'messages': [
         {
@@ -319,7 +345,7 @@ class AiService {
     final payload = <String, dynamic>{
       'model': model ?? AiConfig.defaultModel,
       'max_tokens': maxTokens,
-      'system': systemPrompt,
+      'system': _withLanguage(systemPrompt),
       'output_config': {'effort': AiConfig.visionEffort},
       'messages': [
         {
@@ -403,10 +429,12 @@ class AiService {
         final explanation =
             (details is Map ? details['explanation'] : null) as String?;
         return AiReply(
-          text: 'Model bu isteği yanıtlamadı'
-              '${explanation == null ? "" : " ($explanation)"}. '
-              'Soruyu farklı biçimde sormayı dene. '
-              'Acil bir durumsa beklemeden 112\'yi ara.',
+          text: tf(
+                  'Model bu isteği yanıtlamadı{0}. Soruyu farklı '
+                  'biçimde sormayı dene. Acil bir durumsa beklemeden '
+                  '112\'yi ara.',
+                  [explanation == null ? '' : ' ($explanation)'],
+                ),
           stopReason: stopReason,
           refused: true,
         );
@@ -445,8 +473,11 @@ class AiService {
 
       var out = text;
       if (stopReason == 'max_tokens') {
-        out = '$text\n\n[Yanıt uzunluk sınırına takıldı ve kesildi. '
-            'Daha kısa bir soru sorarsan tam cevap alırsın.]';
+        out = tf(
+                '{0}\n\n[Yanıt uzunluk sınırına takıldı ve kesildi. '
+                'Daha kısa bir soru sorarsan tam cevap alırsın.]',
+                [text],
+              );
       }
 
       return AiReply(
@@ -466,7 +497,7 @@ class AiService {
         'gerektirir; uygulamanın geri kalanı çevrimdışı çalışır.',
       );
     } on http.ClientException catch (e) {
-      throw AiFailure('Bağlantı kesildi: ${e.message}');
+      throw AiFailure(tf('Bağlantı kesildi: {0}', [e.message]));
     } on FormatException {
       throw const AiFailure(
         'Sunucudan okunamayan bir yanıt geldi. Tekrar dene.',
@@ -501,41 +532,69 @@ class AiService {
         lower.contains('billing') ||
         lower.contains('insufficient') ||
         lower.contains('purchase credits')) {
-      return 'Anthropic hesabında KULLANILABİLİR KREDİ YOK. Anahtarın '
-          'geçerli (bu yüzden bağlantı testi başarılı oluyor) ama mesaj '
-          'göndermek ücretli: platform.claude.com adresinde '
-          '"Plans & Billing" bölümünden kredi yüklemen gerekiyor. '
-          'Kredi yükleyene kadar uygulamanın yapay zeka dışındaki tüm '
-          'bölümleri normal çalışır.$detail';
+      return tf(
+               'Anthropic hesabında KULLANILABİLİR KREDİ YOK. '
+               'Anahtarın geçerli (bu yüzden bağlantı testi başarılı '
+               'oluyor) ama mesaj göndermek ücretli: '
+               'platform.claude.com adresinde "Plans & Billing" '
+               'bölümünden kredi yüklemen gerekiyor. Kredi yükleyene '
+               'kadar uygulamanın yapay zeka dışındaki tüm bölümleri '
+               'normal çalışır.{0}',
+               [detail],
+             );
     }
 
     return switch (res.statusCode) {
-      400 => 'İstek geçersiz (400). Seçili model adı yanlış olabilir — '
-          'Ayarlar\'dan başka bir model dene.$detail',
-      401 => 'Anahtar geçersiz (401). Anahtarı yanlış kopyalamış '
-          'olabilirsin ya da anahtar silinmiş/iptal edilmiş olabilir. '
-          'platform.claude.com adresinden yeni bir anahtar oluşturup '
-          'tekrar yapıştır.$detail',
-      403 => 'Bu anahtarın yetkisi yok (403). Anahtarın bağlı olduğu '
-          'çalışma alanının izinlerini kontrol et.$detail',
-      404 => 'İstenen model bulunamadı (404). Ayarlar\'dan geçerli bir '
-          'model seç.$detail',
+      400 => tf(
+               'İstek geçersiz (400). Seçili model adı yanlış '
+               'olabilir — Ayarlar\'dan başka bir model dene.{0}',
+               [detail],
+             ),
+      401 => tf(
+               'Anahtar geçersiz (401). Anahtarı yanlış kopyalamış '
+               'olabilirsin ya da anahtar silinmiş/iptal edilmiş '
+               'olabilir. platform.claude.com adresinden yeni bir '
+               'anahtar oluşturup tekrar yapıştır.{0}',
+               [detail],
+             ),
+      403 => tf(
+               'Bu anahtarın yetkisi yok (403). Anahtarın bağlı '
+               'olduğu çalışma alanının izinlerini kontrol et.{0}',
+               [detail],
+             ),
+      404 => tf(
+               'İstenen model bulunamadı (404). Ayarlar\'dan geçerli '
+               'bir model seç.{0}',
+               [detail],
+             ),
       413 => 'Gönderilen içerik çok büyük (413). Daha küçük bir '
           'fotoğraf veya daha kısa bir metin dene.',
-      429 => 'İstek sınırına takıldın (429). Anthropic hesabında '
-          'dakikalık/aylık sınır dolmuş olabilir. Birkaç dakika bekle '
-          've tekrar dene.$detail',
-      402 => 'İstek işlenemedi (402). Hesabında kredi kalmamış '
-          'olabilir; platform.claude.com > Billing bölümünü kontrol '
-          'et.$detail',
+      429 => tf(
+               'İstek sınırına takıldın (429). Anthropic hesabında '
+               'dakikalık/aylık sınır dolmuş olabilir. Birkaç dakika '
+               'bekle ve tekrar dene.{0}',
+               [detail],
+             ),
+      402 => tf(
+               'İstek işlenemedi (402). Hesabında kredi kalmamış '
+               'olabilir; platform.claude.com > Billing bölümünü '
+               'kontrol et.{0}',
+               [detail],
+             ),
       500 => 'Anthropic sunucusunda hata (500). Senin tarafında bir '
           'sorun yok; biraz sonra tekrar dene.',
       529 => 'Sunucu aşırı yoğun (529). Birkaç dakika sonra tekrar '
           'dene.',
       _ when res.statusCode >= 500 =>
-        'Sunucu şu an hizmet veremiyor (${res.statusCode}). '
-            'Biraz sonra tekrar dene.',
-      _ => 'Beklenmedik bir yanıt geldi (${res.statusCode}).$detail',
+        tf(
+          'Sunucu şu an hizmet veremiyor ({0}). Biraz sonra '
+          'tekrar dene.',
+          [res.statusCode],
+        ),
+      _ => tf(
+             'Beklenmedik bir yanıt geldi ({0}).{1}',
+             [res.statusCode, detail],
+           ),
     };
   }
 

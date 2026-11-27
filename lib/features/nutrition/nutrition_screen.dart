@@ -16,6 +16,7 @@ import '../../core/widgets/nutrient_meter.dart';
 import '../../core/widgets/responsive.dart';
 import 'add_food_sheet.dart';
 import '../../core/i18n/text.dart';
+import '../../core/i18n/i18n.dart';
 
 class NutritionScreen extends ConsumerWidget {
   const NutritionScreen({super.key});
@@ -44,7 +45,7 @@ class NutritionScreen extends ConsumerWidget {
           error: (e, _) => Center(
             child: Padding(
               padding: EdgeInsets.all(r.gapLg),
-              child: Text('Kayıtlar okunamadı: $e'),
+              child: Text(tf('Kayıtlar okunamadı: {0}', [e])),
             ),
           ),
           data: (logs) {
@@ -142,7 +143,10 @@ class NutritionScreen extends ConsumerWidget {
                                   ),
                                 if (n.isPartial)
                                   Text(
-                                    '${n.unknownItemCount} öğe bilinmiyor',
+                                    tf(
+                                      '{0} öğe bilinmiyor',
+                                      [n.unknownItemCount],
+                                    ),
                                     style: Theme.of(context)
                                         .textTheme
                                         .labelSmall
@@ -206,7 +210,7 @@ class NutritionScreen extends ConsumerWidget {
 
                 // --- kayıt listesi ---
                 SectionHeader(
-                  title: 'Kayıtlar (${logs.length})',
+                  title: tf('Kayıtlar ({0})', [logs.length]),
                   icon: Icons.list_alt_rounded,
                 ),
                 if (logs.isEmpty)
@@ -343,8 +347,10 @@ class _FoodLogTile extends ConsumerWidget {
                 Padding(
                   padding: EdgeInsets.only(right: r.gapXs),
                   child: Tooltip(
-                    message: 'Yapay zeka tahmini'
-                        '${log.confidence == null ? "" : " (${log.confidence})"}',
+                    message: tf(
+                               'Yapay zeka tahmini{0}',
+                               [log.confidence == null ? '' : ' (${log.confidence})'],
+                             ),
                     triggerMode: TooltipTriggerMode.tap,
                     child: Icon(
                       Icons.auto_awesome_rounded,
@@ -355,7 +361,7 @@ class _FoodLogTile extends ConsumerWidget {
                 ),
               TapIcon(
                 icon: Icons.delete_outline_rounded,
-                semanticLabel: '${log.label} kaydını sil',
+                semanticLabel: tf('{0} kaydını sil', [log.label]),
                 onPressed: () async {
                   final db = ref.read(databaseProvider);
                   await (db.delete(db.foodLogRows)

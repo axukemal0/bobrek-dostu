@@ -19,6 +19,7 @@ import '../../core/widgets/responsive.dart';
 import '../../core/widgets/trend_chart.dart';
 import '../home/home_screen.dart' show showPermissionDialog;
 import '../../core/i18n/text.dart';
+import '../../core/i18n/i18n.dart';
 
 class HealthScreen extends ConsumerStatefulWidget {
   const HealthScreen({super.key});
@@ -94,9 +95,11 @@ class _HealthScreenState extends ConsumerState<HealthScreen> {
     } else {
       setState(
         () => _errorTr = [
-          '${HealthService.providerNameTr} izinleri verilmedi. '
-              '${HealthService.providerNameTr} uygulamasından da izin '
-              'verebilirsin.',
+          tf(
+            '{0} izinleri verilmedi. {1} uygulamasından da izin '
+            'verebilirsin.',
+            [HealthService.providerNameTr, HealthService.providerNameTr],
+          ),
           ?HealthService.entitlementNoteTr,
         ].join('\n\n'),
       );
@@ -119,7 +122,7 @@ class _HealthScreenState extends ConsumerState<HealthScreen> {
       if (mounted) {
         setState(() {
           _loading = false;
-          _errorTr = 'Veri okunamadı: $e';
+          _errorTr = tf('Veri okunamadı: {0}', [e]);
         });
       }
     }
@@ -173,20 +176,26 @@ class _HealthScreenState extends ConsumerState<HealthScreen> {
 
       final data = StringBuffer()
         ..writeln('Son 7 günün verileri:')
-        ..writeln('Adım (bugün): ${snap.steps ?? "yok"}');
+        ..writeln(tf('Adım (bugün): {0}', [snap.steps ?? 'yok']));
       if (snap.restingHeartRate != null) {
         snap.restingHeartRate;
         data.writeln(
-          'İstirahat nabzı: ${snap.restingHeartRate!.round()} /dk',
+          tf('İstirahat nabzı: {0} /dk', [snap.restingHeartRate!.round()]),
         );
       }
       if (snap.heartRates.isNotEmpty) {
         final values = snap.heartRates.map((s) => s.value).toList();
         data.writeln(
-          'Nabız: ${values.length} ölçüm, '
-          'ortalama ${(values.reduce((a, b) => a + b) / values.length).round()}, '
-          'en düşük ${values.reduce((a, b) => a < b ? a : b).round()}, '
-          'en yüksek ${values.reduce((a, b) => a > b ? a : b).round()} /dk',
+          tf(
+            'Nabız: {0} ölçüm, ortalama {1}, en düşük {2}, en '
+            'yüksek {3} /dk',
+            [
+              values.length,
+              (values.reduce((a, b) => a + b) / values.length).round(),
+              values.reduce((a, b) => a < b ? a : b).round(),
+              values.reduce((a, b) => a > b ? a : b).round(),
+            ],
+          ),
         );
       }
       if (snap.bloodPressure.isNotEmpty) {
@@ -201,8 +210,13 @@ class _HealthScreenState extends ConsumerState<HealthScreen> {
       if (snap.spo2.isNotEmpty) {
         final values = snap.spo2.map((s) => s.value).toList();
         data.writeln(
-          'SpO2: ortalama %${(values.reduce((a, b) => a + b) / values.length).round()}, '
-          'en düşük %${values.reduce((a, b) => a < b ? a : b).round()}',
+          tf(
+            'SpO2: ortalama %{0}, en düşük %{1}',
+            [
+              (values.reduce((a, b) => a + b) / values.length).round(),
+              values.reduce((a, b) => a < b ? a : b).round(),
+            ],
+          ),
         );
       }
       if (snap.sleepSessions.isNotEmpty) {
@@ -269,8 +283,10 @@ class _HealthScreenState extends ConsumerState<HealthScreen> {
                     const SizedBox(width: 14),
                     Expanded(
                       child: Text(
-                        '${HealthService.providerNameTr} kontrol '
-                        'ediliyor…',
+                        tf(
+                          '{0} kontrol ediliyor…',
+                          [HealthService.providerNameTr],
+                        ),
                       ),
                     ),
                   ],
@@ -637,7 +653,7 @@ class _HealthScreenState extends ConsumerState<HealthScreen> {
                   if (snap != null && snap.ecgRecords.isNotEmpty) ...[
                     SizedBox(height: r.gapMd),
                     Text(
-                      'Son kayıtlar (${snap.ecgRecords.length})',
+                      tf('Son kayıtlar ({0})', [snap.ecgRecords.length]),
                       style: Theme.of(context).textTheme.titleSmall,
                     ),
                     SizedBox(height: r.gapXs),
@@ -687,12 +703,13 @@ class _HealthScreenState extends ConsumerState<HealthScreen> {
                   ),
                   SizedBox(height: r.gapXs),
                   Text(
-                    'Akıllı saat ölçümleri TIBBİ CİHAZ DOĞRULUĞUNDA '
-                    'DEĞİLDİR. Özellikle saatten alınan tansiyon ve '
-                    'SpO₂ değerleri tek başına klinik karara temel '
-                    'olmaz. Uygulama '
-                    '${HealthService.providerNameTr}\'na hiçbir şey '
-                    'YAZMAZ, yalnızca okur.',
+                    tf(
+                      'Akıllı saat ölçümleri TIBBİ CİHAZ DOĞRULUĞUNDA '
+                      'DEĞİLDİR. Özellikle saatten alınan tansiyon ve SpO₂ '
+                      'değerleri tek başına klinik karara temel olmaz. '
+                      'Uygulama {0}\'na hiçbir şey YAZMAZ, yalnızca okur.',
+                      [HealthService.providerNameTr],
+                    ),
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],

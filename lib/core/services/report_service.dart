@@ -11,6 +11,7 @@ import '../../clinical/settings.dart';
 import '../../clinical/sources.dart';
 import '../config/app_config.dart';
 import '../db/database.dart';
+import '../i18n/i18n.dart';
 
 /// Rapordaki diyet uyumu özeti.
 class DietAdherenceSummary {
@@ -227,7 +228,7 @@ class ReportService {
             : pw.Container(
                 margin: const pw.EdgeInsets.only(bottom: 10),
                 child: pw.Text(
-                  '${AppConfig.appName} — Doktor Raporu',
+                  tf('{0} — Doktor Raporu', [AppConfig.appName]),
                   style: pw.TextStyle(fontSize: 8, color: muted),
                 ),
               ),
@@ -265,9 +266,15 @@ class ReportService {
                 ),
                 pw.SizedBox(height: 3),
                 pw.Text(
-                  '${_fmtDate(from)} – ${_fmtDate(now)} '
-                  '(${window.inDays} gün) · '
-                  'Oluşturma: ${_fmtDateTime(now)}',
+                  tf(
+                    '{0} – {1} ({2} gün) · Oluşturma: {3}',
+                    [
+                      _fmtDate(from),
+                      _fmtDate(now),
+                      window.inDays,
+                      _fmtDateTime(now),
+                    ],
+                  ),
                   style: pw.TextStyle(fontSize: 9, color: muted),
                 ),
               ],
@@ -360,7 +367,7 @@ class ReportService {
             )
           else
             section(
-              'Laboratuvar (${labs.length} kayıt)',
+              tf('Laboratuvar ({0} kayıt)', [labs.length]),
               pw.TableHelper.fromTextArray(
                 headers: const [
                   'Analit',
@@ -439,8 +446,10 @@ class ReportService {
                                 '(${_pct(bpStats.aboveAlarm, bpStats.count)})',
                           ),
                           _kv(
-                            'Hedefin (<${settings.resolve("bp_systolic_target").value?.round() ?? "—"}) '
-                                'altındaki ölçüm',
+                            tf(
+                              'Hedefin (<{0}) altındaki ölçüm',
+                              [settings.resolve('bp_systolic_target').value?.round() ?? '—'],
+                            ),
                             '${bpStats.belowTarget} '
                                 '(${_pct(bpStats.belowTarget, bpStats.count)})',
                           ),
@@ -525,10 +534,11 @@ class ReportService {
             footnote: settings.dryWeightKg == null
                 ? 'Kuru ağırlık girilmediği için diyaliz arası kilo '
                     'artışı yüzdesi hesaplanamadı.'
-                : 'Diyaliz arası kilo artışı hedefi, hastanın ayarına '
-                    'göre kuru ağırlığın '
-                    '%${(settings.resolve("idwg_percent").value ?? 4).toStringAsFixed(1)}'
-                    '\'inden az.',
+                : tf(
+                    'Diyaliz arası kilo artışı hedefi, hastanın ayarına '
+                    'göre kuru ağırlığın %{0}\'inden az.',
+                    [(settings.resolve('idwg_percent').value ?? 4).toStringAsFixed(1)],
+                  ),
           ),
 
           // ---------------- İlaç uyumu ----------------
@@ -651,7 +661,7 @@ class ReportService {
                         pw.SizedBox(height: 3),
                         for (final e in diet.slips)
                           pw.Bullet(
-                            text: '${e.key}: ${e.value} gün',
+                            text: tf('{0}: {1} gün', [e.key, e.value]),
                             style: pw.TextStyle(fontSize: 9),
                           ),
                       ],
@@ -776,8 +786,10 @@ class ReportService {
                   ),
               ],
             ),
-            footnote: 'Bağlantılar $kSourcesLastCheckedTr tarihinde '
-                'erişilebilirdi.',
+            footnote: tf(
+                        'Bağlantılar {0} tarihinde erişilebilirdi.',
+                        [kSourcesLastCheckedTr],
+                      ),
           ),
 
           pw.SizedBox(height: 6),
@@ -1091,8 +1103,8 @@ double computeFluidAverage(
 String _overUnder(double actual, double? target) {
   if (target == null || target <= 0) return '';
   final pct = actual / target * 100;
-  if (pct > 110) return 'Hedef üstü (%${pct.round()})';
-  if (pct < 70) return 'Hedef altı (%${pct.round()})';
+  if (pct > 110) return tf('Hedef üstü (%{0})', [pct.round()]);
+  if (pct < 70) return tf('Hedef altı (%{0})', [pct.round()]);
   return 'Hedefte (%${pct.round()})';
 }
 

@@ -21,6 +21,7 @@ import '../../core/widgets/responsive.dart';
 import '../medications/medication_logic.dart';
 import 'day_tip.dart';
 import '../../core/i18n/text.dart';
+import '../../core/i18n/i18n.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -63,7 +64,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     } on Object catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Konum alınamadı: $e')),
+          SnackBar(content: Text(tf('Konum alınamadı: {0}', [e]))),
         );
       }
     } finally {
@@ -257,8 +258,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               if (fluidFromFood > 0) ...[
                                 SizedBox(height: r.gapXs),
                                 Text(
-                                  'Bunun ${fluidFromFood.round()} mL\'si '
-                                  'yemekten (çorba, meyve vb.)',
+                                  tf(
+                                    'Bunun {0} mL\'si yemekten (çorba, meyve vb.)',
+                                    [fluidFromFood.round()],
+                                  ),
                                   style: Theme.of(context)
                                       .textTheme
                                       .labelSmall,
@@ -896,7 +899,7 @@ Future<bool> showPermissionDialog(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Nerede kullanılıyor: ${info.featureTr}',
+              tf('Nerede kullanılıyor: {0}', [info.featureTr]),
               style: Theme.of(context).textTheme.titleSmall,
             ),
             const SizedBox(height: 10),

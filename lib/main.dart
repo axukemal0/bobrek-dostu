@@ -7,6 +7,7 @@ import 'core/db/database.dart';
 import 'core/providers.dart';
 import 'core/services/secure_store.dart';
 import 'core/i18n/text.dart';
+import 'core/i18n/i18n.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -121,7 +122,7 @@ class _StartupErrorAppState extends State<StartupErrorApp> {
         setState(() => _resetting = false);
         if (dialogContext.mounted) {
           ScaffoldMessenger.maybeOf(dialogContext)?.showSnackBar(
-            SnackBar(content: Text('Sıfırlanamadı: $e')),
+            SnackBar(content: Text(tf('Sıfırlanamadı: {0}', [e]))),
           );
         }
       }
@@ -228,7 +229,10 @@ class _StartupErrorAppState extends State<StartupErrorApp> {
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
-                        'Teknik ayrıntı:\n$error',
+                        tf(
+                          'Teknik ayrıntı:\n{0}',
+                          [error],
+                        ),
                         style: const TextStyle(
                           fontSize: 12,
                           fontFamily: 'monospace',

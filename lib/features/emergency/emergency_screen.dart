@@ -16,6 +16,7 @@ import '../../core/widgets/responsive.dart';
 import '../home/home_screen.dart' show showPermissionDialog;
 import 'emergency_actions.dart';
 import '../../core/i18n/text.dart';
+import '../../core/i18n/i18n.dart';
 
 class EmergencyScreen extends ConsumerStatefulWidget {
   const EmergencyScreen({super.key});
@@ -125,7 +126,7 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen> {
       if (mounted) {
         setState(() {
           _busy = false;
-          _statusTr = '$sent kişiye SMS gönderildi.';
+          _statusTr = tf('{0} kişiye SMS gönderildi.', [sent]);
         });
       }
     } on SmsFailure catch (e) {
@@ -336,8 +337,13 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen> {
                     ),
                     SizedBox(height: r.gapXs),
                     Text(
-                      '${_preview!.length} karakter · '
-                      '${(_preview!.length / 160).ceil()} SMS',
+                      tf(
+                        '{0} karakter · {1} SMS',
+                        [
+                          _preview!.length,
+                          (_preview!.length / 160).ceil(),
+                        ],
+                      ),
                       style: Theme.of(context).textTheme.labelSmall,
                     ),
                   ],
@@ -379,7 +385,7 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen> {
 
             // --- kişiler ---
             SectionHeader(
-              title: 'Acil durum kişileri (${contacts.length})',
+              title: tf('Acil durum kişileri ({0})', [contacts.length]),
               icon: Icons.contact_emergency_outlined,
               trailing: TapIcon(
                 icon: Icons.person_add_alt_rounded,

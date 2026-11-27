@@ -16,6 +16,7 @@ import '../../core/widgets/responsive.dart';
 import '../home/home_screen.dart' show showPermissionDialog;
 import 'medication_logic.dart';
 import '../../core/i18n/text.dart';
+import '../../core/i18n/i18n.dart';
 
 class MedicationsScreen extends ConsumerStatefulWidget {
   const MedicationsScreen({super.key});
@@ -88,10 +89,10 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
               d * 10 + i,
             ),
             category: NotifCategory.medication,
-            title: 'İlaç saati: ${med.name}',
+            title: tf('İlaç saati: {0}', [med.name]),
             body: med.dose == null
                 ? 'Alma zamanı geldi.'
-                : '${med.dose} — alma zamanı geldi.',
+                : tf('{0} — alma zamanı geldi.', [med.dose]),
             when: at,
           );
         }
@@ -178,10 +179,15 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
                     SizedBox(width: r.gapSm),
                     Expanded(
                       child: Text(
-                        '${m.name} stoku azalıyor: ${m.stockCount} adet '
-                        'kaldı (yaklaşık '
-                        '${daysOfStockRemaining(m)?.toStringAsFixed(0) ?? "?"} '
-                        'gün). Reçete yenilemeyi düşün.',
+                        tf(
+                          '{0} stoku azalıyor: {1} adet kaldı (yaklaşık {2} '
+                          'gün). Reçete yenilemeyi düşün.',
+                          [
+                            m.name,
+                            m.stockCount,
+                            daysOfStockRemaining(m)?.toStringAsFixed(0) ?? '?',
+                          ],
+                        ),
                         style: Theme.of(context).textTheme.bodyMedium,
                       ),
                     ),
@@ -191,7 +197,7 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
 
             // --- bugünün dozları ---
             SectionHeader(
-              title: 'Bugün alınacak (${pending.length})',
+              title: tf('Bugün alınacak ({0})', [pending.length]),
               icon: Icons.schedule_rounded,
             ),
             if (pending.isEmpty && meds.isEmpty)
@@ -232,7 +238,7 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
             // --- işaretlenmişler ---
             if (done.isNotEmpty) ...[
               SectionHeader(
-                title: 'İşaretlenenler (${done.length})',
+                title: tf('İşaretlenenler ({0})', [done.length]),
                 icon: Icons.done_all_rounded,
               ),
               for (final dose in done.take(10))
@@ -279,7 +285,7 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
 
             // --- ilaç listesi ---
             SectionHeader(
-              title: 'Tanımlı ilaçlar (${meds.length})',
+              title: tf('Tanımlı ilaçlar ({0})', [meds.length]),
               icon: Icons.inventory_2_outlined,
             ),
             for (final med in meds)
@@ -526,7 +532,7 @@ class _DoseCard extends ConsumerWidget {
               90 + choice,
             ),
             category: NotifCategory.medication,
-            title: 'İlaç hatırlatması: ${med.name}',
+            title: tf('İlaç hatırlatması: {0}', [med.name]),
             body: 'Ertelenen doz zamanı geldi.',
             when: until,
           );
@@ -586,7 +592,7 @@ class _DoseCard extends ConsumerWidget {
                     if (dose.status == 'snoozed' &&
                         dose.snoozedUntil != null)
                       Text(
-                        '${_hm(dose.snoozedUntil!)} için ertelendi',
+                        tf('{0} için ertelendi', [_hm(dose.snoozedUntil!)]),
                         style: Theme.of(context).textTheme.labelSmall,
                       ),
                   ],
@@ -684,7 +690,7 @@ class _MedCard extends ConsumerWidget {
               ),
               TapIcon(
                 icon: Icons.edit_outlined,
-                semanticLabel: '${med.name} düzenle',
+                semanticLabel: tf('{0} düzenle', [med.name]),
                 onPressed: onEdit,
               ),
               TapIcon(
@@ -752,8 +758,11 @@ class _MedCard extends ConsumerWidget {
                         ),
                         if (!m.isExact)
                           Tooltip(
-                            message: '"${m.matchedName}" adıyla kısmi '
-                                'eşleşme — yanlış eşleşme olabilir.',
+                            message: tf(
+                                       '"{0}" adıyla kısmi eşleşme — yanlış eşleşme '
+                                       'olabilir.',
+                                       [m.matchedName],
+                                     ),
                             triggerMode: TooltipTriggerMode.tap,
                             child: Icon(
                               Icons.help_outline_rounded,

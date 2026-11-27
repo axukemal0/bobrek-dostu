@@ -3,6 +3,7 @@
 library;
 
 import 'definitions.dart';
+import '../core/i18n/i18n.dart';
 
 /// Tek bir değer için kullanıcı ayarı.
 ///
@@ -136,7 +137,7 @@ class ClinicalSettings {
   ResolvedValue resolve(String key) {
     final def = definitionByKey(key);
     if (def == null) {
-      throw ArgumentError('Bilinmeyen klinik anahtar: $key');
+      throw ArgumentError(tf('Bilinmeyen klinik anahtar: {0}', [key]));
     }
     return resolveDefinition(def);
   }

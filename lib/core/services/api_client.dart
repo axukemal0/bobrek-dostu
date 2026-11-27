@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 
 import '../config/app_config.dart';
 import '../db/database.dart';
+import '../i18n/i18n.dart';
 
 /// Dış servis hatalarının sade Türkçe karşılığı.
 class ServiceFailure implements Exception {
@@ -105,7 +106,7 @@ class ApiClient {
         );
       } on http.ClientException catch (e) {
         lastError = ServiceFailure(
-          'İnternete ulaşılamadı (${e.message}).',
+          tf('İnternete ulaşılamadı ({0}).', [e.message]),
           isOffline: true,
         );
       }
@@ -120,9 +121,12 @@ class ApiClient {
         404 => 'Aradığın kayıt bulunamadı (404).',
         429 => 'Sunucu çok yoğun, istek sınırına takıldık (429). '
             'Biraz sonra tekrar dene.',
-        >= 500 => 'Sunucu şu an hizmet veremiyor ($code). '
-            'Bu ücretsiz bir açık servis; biraz sonra tekrar dene.',
-        _ => 'Sunucu beklenmedik bir yanıt verdi ($code).',
+        >= 500 => tf(
+                    'Sunucu şu an hizmet veremiyor ({0}). Bu ücretsiz bir '
+                    'açık servis; biraz sonra tekrar dene.',
+                    [code],
+                  ),
+        _ => tf('Sunucu beklenmedik bir yanıt verdi ({0}).', [code]),
       };
 
   Future<void> _throttleNominatim() async {
@@ -183,12 +187,12 @@ class ApiClient {
             await db.cachePut(key, body);
             return body;
           }
-          errors.add('$mirror: beklenmeyen yanıt biçimi');
+          errors.add(tf('{0}: beklenmeyen yanıt biçimi', [mirror]));
           continue;
         }
         errors.add('$mirror: HTTP ${res.statusCode}');
       } on TimeoutException {
-        errors.add('$mirror: zaman aşımı');
+        errors.add(tf('{0}: zaman aşımı', [mirror]));
       } on http.ClientException catch (e) {
         errors.add('$mirror: ${e.message}');
       }

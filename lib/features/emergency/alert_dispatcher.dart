@@ -9,6 +9,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/neumorphic.dart';
 import '../../core/widgets/common.dart';
 import '../../core/i18n/text.dart';
+import '../../core/i18n/i18n.dart';
 
 /// Yeni bir ölçüm kaydedildiğinde eşikleri değerlendirir.
 ///
@@ -88,9 +89,14 @@ Future<void> evaluateAndDispatchAlerts({
         Alert(
           level: idwg.level,
           titleTr: 'Diyaliz arası kilo artışı eşiğin üstünde',
-          messageTr: '${idwg.gainKg.toStringAsFixed(1)} kg '
-              '(%${idwg.percent.toStringAsFixed(1)}) — eşik '
-              '%${idwg.thresholdPercent.toStringAsFixed(1)}.',
+          messageTr: tf(
+                       '{0} kg (%{1}) — eşik %{2}.',
+                       [
+                         idwg.gainKg.toStringAsFixed(1),
+                         idwg.percent.toStringAsFixed(1),
+                         idwg.thresholdPercent.toStringAsFixed(1),
+                       ],
+                     ),
           definitionKey: 'idwg_percent',
           sourceIds: const ['idwg_review_2025'],
         ),
@@ -154,7 +160,7 @@ Future<void> evaluateAndDispatchAlerts({
         SnackBar(
           content: Text(
             sent > 0
-                ? '$sent acil kişiye otomatik SMS gönderildi.'
+                ? tf('{0} acil kişiye otomatik SMS gönderildi.', [sent])
                 : 'Otomatik SMS gönderilemedi.',
           ),
         ),
@@ -168,8 +174,11 @@ Future<void> evaluateAndDispatchAlerts({
       builder: (context) => AlertDialog(
         title: const Text('Otomatik SMS gönderilemedi'),
         content: Text(
-          '${e.messageTr}\n\nMesajı hazırlayıp SMS uygulamasını '
-          'açabilirim; gönder tuşuna sen basarsın.',
+          tf(
+            '{0}\n\nMesajı hazırlayıp SMS uygulamasını açabilirim; '
+            'gönder tuşuna sen basarsın.',
+            [e.messageTr],
+          ),
         ),
         actions: [
           TextButton(

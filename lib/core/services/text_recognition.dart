@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/services.dart';
+import '../i18n/i18n.dart';
 
 /// Cihaz üstü metin okuma (OCR).
 ///
@@ -45,7 +46,7 @@ class TextRecognitionService {
             'Metin okuma bu cihazda kullanılamıyor. Google Play '
                 'hizmetleri güncel değilse güncellemeyi dene; değerleri '
                 'elle de girebilirsin.',
-          _ => 'Metin okunamadı: ${e.message ?? e.code}',
+          _ => tf('Metin okunamadı: {0}', [e.message ?? e.code]),
         },
       );
     } on MissingPluginException {

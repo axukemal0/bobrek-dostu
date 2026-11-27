@@ -22,6 +22,8 @@
 library;
 
 /// Değerin hangi sütundan okunduğu.
+import '../../core/i18n/i18n.dart';
+
 enum NutrientBasis {
   /// "100 g'da" / "100 ml'de" sütunu.
   per100,
@@ -445,7 +447,10 @@ ParsedNutritionLabel parseNutritionLabel(String rawText) {
           : salt.confidence,
       sourceLine: salt.sourceLine,
       derivationTr:
-          'Tuz ${_fmt(salt.value)} g ÷ 2,5 → sodyum (${_fmt(salt.value * 400)} mg)',
+          tf(
+            'Tuz {0} g ÷ 2,5 → sodyum ({1} mg)',
+            [_fmt(salt.value), _fmt(salt.value * 400)],
+          ),
     );
   }
 

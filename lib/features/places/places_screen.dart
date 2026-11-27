@@ -23,6 +23,7 @@ import '../../core/widgets/common.dart';
 import '../../core/widgets/responsive.dart';
 import '../home/home_screen.dart' show showPermissionDialog;
 import '../../core/i18n/text.dart';
+import '../../core/i18n/i18n.dart';
 
 class PlacesScreen extends ConsumerStatefulWidget {
   const PlacesScreen({super.key});
@@ -321,7 +322,10 @@ class _PlacesScreenState extends ConsumerState<PlacesScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Arama yarıçapı: ${(_radius / 1000).toStringAsFixed(1)} km',
+                          tf(
+                            'Arama yarıçapı: {0} km',
+                            [(_radius / 1000).toStringAsFixed(1)],
+                          ),
                           style: Theme.of(context).textTheme.titleSmall,
                         ),
                         Slider(
@@ -375,12 +379,14 @@ class _PlacesScreenState extends ConsumerState<PlacesScreen> {
                           ),
                           SizedBox(height: r.gapSm),
                           Text(
-                            'Mekan listesi OpenStreetMap (Overpass API), '
-                            'süre/mesafe OSRM, yer adı Nominatim '
-                            'verisinden gelir. Hepsi ücretsiz, '
-                            'topluluk servisleridir: eksik veya eski '
-                            'olabilir, yoğun saatlerde yanıt vermeyebilir.'
-                            '\n\n$kMenuNotVerifiedTr',
+                            tf(
+                              'Mekan listesi OpenStreetMap (Overpass API), '
+                              'süre/mesafe OSRM, yer adı Nominatim verisinden '
+                              'gelir. Hepsi ücretsiz, topluluk servisleridir: eksik '
+                              'veya eski olabilir, yoğun saatlerde yanıt '
+                              'vermeyebilir.\n\n{0}',
+                              [kMenuNotVerifiedTr],
+                            ),
                             style:
                                 Theme.of(context).textTheme.bodySmall,
                           ),
@@ -709,7 +715,7 @@ class _PlaceCardState extends ConsumerState<_PlaceCard> {
                 if (place.openingHours != null) ...[
                   SizedBox(height: r.gapSm),
                   Text(
-                    'Açılış (OSM verisi): ${place.openingHours}',
+                    tf('Açılış (OSM verisi): {0}', [place.openingHours]),
                     style: Theme.of(context).textTheme.labelSmall,
                   ),
                 ],

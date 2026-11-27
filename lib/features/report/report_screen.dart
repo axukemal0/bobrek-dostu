@@ -8,6 +8,7 @@ import '../../core/theme/neumorphic.dart';
 import '../../core/widgets/common.dart';
 import '../../core/widgets/responsive.dart';
 import '../../core/i18n/text.dart';
+import '../../core/i18n/i18n.dart';
 
 class ReportScreen extends ConsumerStatefulWidget {
   const ReportScreen({super.key});
@@ -44,7 +45,7 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
       if (mounted) {
         setState(() {
           _busy = false;
-          _statusTr = 'Rapor oluşturulamadı: $e';
+          _statusTr = tf('Rapor oluşturulamadı: {0}', [e]);
         });
       }
     }
@@ -153,7 +154,7 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                           '"hekim ayarı" veya doğrulama durumu',
                     ),
                     (
-                      label: 'Laboratuvar (${labs.length} kayıt)',
+                      label: tf('Laboratuvar ({0} kayıt)', [labs.length]),
                       detail: 'Analit bazında ilk/son değer, değişim, '
                           'laboratuvar aralığı',
                     ),
@@ -163,11 +164,14 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                           'ölçüm sayısı ve sistolik grafiği',
                     ),
                     (
-                      label: 'Kilo ve sıvı yükü (${vitals.length} ölçüm)',
+                      label: tf(
+                               'Kilo ve sıvı yükü ({0} ölçüm)',
+                               [vitals.length],
+                             ),
                       detail: 'Kilo grafiği ve diyaliz arası kilo artışı',
                     ),
                     (
-                      label: 'İlaç uyumu (${meds.length} ilaç)',
+                      label: tf('İlaç uyumu ({0} ilaç)', [meds.length]),
                       detail: 'Alınan/atlanan doz oranı ve ilaç listesi',
                     ),
                     (
@@ -229,13 +233,15 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
                   ),
                   SizedBox(height: r.gapSm),
                   Text(
-                    'Rapor yalnızca GİRDİĞİN verilere dayanır: '
-                    'kaydetmediğin öğünler besin ortalamasını düşürür, '
-                    'işaretlemediğin ilaç dozları "işaretlenmedi" '
-                    'olarak görünür (alınmamış sayılmaz). '
-                    'Besin değerleri yaklaşıktır. '
-                    'Her sayfanın altında şu uyarı yer alır: '
-                    '"$kMedicalDisclaimerTr"',
+                    tf(
+                      'Rapor yalnızca GİRDİĞİN verilere dayanır: '
+                      'kaydetmediğin öğünler besin ortalamasını düşürür, '
+                      'işaretlemediğin ilaç dozları "işaretlenmedi" olarak '
+                      'görünür (alınmamış sayılmaz). Besin değerleri '
+                      'yaklaşıktır. Her sayfanın altında şu uyarı yer alır: '
+                      '"{0}"',
+                      [kMedicalDisclaimerTr],
+                    ),
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],

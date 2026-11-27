@@ -12,6 +12,8 @@
 /// puan alır. Taze ızgara/fırın ağırlıklı mutfaklar yüksek puan alır.
 library;
 
+import '../core/i18n/i18n.dart';
+
 enum CuisineSuitability { good, moderate, caution, unknown }
 
 extension CuisineSuitabilityTr on CuisineSuitability {
@@ -84,8 +86,11 @@ CuisineAdvice adviseCuisine(String? rawCuisine, {String? amenity}) {
   return worst ??
       CuisineAdvice(
         suitability: CuisineSuitability.unknown,
-        reasonTr: 'Mutfak türü ("$rawCuisine") listemizde yok. '
-            'Genel öneri veremiyoruz.',
+        reasonTr: tf(
+                    'Mutfak türü ("{0}") listemizde yok. Genel öneri '
+                    'veremiyoruz.',
+                    [rawCuisine],
+                  ),
         tipsTr: const [
           'Menüyü fotoğraflayıp yapay zekaya analiz ettirebilirsin.',
         ],

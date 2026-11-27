@@ -22,6 +22,7 @@ import '../../core/widgets/responsive.dart';
 import '../home/home_screen.dart' show showPermissionDialog;
 import 'diet_plan_parser.dart';
 import '../../core/i18n/text.dart';
+import '../../core/i18n/i18n.dart';
 
 // ===========================================================================
 // DİYET PLANI VE UYUM
@@ -469,8 +470,11 @@ class _PlanCardState extends ConsumerState<_PlanCard> {
             percent == null
                 ? 'Her öğünü işaretledikçe günün yüzdesi kendiliğinden '
                     'hesaplanır. İşaretlemediğin öğün hesaba katılmaz.'
-                : '${_marks.length}/${_meals.length} öğün işaretlendi. '
-                    'Aynı düğmeye tekrar dokunursan işaret kalkar.',
+                : tf(
+                    '{0}/{1} öğün işaretlendi. Aynı düğmeye tekrar '
+                    'dokunursan işaret kalkar.',
+                    [_marks.length, _meals.length],
+                  ),
             style: Theme.of(context).textTheme.bodySmall,
           ),
           SizedBox(height: r.gapSm),
@@ -556,7 +560,7 @@ class _PlanCardState extends ConsumerState<_PlanCard> {
                 : _slips.isEmpty
                     ? 'Bugün hiçbirine dokunmadın — temiz gün. '
                         'Yediysen üstüne dokun.'
-                    : 'Bugün ${_slips.length} madde işaretledin.',
+                    : tf('Bugün {0} madde işaretledin.', [_slips.length]),
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: _avoid.isEmpty
                       ? null
@@ -599,7 +603,7 @@ class _PlanCardState extends ConsumerState<_PlanCard> {
               children: [
                 Expanded(
                   child: Text(
-                    'İşaretlenen ${_history.length} günün ortalaması',
+                    tf('İşaretlenen {0} günün ortalaması', [_history.length]),
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ),
@@ -873,7 +877,7 @@ class _AvoidChip extends StatelessWidget {
       button: true,
       selected: eaten,
       label: eaten
-          ? '${item.label}, bugün yedim olarak işaretli'
+          ? tf('{0}, bugün yedim olarak işaretli', [item.label])
           : '${item.label}, yediysen dokun',
       child: Pressable(
         radius: 12,
@@ -1168,12 +1172,15 @@ class _MealEditorSheetState extends ConsumerState<_MealEditorSheet> {
                         ),
                         TapIcon(
                           icon: Icons.edit_outlined,
-                          semanticLabel: '${meal.name} öğününü düzenle',
+                          semanticLabel: tf(
+                                           '{0} öğününü düzenle',
+                                           [meal.name],
+                                         ),
                           onPressed: () => _rename(meal),
                         ),
                         TapIcon(
                           icon: Icons.delete_outline_rounded,
-                          semanticLabel: '${meal.name} öğününü sil',
+                          semanticLabel: tf('{0} öğününü sil', [meal.name]),
                           onPressed: () => _remove(meal),
                         ),
                       ],
@@ -1556,7 +1563,7 @@ class _AvoidListTile extends StatelessWidget {
           ),
           TapIcon(
             icon: Icons.delete_outline_rounded,
-            semanticLabel: '${item.label} maddesini listeden çıkar',
+            semanticLabel: tf('{0} maddesini listeden çıkar', [item.label]),
             onPressed: onRemove,
           ),
         ],
@@ -1635,7 +1642,7 @@ class _LibraryTile extends StatelessWidget {
           else
             TapIcon(
               icon: Icons.add_circle_outline_rounded,
-              semanticLabel: '${item.label} maddesini listeye ekle',
+              semanticLabel: tf('{0} maddesini listeye ekle', [item.label]),
               color: p.primary,
               onPressed: onAdd,
             ),
@@ -1789,11 +1796,13 @@ class _ScanPickerSheetState extends ConsumerState<_ScanPickerSheet> {
         builder: (context) => AlertDialog(
           title: const Text('Yapay zekaya gönderilecek'),
           content: Text(
-            'Seçtiğin ${doc.isPdf ? "PDF" : "fotoğraf"} Anthropic Claude '
-            'API sunucusuna gönderilip yazısı okunacak. Üzerinde adın '
-            'yazıyorsa görünür olur.\n\n'
-            'Okunan hiçbir şey doğrudan eklenmez; listeden sen '
-            'seçersin.',
+            tf(
+              'Seçtiğin {0} Anthropic Claude API sunucusuna '
+              'gönderilip yazısı okunacak. Üzerinde adın yazıyorsa '
+              'görünür olur.\n\nOkunan hiçbir şey doğrudan eklenmez; '
+              'listeden sen seçersin.',
+              [doc.isPdf ? 'PDF' : 'fotoğraf'],
+            ),
           ),
           actions: [
             TextButton(
@@ -1870,7 +1879,7 @@ class _ScanPickerSheetState extends ConsumerState<_ScanPickerSheet> {
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _statusTr = 'Okunamadı: $e';
+        _statusTr = tf('Okunamadı: {0}', [e]);
       });
     }
   }
@@ -2077,8 +2086,11 @@ class _AdherenceStrip extends StatelessWidget {
                   final percent = byDay[day];
                   return Semantics(
                     label: percent == null
-                        ? '${day.day}.${day.month}: kayıt yok'
-                        : '${day.day}.${day.month}: yüzde $percent',
+                        ? tf('{0}.{1}: kayıt yok', [day.day, day.month])
+                        : tf(
+                            '{0}.{1}: yüzde {2}',
+                            [day.day, day.month, percent],
+                          ),
                     child: Padding(
                       padding: EdgeInsets.symmetric(horizontal: r.s(2)),
                       child: Column(
@@ -2500,9 +2512,14 @@ class _PlanSheetState extends ConsumerState<_PlanSheet> {
         _statusTr = null;
         if (_title.text.trim().isEmpty) {
           final now = DateTime.now();
-          _title.text = 'Diyetisyen planı — '
-              '${now.day.toString().padLeft(2, '0')}.'
-              '${now.month.toString().padLeft(2, '0')}.${now.year}';
+          _title.text = tf(
+                          'Diyetisyen planı — {0}.{1}.{2}',
+                          [
+                            now.day.toString().padLeft(2, '0'),
+                            now.month.toString().padLeft(2, '0'),
+                            now.year,
+                          ],
+                        );
         }
       });
     } on IntakeFailure catch (e) {
@@ -2522,12 +2539,15 @@ class _PlanSheetState extends ConsumerState<_PlanSheet> {
         builder: (context) => AlertDialog(
           title: const Text('Kağıt yapay zekaya gönderilecek'),
           content: Text(
-            'Eklediğin ${doc.isPdf ? "PDF" : "fotoğraf"} Anthropic Claude '
-            'API sunucusuna gönderilip metne çevrilecek. Üzerinde adın '
-            'yazıyorsa görünür olacaktır — istersen önce o kısmı '
-            'kapatıp yeniden çekebilirsin.\n\n'
-            'Yapay zeka planı DEĞİŞTİRMEZ, yalnız yazıyı okur. Çıkan '
-            'metni kaydetmeden önce düzeltebilirsin.',
+            tf(
+              'Eklediğin {0} Anthropic Claude API sunucusuna '
+              'gönderilip metne çevrilecek. Üzerinde adın yazıyorsa '
+              'görünür olacaktır — istersen önce o kısmı kapatıp '
+              'yeniden çekebilirsin.\n\nYapay zeka planı DEĞİŞTİRMEZ, '
+              'yalnız yazıyı okur. Çıkan metni kaydetmeden önce '
+              'düzeltebilirsin.',
+              [doc.isPdf ? 'PDF' : 'fotoğraf'],
+            ),
           ),
           actions: [
             TextButton(
@@ -2600,7 +2620,7 @@ class _PlanSheetState extends ConsumerState<_PlanSheet> {
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _statusTr = 'Okunamadı: $e';
+        _statusTr = tf('Okunamadı: {0}', [e]);
       });
     }
   }
@@ -2645,8 +2665,10 @@ class _PlanSheetState extends ConsumerState<_PlanSheet> {
         ..showSnackBar(
           SnackBar(
             content: Text(
-              'Plandan ${seeded.meals} öğün ve ${seeded.avoid} '
-              'kaçınılacak madde çıkarıldı.',
+              tf(
+                'Plandan {0} öğün ve {1} kaçınılacak madde çıkarıldı.',
+                [seeded.meals, seeded.avoid],
+              ),
             ),
           ),
         );

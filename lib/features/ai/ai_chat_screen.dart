@@ -15,6 +15,7 @@ import '../../core/widgets/common.dart';
 import '../../core/widgets/responsive.dart';
 import '../emergency/emergency_actions.dart';
 import '../../core/i18n/text.dart';
+import '../../core/i18n/i18n.dart';
 
 class AiChatScreen extends ConsumerStatefulWidget {
   const AiChatScreen({super.key});
@@ -105,8 +106,11 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
       await db.into(db.chatMessageRows).insert(
             ChatMessageRowsCompanion.insert(
               role: 'system_note',
-              content: 'Beklenmedik bir hata oldu ve soru gönderilemedi.\n\n'
-                  '$e',
+              content: tf(
+                         'Beklenmedik bir hata oldu ve soru '
+                         'gönderilemedi.\n\n{0}',
+                         [e],
+                       ),
             ),
           );
     } finally {

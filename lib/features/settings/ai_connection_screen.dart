@@ -13,6 +13,7 @@ import '../../core/widgets/common.dart';
 import '../../core/widgets/form_fields.dart';
 import '../../core/widgets/responsive.dart';
 import '../../core/i18n/text.dart';
+import '../../core/i18n/i18n.dart';
 
 /// Yapay Zeka Bağlantısı ekranı.
 ///
@@ -365,8 +366,10 @@ class _AiConnectionScreenState extends ConsumerState<AiConnectionScreen> {
                         tilePadding: EdgeInsets.zero,
                         childrenPadding: EdgeInsets.zero,
                         title: Text(
-                          'Erişebildiğin modeller '
-                          '(${_result!.availableModels.length})',
+                          tf(
+                            'Erişebildiğin modeller ({0})',
+                            [_result!.availableModels.length],
+                          ),
                           style: Theme.of(context).textTheme.titleSmall,
                         ),
                         children: [

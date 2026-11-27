@@ -19,6 +19,7 @@ import '../../core/widgets/responsive.dart';
 import '../../core/widgets/trend_chart.dart';
 import '../emergency/alert_dispatcher.dart';
 import '../../core/i18n/text.dart';
+import '../../core/i18n/i18n.dart';
 
 class WeightScreen extends ConsumerWidget {
   const WeightScreen({super.key});
@@ -48,7 +49,7 @@ class WeightScreen extends ConsumerWidget {
       body: SafeArea(
         child: vitalsAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Center(child: Text('Okunamadı: $e')),
+          error: (e, _) => Center(child: Text(tf('Okunamadı: {0}', [e]))),
           data: (vitals) {
             if (vitals.isEmpty) {
               return PageBody(
@@ -143,10 +144,14 @@ class WeightScreen extends ConsumerWidget {
                         ),
                         SizedBox(height: r.gapSm),
                         Text(
-                          '${idwg.gainKg.toStringAsFixed(1)} kg '
-                          '(kuru ağırlığın '
-                          '%${idwg.percent.toStringAsFixed(1)}\'i) · '
-                          'eşik %${idwg.thresholdPercent.toStringAsFixed(1)}',
+                          tf(
+                            '{0} kg (kuru ağırlığın %{1}\'i) · eşik %{2}',
+                            [
+                              idwg.gainKg.toStringAsFixed(1),
+                              idwg.percent.toStringAsFixed(1),
+                              idwg.thresholdPercent.toStringAsFixed(1),
+                            ],
+                          ),
                           style: Theme.of(context).textTheme.bodyLarge,
                         ),
                         SizedBox(height: r.gapXs),
@@ -296,7 +301,7 @@ class WeightScreen extends ConsumerWidget {
 
                 // --- kayıt listesi ---
                 SectionHeader(
-                  title: 'Kayıtlar (${vitals.length})',
+                  title: tf('Kayıtlar ({0})', [vitals.length]),
                   icon: Icons.list_alt_rounded,
                 ),
                 for (final v in vitals)
@@ -360,11 +365,11 @@ class _VitalTile extends ConsumerWidget {
       if (vital.spo2 != null) 'SpO₂ %${vital.spo2}',
       if (vital.urineMl != null) 'idrar ${vital.urineMl} mL',
       if (vital.edemaLevel != null)
-        'şişlik ${edemaLabels[vital.edemaLevel!.clamp(0, 3)]}',
+        tf('şişlik {0}', [edemaLabels[vital.edemaLevel!.clamp(0, 3)]]),
       if (vital.temperatureC != null)
         '${vital.temperatureC!.toStringAsFixed(1)} °C',
       if (vital.glucoseMgDl != null)
-        'şeker ${vital.glucoseMgDl!.round()} mg/dL',
+        tf('şeker {0} mg/dL', [vital.glucoseMgDl!.round()]),
     ];
 
     return NeuCard(

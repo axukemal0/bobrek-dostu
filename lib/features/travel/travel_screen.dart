@@ -18,6 +18,7 @@ import '../../core/widgets/common.dart';
 import '../../core/widgets/form_fields.dart';
 import '../../core/widgets/responsive.dart';
 import '../../core/i18n/text.dart';
+import '../../core/i18n/i18n.dart';
 
 class TravelScreen extends ConsumerStatefulWidget {
   const TravelScreen({super.key});
@@ -57,14 +58,16 @@ class _TravelScreenState extends ConsumerState<TravelScreen> {
       builder: (context) => AlertDialog(
         title: const Text('Plan yapay zeka ile üretilecek'),
         content: Text(
-          'Şunlar Anthropic Claude API sunucusuna gönderilecek: '
-          'gidilecek yer ("$dest"), gün sayısı, hastalık durumun, '
-          'sıvı limitin, sodyum hedefin, alerjilerin ve sevmediğin '
-          'yemekler.\n\n'
-          'Adın, telefon numaran ve acil durum kişilerin '
-          'gönderilmez.\n\n'
-          'Yapay zeka belirli bir restoran veya otel adı uydurmaması '
-          'için özel olarak uyarılır.',
+          tf(
+            'Şunlar Anthropic Claude API sunucusuna gönderilecek: '
+            'gidilecek yer ("{0}"), gün sayısı, hastalık durumun, '
+            'sıvı limitin, sodyum hedefin, alerjilerin ve '
+            'sevmediğin yemekler.\n\nAdın, telefon numaran ve acil '
+            'durum kişilerin gönderilmez.\n\nYapay zeka belirli bir '
+            'restoran veya otel adı uydurmaması için özel olarak '
+            'uyarılır.',
+            [dest],
+          ),
         ),
         actions: [
           TextButton(
@@ -103,9 +106,11 @@ class _TravelScreenState extends ConsumerState<TravelScreen> {
             messages: [
               (
                 role: 'user',
-                text: 'Şu bölümleri istiyorum: '
-                    '${_options.join(", ")}. '
-                    'İstemediğim bölümleri yazma.',
+                text: tf(
+                        'Şu bölümleri istiyorum: {0}. İstemediğim bölümleri '
+                        'yazma.',
+                        [_options.join(', ')],
+                      ),
               ),
             ],
             model: model,
@@ -202,7 +207,7 @@ class _TravelScreenState extends ConsumerState<TravelScreen> {
                               min: 1,
                               max: 21,
                               divisions: 20,
-                              label: '$_days gün',
+                              label: tf('{0} gün', [_days]),
                               onChanged: (v) =>
                                   setState(() => _days = v.round()),
                             ),
@@ -210,7 +215,7 @@ class _TravelScreenState extends ConsumerState<TravelScreen> {
                           SizedBox(
                             width: r.s(56),
                             child: Text(
-                              '$_days gün',
+                              tf('{0} gün', [_days]),
                               textAlign: TextAlign.end,
                               style: Theme.of(context)
                                   .textTheme
@@ -239,11 +244,15 @@ class _TravelScreenState extends ConsumerState<TravelScreen> {
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
-                        'Plan şu bilgilere göre yazılır: '
-                        '${settings.treatmentMode.labelTr}, '
-                        'sıvı ${fluidLimit.isCleared || !fluidLimit.hasValue ? "limiti yok" : "limiti ${fluidLimit.formatted()} mL/gün"}, '
-                        'sodyum hedefi '
-                        '${settings.resolve("sodium_mg").formatted()} mg/gün.',
+                        tf(
+                          'Plan şu bilgilere göre yazılır: {0}, sıvı {1}, '
+                          'sodyum hedefi {2} mg/gün.',
+                          [
+                            settings.treatmentMode.labelTr,
+                            fluidLimit.isCleared || !fluidLimit.hasValue ? 'limiti yok' : 'limiti ${fluidLimit.formatted()} mL/gün',
+                            settings.resolve('sodium_mg').formatted(),
+                          ],
+                        ),
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ),
@@ -279,7 +288,10 @@ class _TravelScreenState extends ConsumerState<TravelScreen> {
                         children: [
                           Expanded(
                             child: Text(
-                              '${_destination.text.trim()} · $_days gün',
+                              tf(
+                                '{0} · {1} gün',
+                                [_destination.text.trim(), _days],
+                              ),
                               style: Theme.of(context)
                                   .textTheme
                                   .titleMedium,
@@ -321,8 +333,13 @@ class _TravelScreenState extends ConsumerState<TravelScreen> {
                               expanded: true,
                               onPressed: () => SharePlus.instance.share(
                                 ShareParams(
-                                  text: 'Seyahat planı — '
-                                      '${_destination.text.trim()}\n\n$_plan',
+                                  text: tf(
+                                          'Seyahat planı — {0}\n\n{1}',
+                                          [
+                                            _destination.text.trim(),
+                                            _plan,
+                                          ],
+                                        ),
                                 ),
                               ),
                             ),
@@ -338,7 +355,7 @@ class _TravelScreenState extends ConsumerState<TravelScreen> {
 
             if (saved.isNotEmpty) ...[
               SectionHeader(
-                title: 'Kayıtlı planlar (${saved.length})',
+                title: tf('Kayıtlı planlar ({0})', [saved.length]),
                 icon: Icons.bookmark_outline_rounded,
               ),
               for (final planRow in saved)
@@ -362,8 +379,13 @@ class _TravelScreenState extends ConsumerState<TravelScreen> {
                                         .titleMedium,
                                   ),
                                   Text(
-                                    '${planRow.days} gün · '
-                                    '${_fmt(planRow.createdAt)}',
+                                    tf(
+                                      '{0} gün · {1}',
+                                      [
+                                        planRow.days,
+                                        _fmt(planRow.createdAt),
+                                      ],
+                                    ),
                                     style: Theme.of(context)
                                         .textTheme
                                         .labelSmall,
@@ -376,9 +398,13 @@ class _TravelScreenState extends ConsumerState<TravelScreen> {
                               semanticLabel: 'Planı paylaş',
                               onPressed: () => SharePlus.instance.share(
                                 ShareParams(
-                                  text: 'Seyahat planı — '
-                                      '${planRow.destination}\n\n'
-                                      '${planRow.planMarkdown}',
+                                  text: tf(
+                                          'Seyahat planı — {0}\n\n{1}',
+                                          [
+                                            planRow.destination,
+                                            planRow.planMarkdown,
+                                          ],
+                                        ),
                                 ),
                               ),
                             ),

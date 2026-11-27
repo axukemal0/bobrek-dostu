@@ -26,6 +26,7 @@ import '../../core/widgets/trend_chart.dart';
 import '../emergency/alert_dispatcher.dart';
 import '../home/home_screen.dart' show showPermissionDialog;
 import '../../core/i18n/text.dart';
+import '../../core/i18n/i18n.dart';
 
 class LabsScreen extends ConsumerWidget {
   const LabsScreen({super.key});
@@ -50,7 +51,7 @@ class LabsScreen extends ConsumerWidget {
       body: SafeArea(
         child: labsAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Center(child: Text('Okunamadı: $e')),
+          error: (e, _) => Center(child: Text(tf('Okunamadı: {0}', [e]))),
           data: (labs) {
             if (labs.isEmpty) {
               return PageBody(
@@ -184,8 +185,10 @@ class _AnalyteCard extends ConsumerWidget {
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                     Text(
-                      '${results.length} kayıt · son '
-                      '${_fmt(latest.takenAt)}',
+                      tf(
+                        '{0} kayıt · son {1}',
+                        [results.length, _fmt(latest.takenAt)],
+                      ),
                       style: Theme.of(context).textTheme.labelSmall,
                     ),
                   ],
@@ -205,9 +208,13 @@ class _AnalyteCard extends ConsumerWidget {
                   ),
                   if (refMin != null || refMax != null)
                     Text(
-                      'aralık '
-                      '${refMin?.toStringAsFixed(1) ?? "—"}'
-                      '-${refMax?.toStringAsFixed(1) ?? "—"}',
+                      tf(
+                        'aralık {0}-{1}',
+                        [
+                          refMin?.toStringAsFixed(1) ?? '—',
+                          refMax?.toStringAsFixed(1) ?? '—',
+                        ],
+                      ),
                       style: Theme.of(context).textTheme.labelSmall,
                     )
                   else
@@ -724,7 +731,7 @@ class _ReaderLabTabState extends ConsumerState<_ReaderLabTab> {
       if (mounted) {
         setState(() {
           _busy = false;
-          _statusTr = 'Okuma başarısız: $e';
+          _statusTr = tf('Okuma başarısız: {0}', [e]);
         });
       }
     }
@@ -743,12 +750,15 @@ class _ReaderLabTabState extends ConsumerState<_ReaderLabTab> {
               : 'Tahlil fotoğrafı yapay zekaya gönderilecek',
         ),
         content: Text(
-          'Bu ${doc.isPdf ? "belge" : "fotoğraf"} Anthropic Claude API '
-          'sunucusuna gönderilecek. Üzerinde adın ve TC kimlik numaran '
-          'yazıyor olabilir — istersen önce o alanları kapatıp yeniden '
-          'çekebilirsin.\n\n'
-          'Yapay zeka yalnızca değerleri OKUR, yorumlamaz. Okunan her '
-          'değeri kaydetmeden önce düzeltip onaylarsın.',
+          tf(
+            'Bu {0} Anthropic Claude API sunucusuna gönderilecek. '
+            'Üzerinde adın ve TC kimlik numaran yazıyor olabilir '
+            '— istersen önce o alanları kapatıp yeniden '
+            'çekebilirsin.\n\nYapay zeka yalnızca değerleri OKUR, '
+            'yorumlamaz. Okunan her değeri kaydetmeden önce '
+            'düzeltip onaylarsın.',
+            [doc.isPdf ? 'belge' : 'fotoğraf'],
+          ),
         ),
         actions: [
           TextButton(
@@ -934,7 +944,7 @@ class _ReaderLabTabState extends ConsumerState<_ReaderLabTab> {
         if (_rows.isNotEmpty) ...[
           SizedBox(height: r.gapLg),
           Text(
-            'Okunan değerler (${_rows.length})',
+            tf('Okunan değerler ({0})', [_rows.length]),
             style: Theme.of(context).textTheme.titleMedium,
           ),
           SizedBox(height: r.gapXs),
@@ -996,7 +1006,7 @@ class _ReaderLabTabState extends ConsumerState<_ReaderLabTab> {
           NeuButton(
             label: keepCount == 0
                 ? 'Kaydedilecek değer yok'
-                : '$keepCount değeri kaydet',
+                : tf('{0} değeri kaydet', [keepCount]),
             icon: Icons.check_rounded,
             expanded: true,
             color: p.accents.lab,

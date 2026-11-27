@@ -16,6 +16,7 @@ import '../../core/widgets/app_shell.dart';
 import '../../core/widgets/responsive.dart';
 import '../home/home_screen.dart' show showPermissionDialog;
 import '../../core/i18n/text.dart';
+import '../../core/i18n/i18n.dart';
 
 const Map<String, ({String labelTr, IconData icon})> kAppointmentKinds = {
   'dialysis': (labelTr: 'Diyaliz seansı', icon: Icons.bloodtype_outlined),
@@ -93,7 +94,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
               ),
 
             SectionHeader(
-              title: 'Yaklaşan (${appointments.length})',
+              title: tf('Yaklaşan ({0})', [appointments.length]),
               icon: Icons.upcoming_outlined,
             ),
             if (appointments.isEmpty)
@@ -156,8 +157,11 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           content: Text(
             added == 0
                 ? 'Eklenecek yeni seans bulunmadı (zaten kayıtlı).'
-                : '$added seans takvime eklendi. Saatlerini '
+                : tf(
+                    '{0} seans takvime eklendi. Saatlerini '
                     'düzenleyebilirsin.',
+                    [added],
+                  ),
           ),
         ),
       );
@@ -267,8 +271,8 @@ class _AppointmentCard extends ConsumerWidget {
                 if (soon)
                   Text(
                     until.inHours < 1
-                        ? '${until.inMinutes} dakika kaldı'
-                        : '${until.inHours} saat kaldı',
+                        ? tf('{0} dakika kaldı', [until.inMinutes])
+                        : tf('{0} saat kaldı', [until.inHours]),
                     style: Theme.of(context)
                         .textTheme
                         .labelSmall
@@ -282,7 +286,7 @@ class _AppointmentCard extends ConsumerWidget {
           ),
           TapIcon(
             icon: Icons.delete_outline_rounded,
-            semanticLabel: '${appointment.title} randevusunu sil',
+            semanticLabel: tf('{0} randevusunu sil', [appointment.title]),
             onPressed: () async {
               final db = ref.read(databaseProvider);
               await ref.read(notificationServiceProvider).cancel(
@@ -469,8 +473,8 @@ class _AppointmentSheetState extends ConsumerState<_AppointmentSheet> {
                 options: const [30, 60, 120, 360, 1440],
                 selected: _reminderMinutes,
                 labelOf: (m) => m < 60
-                    ? '$m dk önce'
-                    : (m < 1440 ? '${m ~/ 60} saat önce' : '1 gün önce'),
+                    ? tf('{0} dk önce', [m])
+                    : (m < 1440 ? tf('{0} saat önce', [m ~/ 60]) : '1 gün önce'),
                 onSelected: (m) => setState(() => _reminderMinutes = m),
               ),
             ),

@@ -9,6 +9,7 @@ import '../../core/theme/neumorphic.dart';
 import '../../core/widgets/common.dart';
 import '../../core/widgets/responsive.dart';
 import '../../core/i18n/text.dart';
+import '../../core/i18n/i18n.dart';
 
 /// Kaynaklar ekranı: uygulamadaki her klinik değerin dayandığı
 /// kaynak adı + yıl + URL.
@@ -66,8 +67,10 @@ class SourcesScreen extends StatelessWidget {
                       SizedBox(width: r.gapXs),
                       Expanded(
                         child: Text(
-                          'Bağlantılar son kez '
-                          '$kSourcesLastCheckedTr tarihinde kontrol edildi.',
+                          tf(
+                            'Bağlantılar son kez {0} tarihinde kontrol edildi.',
+                            [kSourcesLastCheckedTr],
+                          ),
                           style: Theme.of(context).textTheme.labelSmall,
                         ),
                       ),
@@ -164,8 +167,10 @@ class SourcesScreen extends StatelessWidget {
                     if ((usage[s.id] ?? []).isNotEmpty) ...[
                       SizedBox(height: r.gapSm),
                       Text(
-                        'Kullanıldığı değerler: '
-                        '${usage[s.id]!.toSet().join(", ")}',
+                        tf(
+                          'Kullanıldığı değerler: {0}',
+                          [usage[s.id]!.toSet().join(', ')],
+                        ),
                         style: Theme.of(context)
                             .textTheme
                             .labelSmall
@@ -235,9 +240,11 @@ class SourcesScreen extends StatelessWidget {
                   ),
                   SizedBox(height: r.gapSm),
                   Text(
-                    'Veri setinde ${kNsaidRisks.length} NSAİİ etken '
-                    'maddesi ve ${kHerbalRisks.length} bitkisel ürün / '
-                    'riskli madde bulunuyor.',
+                    tf(
+                      'Veri setinde {0} NSAİİ etken maddesi ve {1} bitkisel '
+                      'ürün / riskli madde bulunuyor.',
+                      [kNsaidRisks.length, kHerbalRisks.length],
+                    ),
                     style: Theme.of(context).textTheme.labelSmall,
                   ),
                 ],

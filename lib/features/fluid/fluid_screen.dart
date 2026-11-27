@@ -15,6 +15,7 @@ import '../../core/widgets/form_fields.dart';
 import '../../core/widgets/progress_ring.dart';
 import '../../core/widgets/responsive.dart';
 import '../../core/i18n/text.dart';
+import '../../core/i18n/i18n.dart';
 
 /// Sıvı bütçesi ekranı.
 ///
@@ -80,7 +81,10 @@ class _FluidScreenState extends ConsumerState<FluidScreen> {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(
-                  '${cmd.fluidMl} mL ${cmd.label ?? "sıvı"} eklendi.',
+                  tf(
+                    '{0} mL {1} eklendi.',
+                    [cmd.fluidMl, cmd.label ?? 'sıvı'],
+                  ),
                 ),
               ),
             );
@@ -89,8 +93,11 @@ class _FluidScreenState extends ConsumerState<FluidScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                'Anlayamadım: "$text". '
-                'Örnek: "250 mililitre çay içtim" veya "iki bardak su".',
+                tf(
+                  'Anlayamadım: "{0}". Örnek: "250 mililitre çay içtim" '
+                  'veya "iki bardak su".',
+                  [text],
+                ),
               ),
             ),
           );
@@ -126,7 +133,7 @@ class _FluidScreenState extends ConsumerState<FluidScreen> {
       body: SafeArea(
         child: fluidsAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Center(child: Text('Okunamadı: $e')),
+          error: (e, _) => Center(child: Text(tf('Okunamadı: {0}', [e]))),
           data: (logs) {
             final fromDrinks = logs.fold<int>(0, (a, b) => a + b.ml);
             final fromFood = foods
@@ -161,9 +168,14 @@ class _FluidScreenState extends ConsumerState<FluidScreen> {
                       if (budget.hasLimit)
                         Text(
                           budget.isOverLimit
-                              ? 'Limitini ${budget.overshootMl} mL aştın'
-                              : 'Kalan ${budget.remainingMl} mL '
-                                  '(limit ${budget.limitMl} mL)',
+                              ? tf(
+                                  'Limitini {0} mL aştın',
+                                  [budget.overshootMl],
+                                )
+                              : tf(
+                                  'Kalan {0} mL (limit {1} mL)',
+                                  [budget.remainingMl, budget.limitMl],
+                                ),
                           textAlign: TextAlign.center,
                           style: Theme.of(context)
                               .textTheme
@@ -223,8 +235,10 @@ class _FluidScreenState extends ConsumerState<FluidScreen> {
                       if (fromFood > 0) ...[
                         SizedBox(height: r.gapSm),
                         Text(
-                          'İçecekler: $fromDrinks mL · '
-                          'Yemekten gelen: $fromFood mL',
+                          tf(
+                            'İçecekler: {0} mL · Yemekten gelen: {1} mL',
+                            [fromDrinks, fromFood],
+                          ),
                           style: Theme.of(context).textTheme.labelSmall,
                         ),
                       ],
@@ -270,7 +284,7 @@ class _FluidScreenState extends ConsumerState<FluidScreen> {
                                     ? 'Dinliyorum… Örnek: "250 mililitre '
                                         'çay içtim"'
                                     : _voiceText!)
-                                : 'Son duyduğum: $_voiceText',
+                                : tf('Son duyduğum: {0}', [_voiceText]),
                             style:
                                 Theme.of(context).textTheme.bodyMedium,
                           ),
@@ -334,7 +348,7 @@ class _FluidScreenState extends ConsumerState<FluidScreen> {
 
                 // --- kayıtlar ---
                 SectionHeader(
-                  title: 'Bugünün kayıtları (${logs.length})',
+                  title: tf('Bugünün kayıtları ({0})', [logs.length]),
                   icon: Icons.list_alt_rounded,
                 ),
                 if (logs.isEmpty)
@@ -383,7 +397,10 @@ class _FluidScreenState extends ConsumerState<FluidScreen> {
                             ),
                             TapIcon(
                               icon: Icons.delete_outline_rounded,
-                              semanticLabel: '${log.label} kaydını sil',
+                              semanticLabel: tf(
+                                               '{0} kaydını sil',
+                                               [log.label],
+                                             ),
                               onPressed: () async {
                                 final db = ref.read(databaseProvider);
                                 await (db.delete(db.fluidLogRows)

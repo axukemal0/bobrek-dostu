@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart' hide Text;
 import 'app_colors.dart';
 import 'motion.dart';
 import '../i18n/text.dart';
+import '../i18n/i18n.dart';
 
 /// Yüzey derinliği — tasarım dilinin tek hiyerarşisi.
 ///
@@ -428,7 +429,7 @@ class NeuButton extends StatelessWidget {
     return Semantics(
       button: true,
       enabled: enabled,
-      label: loading ? '$label, yükleniyor' : label,
+      label: loading ? tf('{0}, yükleniyor', [label]) : label,
       child: Pressable(
         onTap: enabled ? onPressed : null,
         radius: 16,

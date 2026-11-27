@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'scanner_service.dart';
+import '../i18n/i18n.dart';
 
 /// Kullanıcının getirdiği belgenin türü.
 ///
@@ -131,7 +132,7 @@ class DocumentIntakeService {
         withData: false,
       );
     } on Object catch (e) {
-      throw IntakeFailure('Dosya seçici açılamadı: $e');
+      throw IntakeFailure(tf('Dosya seçici açılamadı: {0}', [e]));
     }
 
     final path = picked?.files.singleOrNull?.path;
@@ -184,10 +185,17 @@ class DocumentIntakeService {
     final mb = (bytes / (1024 * 1024)).toStringAsFixed(1);
     throw IntakeFailure(
       doc.isPdf
-          ? 'PDF çok büyük ($mb MB). Yalnız tahlil sayfalarını içeren '
-              'daha küçük bir PDF ya da sayfaların fotoğrafını dene.'
-          : 'Görsel çok büyük ($mb MB). Fotoğrafı yeniden çekersen '
-              'uygulama otomatik küçültür.',
+          ? tf(
+              'PDF çok büyük ({0} MB). Yalnız tahlil sayfalarını '
+              'içeren daha küçük bir PDF ya da sayfaların '
+              'fotoğrafını dene.',
+              [mb],
+            )
+          : tf(
+              'Görsel çok büyük ({0} MB). Fotoğrafı yeniden '
+              'çekersen uygulama otomatik küçültür.',
+              [mb],
+            ),
     );
   }
 }

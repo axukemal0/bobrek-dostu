@@ -7,6 +7,7 @@
 library;
 
 import '../../clinical/definitions.dart' show Verification;
+import '../../core/i18n/i18n.dart';
 
 /// Plandan çıkarılmış tek bir öğün.
 class ParsedMeal {
@@ -193,7 +194,7 @@ bool _isDigit(String c) => c.codeUnitAt(0) >= 0x30 && c.codeUnitAt(0) <= 0x39;
       RegExp(r'^\s*(\d+)\s*[\.\)]?\s*ogun\s*$').firstMatch(lowered);
   if (numbered != null) {
     return (
-      name: '${numbered.group(1)}. öğün',
+      name: tf('{0}. öğün', [numbered.group(1)]),
       time: _timeOf(head),
       rest: rest,
     );

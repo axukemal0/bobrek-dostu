@@ -3,6 +3,7 @@ import 'package:xml/xml.dart';
 
 import '../db/database.dart';
 import 'api_client.dart';
+import '../i18n/i18n.dart';
 
 /// Okuma sayfası içerik kaynağı.
 class FeedSource {
@@ -275,7 +276,7 @@ class ReadingService {
       } on ServiceFailure catch (e) {
         failed.add('${feed.nameTr} (${e.messageTr})');
       } on Object {
-        failed.add('${feed.nameTr} (içerik okunamadı)');
+        failed.add(tf('{0} (içerik okunamadı)', [feed.nameTr]));
       }
     }
 

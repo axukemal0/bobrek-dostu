@@ -25,6 +25,7 @@ import '../../core/widgets/form_fields.dart';
 import '../../core/widgets/responsive.dart';
 import 'lock_gate.dart';
 import '../../core/i18n/text.dart';
+import '../../core/i18n/i18n.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -118,7 +119,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               title: 'Yapay Zeka Bağlantısı',
               subtitle: switch (conn) {
                 AiConnectionState.ok =>
-                  'Bağlı · ${prefs.aiModel ?? "varsayılan model"}',
+                  tf('Bağlı · {0}', [prefs.aiModel ?? 'varsayılan model']),
                 AiConnectionState.failed => 'Bağlantı başarısız',
                 AiConnectionState.untested => 'Test edilmedi',
                 _ => 'Anahtar yok — AI özellikleri kapalı',
@@ -278,10 +279,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    'İlaç ve randevu bildirimleri her zaman gönderilir '
-                    '(kritik). Diğerleri günde en fazla '
-                    '${NotificationService.maxDiscretionaryPerDay} '
-                    'tanedir ve sessiz saatlerde gönderilmez.',
+                    tf(
+                      'İlaç ve randevu bildirimleri her zaman gönderilir '
+                      '(kritik). Diğerleri günde en fazla {0} tanedir ve '
+                      'sessiz saatlerde gönderilmez.',
+                      [NotificationService.maxDiscretionaryPerDay],
+                    ),
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                   SizedBox(height: r.gapSm),
@@ -357,10 +360,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     title: const Text('Diyet öğünü hatırlatması'),
                     subtitle: Text(
                       prefs.mealMarkReminder
-                          ? 'Akşam ${formatHour(prefs.mealMarkReminderHour)} '
-                              'saatinde, o gün işaretlenmemiş öğün kaldıysa '
-                              'TEK bildirim. Hepsi işaretliyse bildirim '
-                              'gelmez.'
+                          ? tf(
+                              'Akşam {0} saatinde, o gün işaretlenmemiş öğün '
+                              'kaldıysa TEK bildirim. Hepsi işaretliyse bildirim '
+                              'gelmez.',
+                              [formatHour(prefs.mealMarkReminderHour)],
+                            )
                           : 'Kapalı. Öğün işaretlemeyi kendin hatırlarsın.',
                     ),
                     contentPadding: EdgeInsets.zero,
@@ -422,7 +427,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   Divider(color: p.divider),
                   SizedBox(height: r.gapSm),
                   Text(
-                    'Sessiz saatler: ${quiet.labelTr}',
+                    tf('Sessiz saatler: {0}', [quiet.labelTr]),
                     style: Theme.of(context).textTheme.titleSmall,
                   ),
                   SizedBox(height: r.gapXs),
@@ -630,7 +635,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             Text(
                               [
                                 if (profile?.birthYear != null)
-                                  '${DateTime.now().year - profile!.birthYear!} yaş',
+                                  tf(
+                                    '{0} yaş',
+                                    [DateTime.now().year - profile!.birthYear!],
+                                  ),
                                 if (profile?.weightKg != null)
                                   '${profile!.weightKg!.toStringAsFixed(1)} kg',
                               ].join(' · '),
@@ -708,7 +716,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       } on Object catch (e) {
                         if (mounted) {
                           setState(
-                            () => _statusTr = 'Yedek alınamadı: $e',
+                            () => _statusTr = tf('Yedek alınamadı: {0}', [e]),
                           );
                         }
                       }

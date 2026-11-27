@@ -40,6 +40,7 @@ NAMED_ARG = re.compile(
     r')\s*:\s*$'
 )
 T_CALL = re.compile(r'\bt\s*\(\s*$')
+TF_CALL = re.compile(r'\btf\s*\(\s*$')
 
 # Kesinlikle metin OLMAYAN dizgeler: varlık yolları, anahtarlar, biçim
 # dizgeleri, kanal adları.
@@ -206,7 +207,7 @@ def looks_user_facing(value: str, ctx: str) -> bool:
     tail = ctx.rstrip()
     # Bağlam eşleşmesi için sondaki boşluk önemli: "Text(" ya da "label:"
     probe = ctx
-    if WIDGET_CALL.search(probe) or T_CALL.search(probe):
+    if WIDGET_CALL.search(probe) or T_CALL.search(probe) or TF_CALL.search(probe):
         return True
     if NAMED_ARG.search(probe):
         return True

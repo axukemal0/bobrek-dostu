@@ -10,6 +10,7 @@ import '../../core/theme/neumorphic.dart';
 import '../../core/widgets/common.dart';
 import '../../core/widgets/responsive.dart';
 import '../../core/i18n/text.dart';
+import '../../core/i18n/i18n.dart';
 
 class ReadingScreen extends ConsumerStatefulWidget {
   const ReadingScreen({super.key});
@@ -36,11 +37,11 @@ class _ReadingScreenState extends ConsumerState<ReadingScreen> {
       _refreshing = false;
       _statusTr = [
         if (result.added > 0)
-          '${result.added} yeni içerik eklendi.'
+          tf('{0} yeni içerik eklendi.', [result.added])
         else
           'Yeni içerik yok.',
         if (result.failedTr.isNotEmpty)
-          'Erişilemeyen kaynaklar: ${result.failedTr.join("; ")}',
+          tf('Erişilemeyen kaynaklar: {0}', [result.failedTr.join('; ')]),
       ].join(' ');
     });
   }
@@ -130,7 +131,7 @@ class _ReadingScreenState extends ConsumerState<ReadingScreen> {
               title: 'Kaynaklardan',
               subtitle: feed.isEmpty
                   ? 'Henüz içerik indirilmedi — yenile düğmesine bas'
-                  : '${feed.length} içerik',
+                  : tf('{0} içerik', [feed.length]),
               icon: Icons.rss_feed_rounded,
             ),
             if (feed.isEmpty)

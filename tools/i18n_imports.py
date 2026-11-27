@@ -63,13 +63,71 @@ def add_hide(suffix: str) -> str:
     return ' ' + suffix + ' hide Text'
 
 
+TF_CALL = re.compile(r'(?<![A-Za-z0-9_.$])tf\s*\(')
+
+
+def add_import(out: str, want: str):
+    """İçe aktarmayı son import satırının ardına ekler.
+
+    Hiç import yoksa (saf Dart çözümleyiciler böyle) baştaki belge
+    yorumundan ve `library;` satırından SONRAYA konur — yoksa dosyanın
+    açıklaması bölünür.
+    """
+    if want in out:
+        return out, False
+    imports = list(IMPORT_LINE.finditer(out))
+    if imports:
+        last = imports[-1]
+        return out[: last.end()] + '\n' + want + out[last.end():], True
+
+    lines = out.split('\n')
+    i = 0
+    while i < len(lines) and (
+        lines[i].startswith('///')
+        or lines[i].startswith('//')
+        or not lines[i].strip()
+        or lines[i].strip() == 'library;'
+    ):
+        i += 1
+    lines.insert(i, want)
+    lines.insert(i + 1, '')
+    return '\n'.join(lines), True
+
+
+def without_comments(src: str) -> str:
+    """Yorumları siler.
+
+    Bu dosyaların çoğunda çeviri düzeneği YORUMLA anlatılıyor; yorumdaki
+    `Text(` yüzünden gereksiz içe aktarma eklenmemeli.
+    """
+    src = re.sub(r'/\*.*?\*/', '', src, flags=re.S)
+    return re.sub(r'//[^\n]*', '', src)
+
+
 def process(path: str, apply: bool):
     src = io.open(path, encoding='utf-8').read()
-    if not TEXT_CALL.search(src):
+    code = without_comments(src)
+    needs_text = bool(TEXT_CALL.search(code))
+    needs_tf = bool(TF_CALL.search(code))
+    if not needs_text and not needs_tf:
         return None
 
     changed = []
     out = src
+
+    if needs_tf:
+        rel = os.path.relpath(
+            os.path.join(LIB, 'core', 'i18n', 'i18n.dart'),
+            os.path.dirname(path),
+        ).replace(os.sep, '/')
+        out, added = add_import(out, "import '%s';" % rel)
+        if added:
+            changed.append('i18n.dart eklendi')
+
+    if not needs_text:
+        if changed and apply and out != src:
+            io.open(path, 'w', encoding='utf-8').write(out)
+        return (path, changed) if changed else None
 
     m = MATERIAL.search(out)
     if m and 'hide Text' not in m.group(0) and ' show ' not in m.group(0):

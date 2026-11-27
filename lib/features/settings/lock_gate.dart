@@ -11,6 +11,7 @@ import '../../core/theme/neumorphic.dart';
 import '../../core/brand/brand_mark.dart';
 import '../../core/widgets/responsive.dart';
 import '../../core/i18n/text.dart';
+import '../../core/i18n/i18n.dart';
 
 /// PIN hash'i (SHA-256 + sabit tuz yerine kullanıcıya özgü tuz).
 ///
@@ -94,7 +95,7 @@ class _LockGateState extends ConsumerState<LockGate>
       if (!mounted) return;
       setState(() {
         _attempting = false;
-        _errorTr = 'Biyometrik doğrulama başarısız: $e';
+        _errorTr = tf('Biyometrik doğrulama başarısız: {0}', [e]);
       });
     }
   }

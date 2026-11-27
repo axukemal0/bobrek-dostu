@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import '../config/app_config.dart';
 import 'api_client.dart';
+import '../i18n/i18n.dart';
 
 /// Hava, UV ve hava kalitesi (Open-Meteo — anahtar gerektirmez).
 class WeatherSnapshot {
@@ -68,32 +69,46 @@ class WeatherSnapshot {
     final uv = uvIndexMaxToday ?? uvIndex;
     if (uv == null) return 'UV bilgisi yok.';
     if (uv >= 8) {
-      return 'UV çok yüksek (${uv.toStringAsFixed(0)}). 11:00-16:00 arası '
-          'gölgede kal, şapka ve güneş kremi kullan. Nakil hastalarında '
-          'bağışıklık baskılayıcı ilaçlar cilt kanseri riskini artırır — '
-          'güneşten korunma ayrıca önemlidir.';
+      return tf(
+               'UV çok yüksek ({0}). 11:00-16:00 arası gölgede kal, '
+               'şapka ve güneş kremi kullan. Nakil hastalarında '
+               'bağışıklık baskılayıcı ilaçlar cilt kanseri riskini '
+               'artırır — güneşten korunma ayrıca önemlidir.',
+               [uv.toStringAsFixed(0)],
+             );
     }
     if (uv >= 6) {
-      return 'UV yüksek (${uv.toStringAsFixed(0)}). Öğle saatlerinde '
-          'gölge ve güneş kremi iyi olur.';
+      return tf(
+               'UV yüksek ({0}). Öğle saatlerinde gölge ve güneş '
+               'kremi iyi olur.',
+               [uv.toStringAsFixed(0)],
+             );
     }
     if (uv >= 3) {
-      return 'UV orta (${uv.toStringAsFixed(0)}). Uzun süre dışarıdaysan '
-          'korun.';
+      return tf(
+               'UV orta ({0}). Uzun süre dışarıdaysan korun.',
+               [uv.toStringAsFixed(0)],
+             );
     }
-    return 'UV düşük (${uv.toStringAsFixed(0)}). Ek önlem gerekmez.';
+    return tf('UV düşük ({0}). Ek önlem gerekmez.', [uv.toStringAsFixed(0)]);
   }
 
   String get airAdviceTr {
     final aqi = europeanAqi;
     if (aqi == null) return 'Hava kalitesi bilgisi yok.';
     if (aqi >= 100) {
-      return 'Hava kalitesi kötü (AQI $aqi). Dışarıda ağır eforlu '
-          'aktiviteden kaçın, pencereleri kapalı tut.';
+      return tf(
+               'Hava kalitesi kötü (AQI {0}). Dışarıda ağır eforlu '
+               'aktiviteden kaçın, pencereleri kapalı tut.',
+               [aqi],
+             );
     }
     if (aqi >= 60) {
-      return 'Hava kalitesi orta-kötü (AQI $aqi). Hassasiyeti olanlar '
-          'uzun süreli açık hava eforundan kaçınmalı.';
+      return tf(
+               'Hava kalitesi orta-kötü (AQI {0}). Hassasiyeti '
+               'olanlar uzun süreli açık hava eforundan kaçınmalı.',
+               [aqi],
+             );
     }
     if (aqi >= 40) return 'Hava kalitesi orta (AQI $aqi).';
     return 'Hava kalitesi iyi (AQI $aqi).';

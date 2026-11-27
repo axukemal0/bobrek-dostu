@@ -8,6 +8,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../config/app_config.dart';
 import '../db/database.dart';
+import '../i18n/i18n.dart';
 
 /// JSON yedek alma / geri yükleme.
 ///
@@ -139,8 +140,11 @@ class BackupService {
     if (version is! int || version > formatVersion) {
       return ImportReport(
         ok: false,
-        messageTr: 'Yedek biçimi bu sürümden yeni ($version). '
-            'Uygulamayı güncellemen gerekiyor.',
+        messageTr: tf(
+                     'Yedek biçimi bu sürümden yeni ({0}). Uygulamayı '
+                     'güncellemen gerekiyor.',
+                     [version],
+                   ),
       );
     }
 
@@ -204,7 +208,7 @@ class BackupService {
     } on Object catch (e) {
       return ImportReport(
         ok: false,
-        messageTr: 'Geri yükleme yarıda kaldı: $e',
+        messageTr: tf('Geri yükleme yarıda kaldı: {0}', [e]),
         restoredCounts: counts,
       );
     }
@@ -212,9 +216,14 @@ class BackupService {
     final total = counts.values.fold<int>(0, (a, b) => a + b);
     return ImportReport(
       ok: true,
-      messageTr: '$total kayıt geri yüklendi.'
-          '${skipped.isEmpty ? "" : " ${skipped.length} satır "
-              "okunamadı ve atlandı."}',
+      messageTr: tf(
+                   '{0} kayıt geri yüklendi.{1}',
+                   [
+                     total,
+                     skipped.isEmpty ? '' : ' ${skipped.length} satır '
+              'okunamadı ve atlandı.',
+                   ],
+                 ),
       restoredCounts: counts,
     );
   }

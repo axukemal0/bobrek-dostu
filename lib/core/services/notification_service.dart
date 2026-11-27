@@ -10,6 +10,7 @@ import 'package:timezone/data/latest_all.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
 import '../db/database.dart';
+import '../i18n/i18n.dart';
 
 /// Sessiz saatler ayarı.
 class QuietHours {
@@ -233,7 +234,7 @@ class NotificationService {
       if (quiet.contains(when)) {
         return (
           allowed: false,
-          reasonTr: 'Sessiz saatler (${quiet.labelTr}) içinde.',
+          reasonTr: tf('Sessiz saatler ({0}) içinde.', [quiet.labelTr]),
         );
       }
       final count = await _db.notificationCountToday([
@@ -243,8 +244,10 @@ class NotificationService {
       if (count >= maxDiscretionaryPerDay) {
         return (
           allowed: false,
-          reasonTr: 'Günlük bildirim sınırına ulaşıldı '
-              '($count/$maxDiscretionaryPerDay).',
+          reasonTr: tf(
+                      'Günlük bildirim sınırına ulaşıldı ({0}/{1}).',
+                      [count, maxDiscretionaryPerDay],
+                    ),
         );
       }
     }

@@ -19,6 +19,7 @@ import '../../core/widgets/form_fields.dart';
 import '../../core/widgets/responsive.dart';
 import '../settings/clinical_settings_screen.dart';
 import '../../core/i18n/text.dart';
+import '../../core/i18n/i18n.dart';
 
 /// İlk kurulum testi: adım adım, görselli.
 ///
@@ -557,12 +558,16 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
-                    'Bu kiloyla varsayılan protein hedefi: '
-                    '${(0.8 * parseLocaleNumber(_weight.text)!).toStringAsFixed(0)} g/gün '
-                    '(0,8 g/kg/gün — KDIGO 2024). '
-                    'Diyaliz seçersen KDOQI 2020\'ye göre '
-                    '${(1.0 * parseLocaleNumber(_weight.text)!).toStringAsFixed(0)} g/gün '
-                    'önerilir. Hepsini sonra değiştirebilirsin.',
+                    tf(
+                      'Bu kiloyla varsayılan protein hedefi: {0} g/gün (0,8 '
+                      'g/kg/gün — KDIGO 2024). Diyaliz seçersen KDOQI '
+                      '2020\'ye göre {1} g/gün önerilir. Hepsini sonra '
+                      'değiştirebilirsin.',
+                      [
+                        (0.8 * parseLocaleNumber(_weight.text)!).toStringAsFixed(0),
+                        (1.0 * parseLocaleNumber(_weight.text)!).toStringAsFixed(0),
+                      ],
+                    ),
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ),
@@ -756,7 +761,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       child: TextField(
                         controller: _meds[i].name,
                         decoration: InputDecoration(
-                          labelText: 'İlaç ${i + 1}',
+                          labelText: tf('İlaç {0}', [i + 1]),
                           hintText: 'Örn. Renagel',
                         ),
                       ),
@@ -885,7 +890,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                         controller: _contacts[i].name,
                         textCapitalization: TextCapitalization.words,
                         decoration: InputDecoration(
-                          labelText: 'Kişi ${i + 1}',
+                          labelText: tf('Kişi {0}', [i + 1]),
                           hintText: 'Örn. Mehmet (oğlu)',
                         ),
                       ),
@@ -1066,7 +1071,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         Center(child: BrandMark(size: r.s(96))),
         SizedBox(height: r.gapLg),
         Text(
-          'Hazırsın, ${_name.text.trim().isEmpty ? "hoş geldin" : _name.text.trim()}',
+          tf(
+            'Hazırsın, {0}',
+            [_name.text.trim().isEmpty ? 'hoş geldin' : _name.text.trim()],
+          ),
           textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.headlineMedium,
         ),

@@ -6,6 +6,7 @@ import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import '../theme/motion.dart';
 import '../i18n/text.dart';
+import '../i18n/i18n.dart';
 
 /// Hedef halkası (sıvı bütçesi, besin öğeleri).
 ///
@@ -54,9 +55,14 @@ class ProgressRing extends StatelessWidget {
     }
 
     final semantic = ratio == null
-        ? '$label: $valueText ${unitText ?? ''}, hedef belirtilmemiş'
-        : '$label: $valueText ${unitText ?? ''}, '
-              'hedefin yüzde ${(ratio! * 100).round()}\'i';
+        ? tf(
+            '{0}: {1} {2}, hedef belirtilmemiş',
+            [label, valueText, unitText ?? ''],
+          )
+        : tf(
+            '{0}: {1} {2}, hedefin yüzde {3}\'i',
+            [label, valueText, unitText ?? '', (ratio! * 100).round()],
+          );
 
     return Semantics(
       label: semantic,

@@ -12,6 +12,7 @@ import '../../core/widgets/common.dart';
 import '../../core/widgets/responsive.dart';
 import '../home/home_screen.dart' show showPermissionDialog;
 import '../../core/i18n/text.dart';
+import '../../core/i18n/i18n.dart';
 
 class PermissionsScreen extends ConsumerStatefulWidget {
   const PermissionsScreen({super.key});
@@ -68,8 +69,11 @@ class _PermissionsScreenState extends ConsumerState<PermissionsScreen> {
         builder: (context) => AlertDialog(
           title: const Text('İzin kalıcı olarak reddedilmiş'),
           content: Text(
-            '${Platform.isIOS ? "iOS" : "Android"} bu izni bir daha '
-            'sormuyor. Telefon ayarlarından elle vermen gerekiyor.',
+            tf(
+              '{0} bu izni bir daha sormuyor. Telefon ayarlarından '
+              'elle vermen gerekiyor.',
+              [Platform.isIOS ? 'iOS' : 'Android'],
+            ),
           ),
           actions: [
             TextButton(
@@ -166,8 +170,10 @@ class _PermissionsScreenState extends ConsumerState<PermissionsScreen> {
                     Platform.isIOS
                         ? 'Ses tanıma: iPhone\'un kendi servisiyle yapılır.'
                         : 'Ses tanıma: Android\'in kendi servisiyle yapılır.',
-                    '${HealthService.providerNameTr}: yalnızca OKUNUR, hiçbir şey '
-                        'yazılmaz.',
+                    tf(
+                      '{0}: yalnızca OKUNUR, hiçbir şey yazılmaz.',
+                      [HealthService.providerNameTr],
+                    ),
                     'Yapay zeka: yalnızca sen bir AI özelliğini '
                         'kullandığında, o an onayladığın metin/görsel '
                         'Claude API\'ye gider.',
