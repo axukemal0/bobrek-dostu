@@ -226,6 +226,10 @@ def scan():
         for f in sorted(files):
             if not f.endswith('.dart') or f.endswith('.g.dart'):
                 continue
+            # Sözlük dosyalarının KENDİSİ taranmaz: içlerindeki çeviriler
+            # (İngilizce, Almanca…) yeni "çevrilecek metin" sanılırdı.
+            if os.path.join('lib', 'core', 'i18n') in root:
+                continue
             path = os.path.join(root, f)
             src = io.open(path, encoding='utf-8').read()
             lits = merge_adjacent(strip_and_scan(src), src)

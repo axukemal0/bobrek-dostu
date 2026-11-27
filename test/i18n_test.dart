@@ -2,11 +2,66 @@ import 'dart:io';
 
 import 'package:bobrek_dostu/core/i18n/i18n.dart';
 import 'package:bobrek_dostu/core/i18n/languages.dart';
+import 'package:bobrek_dostu/core/i18n/text.dart';
 import 'package:bobrek_dostu/core/i18n/translations/index.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart' as m;
 
 void main() {
   tearDown(() => I18n.use(AppLanguage.tr));
+
+  group('Çeviren Text — uçtan uca', () {
+    // En önemli test: düzeneğin GERÇEKTEN ekrana yansıdığını gösterir.
+    // `const Text('Kaydet')` yazan kod değişmedi; çeviri çizim anında
+    // yapılıyor. Bu kırılırsa bütün sözlük boşa gider.
+    Future<void> show(WidgetTester tester, m.Widget child) =>
+        tester.pumpWidget(
+          m.Directionality(
+            textDirection: m.TextDirection.ltr,
+            child: child,
+          ),
+        );
+
+    testWidgets('Türkçede kaynak metin görünür', (tester) async {
+      I18n.use(AppLanguage.tr);
+      await show(tester, const Text('Tekrar dene'));
+      expect(find.text('Tekrar dene'), findsOneWidget);
+    });
+
+    testWidgets('İngilizcede çeviri görünür', (tester) async {
+      I18n.use(AppLanguage.en);
+      await show(tester, const Text('Tekrar dene'));
+      expect(find.text('Try again'), findsOneWidget);
+      expect(find.text('Tekrar dene'), findsNothing);
+    });
+
+    testWidgets('Almanca ve Arapça da çalışır', (tester) async {
+      I18n.use(AppLanguage.de);
+      await show(tester, const Text('Tekrar dene'));
+      expect(find.text('Erneut versuchen'), findsOneWidget);
+
+      I18n.use(AppLanguage.ar);
+      await show(tester, const Text('Tekrar dene'));
+      expect(find.text('إعادة المحاولة'), findsOneWidget);
+    });
+
+    testWidgets('Text.verbatim çevirmez — kullanıcının kendi metni', (
+      tester,
+    ) async {
+      I18n.use(AppLanguage.en);
+      await show(tester, const Text.verbatim('Tekrar dene'));
+      expect(find.text('Tekrar dene'), findsOneWidget);
+      expect(find.text('Try again'), findsNothing);
+    });
+
+    testWidgets('çevirisi olmayan metin Türkçe görünür, boş kalmaz', (
+      tester,
+    ) async {
+      I18n.use(AppLanguage.en);
+      await show(tester, const Text('bu metnin çevirisi yok · 9f3a'));
+      expect(find.text('bu metnin çevirisi yok · 9f3a'), findsOneWidget);
+    });
+  });
 
   group('Çeviri arama', () {
     test('Türkçede metin olduğu gibi döner', () {
