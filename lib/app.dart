@@ -38,6 +38,8 @@ class _BobrekDostuAppState extends ConsumerState<BobrekDostuApp>
     await ref.read(smartNotificationsProvider).runOnForeground(
           smartEnabled: prefs.smartNotifications,
           dailySummaryEnabled: prefs.dailySummary,
+          mealReminderEnabled: prefs.mealMarkReminder,
+          mealReminderHour: prefs.mealMarkReminderHour,
         );
   }
 

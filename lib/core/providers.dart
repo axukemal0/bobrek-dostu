@@ -154,6 +154,8 @@ class AppPreferences {
     this.smartNotifications = true,
     this.dailySummary = true,
     this.lowStepsNotification = false,
+    this.mealMarkReminder = true,
+    this.mealMarkReminderHour = 21,
     this.aiModel,
   });
 
@@ -189,6 +191,14 @@ class AppPreferences {
   final bool dailySummary;
   final bool lowStepsNotification;
 
+  /// Akşam, işaretlenmemiş diyet öğünü kaldıysa tek bir hatırlatma.
+  ///
+  /// VARSAYILAN AÇIK: işaretleme alışkanlığı kurulmadan uyum ölçümü
+  /// anlamsız kalıyor. Kullanıcı Ayarlar'dan kapatabilir ve saatini
+  /// değiştirebilir.
+  final bool mealMarkReminder;
+  final int mealMarkReminderHour;
+
   final String? aiModel;
 
   AppPreferences copyWith({
@@ -209,6 +219,8 @@ class AppPreferences {
     bool? smartNotifications,
     bool? dailySummary,
     bool? lowStepsNotification,
+    bool? mealMarkReminder,
+    int? mealMarkReminderHour,
     String? aiModel,
   }) =>
       AppPreferences(
@@ -231,6 +243,9 @@ class AppPreferences {
         dailySummary: dailySummary ?? this.dailySummary,
         lowStepsNotification:
             lowStepsNotification ?? this.lowStepsNotification,
+        mealMarkReminder: mealMarkReminder ?? this.mealMarkReminder,
+        mealMarkReminderHour:
+            mealMarkReminderHour ?? this.mealMarkReminderHour,
         aiModel: aiModel ?? this.aiModel,
       );
 
@@ -251,6 +266,8 @@ class AppPreferences {
         'smartNotifications': smartNotifications,
         'dailySummary': dailySummary,
         'lowStepsNotification': lowStepsNotification,
+        'mealMarkReminder': mealMarkReminder,
+        'mealMarkReminderHour': mealMarkReminderHour,
         'aiModel': aiModel,
       };
 
@@ -278,6 +295,8 @@ class AppPreferences {
       smartNotifications: j['smartNotifications'] as bool? ?? true,
       dailySummary: j['dailySummary'] as bool? ?? true,
       lowStepsNotification: j['lowStepsNotification'] as bool? ?? false,
+      mealMarkReminder: j['mealMarkReminder'] as bool? ?? true,
+      mealMarkReminderHour: j['mealMarkReminderHour'] as int? ?? 21,
       aiModel: j['aiModel'] as String?,
     );
   }

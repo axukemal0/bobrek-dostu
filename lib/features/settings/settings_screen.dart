@@ -312,6 +312,48 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     contentPadding: EdgeInsets.zero,
                   ),
                   SwitchListTile.adaptive(
+                    value: prefs.mealMarkReminder,
+                    onChanged: (v) => ref
+                        .read(preferencesProvider.notifier)
+                        .update((pr) => pr.copyWith(mealMarkReminder: v)),
+                    title: const Text('Diyet öğünü hatırlatması'),
+                    subtitle: Text(
+                      prefs.mealMarkReminder
+                          ? 'Akşam ${formatHour(prefs.mealMarkReminderHour)} '
+                              'saatinde, o gün işaretlenmemiş öğün kaldıysa '
+                              'TEK bildirim. Hepsi işaretliyse bildirim '
+                              'gelmez.'
+                          : 'Kapalı. Öğün işaretlemeyi kendin hatırlarsın.',
+                    ),
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                  if (prefs.mealMarkReminder)
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Hatırlatma saati'),
+                      trailing: Text(
+                        formatHour(prefs.mealMarkReminderHour),
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      onTap: () async {
+                        final picked = await showTimePicker(
+                          context: context,
+                          initialTime: TimeOfDay(
+                            hour: prefs.mealMarkReminderHour,
+                            minute: 0,
+                          ),
+                          helpText: 'Hatırlatma saati',
+                        );
+                        if (picked != null) {
+                          await ref.read(preferencesProvider.notifier).update(
+                                (pr) => pr.copyWith(
+                                  mealMarkReminderHour: picked.hour,
+                                ),
+                              );
+                        }
+                      },
+                    ),
+                  SwitchListTile.adaptive(
                     value: prefs.lowStepsNotification,
                     onChanged: (v) => ref
                         .read(preferencesProvider.notifier)
@@ -896,3 +938,6 @@ class _NavTile extends StatelessWidget {
     );
   }
 }
+
+/// 21 → "21:00". Ayarlarda ve bildirim metninde aynı biçim kullanılır.
+String formatHour(int hour) => '${hour.toString().padLeft(2, '0')}:00';

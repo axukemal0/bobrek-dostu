@@ -12,6 +12,46 @@ import '../../clinical/sources.dart';
 import '../config/app_config.dart';
 import '../db/database.dart';
 
+/// Rapordaki diyet uyumu özeti.
+class DietAdherenceSummary {
+  const DietAdherenceSummary({
+    required this.markedDays,
+    required this.averagePercent,
+    required this.perMeal,
+    required this.slips,
+  });
+
+  final int markedDays;
+  final int averagePercent;
+  final List<MealAdherenceRow> perMeal;
+
+  /// Madde adı → kaç gün işaretlendi (çoktan aza).
+  final List<MapEntry<String, int>> slips;
+
+  static const DietAdherenceSummary empty = DietAdherenceSummary(
+    markedDays: 0,
+    averagePercent: 0,
+    perMeal: [],
+    slips: [],
+  );
+}
+
+class MealAdherenceRow {
+  const MealAdherenceRow({
+    required this.name,
+    required this.full,
+    required this.partial,
+    required this.missed,
+  });
+
+  final String name;
+  final int full;
+  final int partial;
+  final int missed;
+
+  int get total => full + partial + missed;
+}
+
 /// Doktor raporu: son 1 veya 3 aylık veriyi PDF olarak dışa aktarır.
 class ReportService {
   ReportService(this._db);
@@ -36,6 +76,61 @@ class ReportService {
   }
 
   /// Raporu üretir.
+  /// Diyet uyumunu rapor için toplar.
+  ///
+  /// Gün yüzdeleri [DietAdherenceRows] içinde zaten hesaplanmış durur
+  /// (öğün işaretlerinden türetilir); burada yalnız dönem süzülür ve
+  /// öğün kırılımı çıkarılır. Kırılım asıl değerli bilgidir: "akşam
+  /// öğünü 18 günün 12'sinde uymadı" cümlesi, tek bir ortalamadan
+  /// çok daha fazlasını söyler.
+  Future<DietAdherenceSummary> _dietAdherence(
+    DateTime from,
+    DateTime to,
+  ) async {
+    final plans = await _db.activeDietPlans();
+    if (plans.isEmpty) return DietAdherenceSummary.empty;
+
+    final planIds = plans.map((p) => p.id).toList(growable: false);
+    final dayRows = await _db.adherenceBetween(planIds, from, to);
+
+    final perMeal = <MealAdherenceRow>[];
+    for (final plan in plans) {
+      final meals = await _db.mealsOfPlan(plan.id);
+      for (final meal in meals) {
+        final marks = await _db.mealMarksBetween(meal.id, from, to);
+        if (marks.isEmpty) continue;
+        perMeal.add(
+          MealAdherenceRow(
+            name: meal.name,
+            full: marks.where((m) => m.status == 'full').length,
+            partial: marks.where((m) => m.status == 'partial').length,
+            missed: marks.where((m) => m.status == 'missed').length,
+          ),
+        );
+      }
+    }
+
+    final slipRows = await _db.recentSlips(days: to.difference(from).inDays + 1);
+    final counts = <String, int>{};
+    for (final s in slipRows) {
+      if (s.day.isBefore(AppDatabase.dayOf(from))) continue;
+      counts[s.label] = (counts[s.label] ?? 0) + 1;
+    }
+    final slips = counts.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    return DietAdherenceSummary(
+      markedDays: dayRows.length,
+      averagePercent: dayRows.isEmpty
+          ? 0
+          : (dayRows.map((d) => d.percent).reduce((a, b) => a + b) /
+                  dayRows.length)
+              .round(),
+      perMeal: perMeal,
+      slips: slips,
+    );
+  }
+
   Future<Uint8List> build({required Duration window}) async {
     await _loadFonts();
 
@@ -51,6 +146,7 @@ class ReportService {
     final fluids = await _db.fluidLogsBetween(from, now);
     final doses = await _db.dosesBetween(from, now);
     final meds = await _db.getActiveMedications();
+    final diet = await _dietAdherence(from, now);
 
     final theme = pw.ThemeData.withFont(
       base: _body!,
@@ -486,6 +582,86 @@ class ReportService {
                   ),
             footnote: 'Uyum oranı hastanın uygulamada işaretlemesine '
                 'dayanır; işaretlenmemiş dozlar alınmamış sayılmaz.',
+          ),
+
+          // ---------------- Diyet uyumu ----------------
+          section(
+            'Diyet uyumu',
+            diet.markedDays == 0
+                ? pw.Text(
+                    'Bu dönemde işaretlenmiş diyet uyumu kaydı yok.',
+                  )
+                : pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Table(
+                        columnWidths: const {
+                          0: pw.FlexColumnWidth(1),
+                          1: pw.FlexColumnWidth(2),
+                        },
+                        children: [
+                          _kv('İşaretlenen gün', '${diet.markedDays}'),
+                          _kv(
+                            'Günlük uyum ortalaması',
+                            '%${diet.averagePercent}',
+                          ),
+                        ],
+                      ),
+                      if (diet.perMeal.isNotEmpty) ...[
+                        pw.SizedBox(height: 8),
+                        pw.Text(
+                          'Öğün bazında',
+                          style:
+                              pw.TextStyle(font: _bodyBold, fontSize: 9.5),
+                        ),
+                        pw.SizedBox(height: 3),
+                        pw.TableHelper.fromTextArray(
+                          headers: const [
+                            'Öğün',
+                            'İşaret',
+                            'Uydu',
+                            'Kısmen',
+                            'Uymadı',
+                          ],
+                          headerStyle:
+                              pw.TextStyle(font: _bodyBold, fontSize: 8.5),
+                          cellStyle: pw.TextStyle(fontSize: 8.5),
+                          headerDecoration: const pw.BoxDecoration(
+                            color: PdfColor.fromInt(0xFFE4EDE7),
+                          ),
+                          data: [
+                            for (final m in diet.perMeal)
+                              [
+                                m.name,
+                                '${m.total}',
+                                '${m.full}',
+                                '${m.partial}',
+                                '${m.missed}',
+                              ],
+                          ],
+                        ),
+                      ],
+                      if (diet.slips.isNotEmpty) ...[
+                        pw.SizedBox(height: 8),
+                        pw.Text(
+                          'Kaçınılacaklardan tüketilenler',
+                          style:
+                              pw.TextStyle(font: _bodyBold, fontSize: 9.5),
+                        ),
+                        pw.SizedBox(height: 3),
+                        for (final e in diet.slips)
+                          pw.Bullet(
+                            text: '${e.key}: ${e.value} gün',
+                            style: pw.TextStyle(fontSize: 9),
+                          ),
+                      ],
+                    ],
+                  ),
+            footnote: 'Uyum yüzdesi hastanın öğün işaretlerinden '
+                'HESAPLANIR (uydu=100, kısmen=50, uymadı=0) ve yalnız '
+                'işaretlenmiş öğünleri kapsar. Kaçınma satırları '
+                'hastanın kendi listesine göredir; liste kapsamlı '
+                'değildir.',
           ),
 
           // ---------------- Besin ve sıvı ----------------

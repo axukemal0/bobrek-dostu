@@ -238,6 +238,67 @@ class DietPlanRows extends Table {
   TextColumn get attachmentKind => text().nullable()();
 }
 
+/// Plandaki tek bir öğün (Kahvaltı, Ara öğün, Öğle…).
+///
+/// Öğünler plan metninden otomatik çıkarılır ama KULLANICININDIR:
+/// ekleyebilir, silebilir, adını ve sırasını değiştirebilir. Günlük
+/// uyum yüzdesi artık tahminle değil bu öğünlerin işaretlerinden
+/// HESAPLANIR.
+class DietMealRows extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get planId => integer().references(DietPlanRows, #id)();
+  TextColumn get name => text()();
+
+  /// Plandaki içerik satırları.
+  TextColumn get detail => text().nullable()();
+
+  /// Listedeki sırası.
+  IntColumn get position => integer().withDefault(const Constant(0))();
+
+  /// Başlıkta saat yazıyorsa ("Kahvaltı 08:00") "08:00".
+  TextColumn get timeHint => text().nullable()();
+}
+
+/// Bir öğünün bir gündeki işareti.
+class DietMealMarkRows extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get mealId => integer().references(DietMealRows, #id)();
+  DateTimeColumn get day => dateTime()();
+
+  /// 'full' | 'partial' | 'missed' (bkz. MealMark)
+  TextColumn get status => text()();
+  TextColumn get note => text().nullable()();
+}
+
+/// Kaçınılacak madde.
+///
+/// Üç kaynaktan gelebilir: diyetisyenin planından, uygulamanın kaynaklı
+/// hazır listesinden ya da kullanıcının kendi eklediğinden. Hepsi
+/// silinebilir.
+class DietAvoidItemRows extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get label => text()();
+
+  /// 'plan' | 'library' | 'manual' | 'scan'
+  TextColumn get origin => text()();
+
+  /// Hazır listeden geldiyse kaynak kimliği (lib/clinical/sources.dart).
+  TextColumn get sourceId => text().nullable()();
+  TextColumn get reason => text().nullable()();
+  BoolColumn get active => boolean().withDefault(const Constant(true))();
+  IntColumn get position => integer().withDefault(const Constant(0))();
+}
+
+/// O gün tüketilen kaçınma maddesi ("bugün bunu yedim").
+///
+/// Kayıt YOKLUĞU iyi haberdir: temiz gün için hiçbir şeye dokunulmaz.
+class DietSlipRows extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get itemId => integer().references(DietAvoidItemRows, #id)();
+  DateTimeColumn get day => dateTime()();
+  TextColumn get note => text().nullable()();
+}
+
 class DietAdherenceRows extends Table {
   IntColumn get id => integer().autoIncrement()();
   IntColumn get planId => integer().references(DietPlanRows, #id)();

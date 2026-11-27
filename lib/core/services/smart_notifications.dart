@@ -41,12 +41,17 @@ class SmartNotifications {
   /// Günlük özetin gönderileceği saat.
   static const int summaryHour = 20;
 
+  /// İşaretlenmemiş diyet öğünü hatırlatmasının kimliği.
+  static const int mealMarkReminderId = 900002;
+
   /// Uygulama açılışında / öne gelişinde çağrılır.
   ///
   /// Hata fırlatmaz: bildirim gelmemesi uygulamayı etkilemez.
   Future<void> runOnForeground({
     required bool smartEnabled,
     required bool dailySummaryEnabled,
+    bool mealReminderEnabled = true,
+    int mealReminderHour = 21,
   }) async {
     try {
       if (smartEnabled) await _weatherAlerts();
@@ -62,6 +67,65 @@ class SmartNotifications {
     } on Object {
       // yoksay
     }
+    try {
+      if (mealReminderEnabled) {
+        await scheduleMealMarkReminder(hour: mealReminderHour);
+      } else {
+        await notifications.cancel(mealMarkReminderId);
+      }
+    } on Object {
+      // yoksay
+    }
+  }
+
+  /// Akşam, bugün işaretlenmemiş öğün kaldıysa TEK bir hatırlatma.
+  ///
+  /// Uyum ölçümü işaretlemeye dayanıyor; işaretlenmeyen gün ölçüm
+  /// değil boşluk üretir. Ama hatırlatma yalnız GEREKİYORSA kurulur:
+  /// plan yoksa, öğün tanımlı değilse ya da hepsi zaten
+  /// işaretlendiyse bildirim iptal edilir — "yapacak işin yok"
+  /// bildirimi almak kadar bıktırıcı bir şey az.
+  Future<void> scheduleMealMarkReminder({int hour = 21}) async {
+    final plans = await db.activeDietPlans();
+    if (plans.isEmpty) {
+      await notifications.cancel(mealMarkReminderId);
+      return;
+    }
+
+    final today = AppDatabase.dayOf(DateTime.now());
+    var total = 0;
+    var marked = 0;
+    for (final plan in plans) {
+      final meals = await db.mealsOfPlan(plan.id);
+      if (meals.isEmpty) continue;
+      total += meals.length;
+      final marks = await db.mealMarksForDay(
+        meals.map((m) => m.id).toList(growable: false),
+        today,
+      );
+      marked += marks.length;
+    }
+
+    final remaining = total - marked;
+    if (total == 0 || remaining <= 0) {
+      await notifications.cancel(mealMarkReminderId);
+      return;
+    }
+
+    final now = DateTime.now();
+    var when = DateTime(now.year, now.month, now.day, hour);
+    if (!when.isAfter(now)) when = when.add(const Duration(days: 1));
+
+    await notifications.cancel(mealMarkReminderId);
+    await notifications.schedule(
+      id: mealMarkReminderId,
+      category: NotifCategory.summary,
+      title: 'Diyet uyumu',
+      body: remaining == total
+          ? 'Bugünün öğünlerini henüz işaretlemedin.'
+          : '$remaining öğün işaretlenmeyi bekliyor.',
+      when: when,
+    );
   }
 
   Future<ClinicalSettings> _settings() async {

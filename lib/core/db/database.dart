@@ -34,6 +34,10 @@ part 'database.g.dart';
     MedicationDoseRows,
     VitalRows,
     DietPlanRows,
+    DietMealRows,
+    DietMealMarkRows,
+    DietAvoidItemRows,
+    DietSlipRows,
     DietAdherenceRows,
     ChatMessageRows,
     TravelPlanRows,
@@ -46,7 +50,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -59,6 +63,13 @@ class AppDatabase extends _$AppDatabase {
           if (from < 2) {
             await m.addColumn(dietPlanRows, dietPlanRows.attachmentPath);
             await m.addColumn(dietPlanRows, dietPlanRows.attachmentKind);
+          }
+          //  v3 — öğün öğün uyum işaretlemesi ve kaçınma sayacı.
+          if (from < 3) {
+            await m.createTable(dietMealRows);
+            await m.createTable(dietMealMarkRows);
+            await m.createTable(dietAvoidItemRows);
+            await m.createTable(dietSlipRows);
           }
         },
         beforeOpen: (details) async {
@@ -235,6 +246,178 @@ class AppDatabase extends _$AppDatabase {
       (select(dietPlanRows)
             ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]))
           .watch();
+
+  // -------------------------------------------------------------------
+  // DİYET UYUMU — öğün öğün işaretleme ve kaçınma sayacı
+  // -------------------------------------------------------------------
+
+  /// Günün başlangıcı (saat bilgisi kayıtta gürültü yapmasın).
+  static DateTime dayOf(DateTime at) => DateTime(at.year, at.month, at.day);
+
+  Future<List<DietMealRow>> mealsOfPlan(int planId) =>
+      (select(dietMealRows)
+            ..where((t) => t.planId.equals(planId))
+            ..orderBy([(t) => OrderingTerm.asc(t.position)]))
+          .get();
+
+  Future<List<DietMealMarkRow>> mealMarksForDay(
+    List<int> mealIds,
+    DateTime day,
+  ) async {
+    if (mealIds.isEmpty) return const [];
+    return (select(dietMealMarkRows)
+          ..where((t) => t.mealId.isIn(mealIds) & t.day.equals(dayOf(day))))
+        .get();
+  }
+
+  /// Bir öğünün o günkü işaretini yazar; [status] null ise işareti kaldırır.
+  Future<void> setMealMark({
+    required int mealId,
+    required DateTime day,
+    required String? status,
+  }) async {
+    final d = dayOf(day);
+    final existing = await (select(dietMealMarkRows)
+          ..where((t) => t.mealId.equals(mealId) & t.day.equals(d)))
+        .getSingleOrNull();
+
+    if (status == null) {
+      if (existing != null) {
+        await (delete(dietMealMarkRows)
+              ..where((t) => t.id.equals(existing.id)))
+            .go();
+      }
+      return;
+    }
+    if (existing == null) {
+      await into(dietMealMarkRows).insert(
+        DietMealMarkRowsCompanion.insert(
+          mealId: mealId,
+          day: d,
+          status: status,
+        ),
+      );
+    } else {
+      await (update(dietMealMarkRows)..where((t) => t.id.equals(existing.id)))
+          .write(DietMealMarkRowsCompanion(status: Value(status)));
+    }
+  }
+
+  /// Günün uyum yüzdesini [DietAdherenceRows] içine yazar.
+  ///
+  /// Yüzde artık kullanıcının tahmini değil, işaretlenen öğünlerden
+  /// HESAPLANAN değerdir. Hiç işaret yoksa o günün satırı silinir —
+  /// "işaretlemedim" ile "%0 uydum" aynı şey değildir.
+  Future<void> writeAdherence({
+    required int planId,
+    required DateTime day,
+    required int? percent,
+  }) async {
+    final d = dayOf(day);
+    final existing = await (select(dietAdherenceRows)
+          ..where((t) => t.planId.equals(planId) & t.day.equals(d)))
+        .getSingleOrNull();
+
+    if (percent == null) {
+      if (existing != null) {
+        await (delete(dietAdherenceRows)
+              ..where((t) => t.id.equals(existing.id)))
+            .go();
+      }
+      return;
+    }
+    if (existing == null) {
+      await into(dietAdherenceRows).insert(
+        DietAdherenceRowsCompanion.insert(
+          planId: planId,
+          day: d,
+          percent: percent,
+        ),
+      );
+    } else {
+      await (update(dietAdherenceRows)..where((t) => t.id.equals(existing.id)))
+          .write(DietAdherenceRowsCompanion(percent: Value(percent)));
+    }
+  }
+
+  Future<List<DietAdherenceRow>> adherenceBetween(
+    List<int> planIds,
+    DateTime from,
+    DateTime to,
+  ) async {
+    if (planIds.isEmpty) return const [];
+    return (select(dietAdherenceRows)
+          ..where(
+            (t) =>
+                t.planId.isIn(planIds) &
+                t.day.isBiggerOrEqualValue(dayOf(from)) &
+                t.day.isSmallerOrEqualValue(dayOf(to)),
+          ))
+        .get();
+  }
+
+  Future<List<DietMealMarkRow>> mealMarksBetween(
+    int mealId,
+    DateTime from,
+    DateTime to,
+  ) =>
+      (select(dietMealMarkRows)
+            ..where(
+              (t) =>
+                  t.mealId.equals(mealId) &
+                  t.day.isBiggerOrEqualValue(dayOf(from)) &
+                  t.day.isSmallerOrEqualValue(dayOf(to)),
+            ))
+          .get();
+
+  Future<List<DietPlanRow>> activeDietPlans() =>
+      (select(dietPlanRows)..where((t) => t.active.equals(true))).get();
+
+  Future<List<DietAvoidItemRow>> activeAvoidItems() =>
+      (select(dietAvoidItemRows)
+            ..where((t) => t.active.equals(true))
+            ..orderBy([(t) => OrderingTerm.asc(t.position)]))
+          .get();
+
+  Future<List<DietSlipRow>> slipsForDay(DateTime day) =>
+      (select(dietSlipRows)..where((t) => t.day.equals(dayOf(day)))).get();
+
+  /// "Bugün bunu yedim" işaretini açar/kapatır.
+  Future<void> toggleSlip({required int itemId, required DateTime day}) async {
+    final d = dayOf(day);
+    final existing = await (select(dietSlipRows)
+          ..where((t) => t.itemId.equals(itemId) & t.day.equals(d)))
+        .getSingleOrNull();
+    if (existing == null) {
+      await into(dietSlipRows)
+          .insert(DietSlipRowsCompanion.insert(itemId: itemId, day: d));
+    } else {
+      await (delete(dietSlipRows)..where((t) => t.id.equals(existing.id)))
+          .go();
+    }
+  }
+
+  /// Son [days] gündeki kaçınma işaretlerini madde adıyla döner.
+  Future<List<({String label, DateTime day})>> recentSlips({
+    int days = 30,
+  }) async {
+    final from = dayOf(DateTime.now()).subtract(Duration(days: days));
+    final query = select(dietSlipRows).join([
+      innerJoin(
+        dietAvoidItemRows,
+        dietAvoidItemRows.id.equalsExp(dietSlipRows.itemId),
+      ),
+    ])..where(dietSlipRows.day.isBiggerOrEqualValue(from));
+    final rows = await query.get();
+    return rows
+        .map(
+          (r) => (
+            label: r.readTable(dietAvoidItemRows).label,
+            day: r.readTable(dietSlipRows).day,
+          ),
+        )
+        .toList(growable: false);
+  }
 
   Stream<List<TravelPlanRow>> watchTravelPlans() =>
       (select(travelPlanRows)
