@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
@@ -542,7 +544,9 @@ class _StepsCard extends ConsumerWidget {
                   ),
                   data: (value) => value == null
                       ? Text(
-                          'Health Connect izni verilmedi',
+                          Platform.isIOS
+                              ? 'Sağlık verisi izni verilmedi'
+                              : 'Health Connect izni verilmedi',
                           style: Theme.of(context).textTheme.bodySmall,
                         )
                       : FittedBox(

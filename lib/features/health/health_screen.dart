@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:health/health.dart' show HealthConnectSdkStatus;
@@ -30,6 +32,7 @@ class _HealthScreenState extends ConsumerState<HealthScreen> {
   bool _permissionChecked = false;
   bool _hasPermission = false;
   HealthConnectSdkStatus? _sdkStatus;
+  HealthKitStatus _hkStatus = HealthKitStatus.unsupported;
   String? _errorTr;
   String? _aiInterpretation;
   bool _aiBusy = false;
@@ -43,10 +46,17 @@ class _HealthScreenState extends ConsumerState<HealthScreen> {
   Future<void> _check() async {
     setState(() => _loading = true);
     final service = ref.read(healthServiceProvider);
-    final status = await service.sdkStatus();
-    final has = await service.hasPermissions();
+    final hk = await service.healthKitStatus();
+    // iOS'ta hak yoksa izin sormanın anlamı yok: çağrı izin ekranını
+    // hiç açmadan sessizce başarısız olur ve kullanıcı "izin vermedim
+    // mi?" diye kendi telefonunu kurcalamaya başlar.
+    final status = Platform.isIOS ? null : await service.sdkStatus();
+    final has = (Platform.isIOS && !hk.usable)
+        ? false
+        : await service.hasPermissions();
     if (!mounted) return;
     setState(() {
+      _hkStatus = hk;
       _sdkStatus = status;
       _hasPermission = has;
       _permissionChecked = true;
@@ -247,20 +257,68 @@ class _HealthScreenState extends ConsumerState<HealthScreen> {
           children: [
             // --- Health Connect durumu ---
             if (!_permissionChecked || _loading)
-              const NeuCard(
+              NeuCard(
                 child: Row(
                   children: [
-                    SizedBox(
+                    const SizedBox(
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     ),
-                    SizedBox(width: 14),
-                    Expanded(child: Text('Health Connect kontrol ediliyor…')),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Text(
+                        '${HealthService.providerNameTr} kontrol '
+                        'ediliyor…',
+                      ),
+                    ),
                   ],
                 ),
               )
-            else if (_sdkStatus ==
+            else if (Platform.isIOS && !_hkStatus.usable)
+              NeuCard(
+                color: p.warning.withValues(alpha: p.isDark ? 0.16 : 0.09),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.lock_outline_rounded, color: p.warning),
+                        SizedBox(width: r.gapSm),
+                        Expanded(
+                          child: Text(
+                            _hkStatus.dataAvailable
+                                ? 'Bu derleme Sağlık verisine erişemiyor'
+                                : 'Bu cihaz Sağlık verisi tutmuyor',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: r.gapSm),
+                    Text(
+                      _hkStatus.dataAvailable
+                          ? (HealthService.entitlementNoteTr ?? '')
+                          : 'iPhone Sağlık verisi bu cihazda '
+                              'kullanılamıyor. Ölçümlerini "Kilo, ödem '
+                              've tansiyon" ekranından elle '
+                              'girebilirsin.',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    SizedBox(height: r.gapMd),
+                    NeuButton(
+                      label: 'Ölçümü elle gir',
+                      icon: Icons.edit_outlined,
+                      compact: true,
+                      expanded: true,
+                      color: p.accents.weight,
+                      onPressed: () => context.push(Routes.weight),
+                    ),
+                  ],
+                ),
+              )
+            else if (!Platform.isIOS &&
+                _sdkStatus ==
                 HealthConnectSdkStatus.sdkUnavailable)
               NeuCard(
                 child: Column(
@@ -282,9 +340,10 @@ class _HealthScreenState extends ConsumerState<HealthScreen> {
                   ],
                 ),
               )
-            else if (_sdkStatus ==
-                HealthConnectSdkStatus
-                    .sdkUnavailableProviderUpdateRequired)
+            else if (!Platform.isIOS &&
+                _sdkStatus ==
+                    HealthConnectSdkStatus
+                        .sdkUnavailableProviderUpdateRequired)
               NeuCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -534,12 +593,19 @@ class _HealthScreenState extends ConsumerState<HealthScreen> {
                 ),
               ),
             ] else if (_hasPermission && !_loading)
-              const EmptyState(
+              EmptyState(
                 title: 'Veri bulunamadı',
-                message: 'Health Connect\'te son 7 güne ait kayıt yok. '
-                    'Saatini telefonla eşitlemeyi ve saatinin '
-                    'uygulamasının Health Connect\'e yazma izni '
-                    'olduğunu kontrol et.',
+                message: Platform.isIOS
+                    ? 'Sağlık uygulamasında son 7 güne ait kayıt yok. '
+                        'Apple Watch\'unun iPhone\'la eşleşmiş ve '
+                        'eşitlenmiş olduğunu, izin ekranında veri '
+                        'türlerini açtığını kontrol et (Ayarlar > '
+                        'Sağlık > Veri Erişimi ve Cihazlar > Böbrek '
+                        'Dostu).'
+                    : 'Health Connect\'te son 7 güne ait kayıt yok. '
+                        'Saatini telefonla eşitlemeyi ve saatinin '
+                        'uygulamasının Health Connect\'e yazma izni '
+                        'olduğunu kontrol et.',
                 icon: Icons.watch_off_outlined,
               ),
 
@@ -567,6 +633,45 @@ class _HealthScreenState extends ConsumerState<HealthScreen> {
                     kEcgExplanationTr,
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
+                  if (snap != null && snap.ecgRecords.isNotEmpty) ...[
+                    SizedBox(height: r.gapMd),
+                    Text(
+                      'Son kayıtlar (${snap.ecgRecords.length})',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    SizedBox(height: r.gapXs),
+                    for (final e in snap.ecgRecords.take(8))
+                      Padding(
+                        padding: EdgeInsets.only(bottom: r.gapXs),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.monitor_heart_outlined,
+                              size: r.s(16),
+                              color: p.info,
+                            ),
+                            SizedBox(width: r.gapSm),
+                            Expanded(
+                              child: Text(
+                                '${_fmtDate(e.at)} · '
+                                '${e.classificationTr}'
+                                '${e.averageHeartRate == null ? "" : " · "
+                                    "${e.averageHeartRate!.round()} /dk"}',
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    SizedBox(height: r.gapXs),
+                    Text(
+                      'Bu satırlar Apple\'ın kendi sınıflandırmasıdır; '
+                      'uygulama üstüne yorum eklemez.',
+                      style: Theme.of(context).textTheme.labelSmall,
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -584,7 +689,8 @@ class _HealthScreenState extends ConsumerState<HealthScreen> {
                     'Akıllı saat ölçümleri TIBBİ CİHAZ DOĞRULUĞUNDA '
                     'DEĞİLDİR. Özellikle saatten alınan tansiyon ve '
                     'SpO₂ değerleri tek başına klinik karara temel '
-                    'olmaz. Uygulama Health Connect\'e hiçbir şey '
+                    'olmaz. Uygulama '
+                    '${HealthService.providerNameTr}\'na hiçbir şey '
                     'YAZMAZ, yalnızca okur.',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),

@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -611,10 +613,17 @@ class _AiConnectionScreenState extends ConsumerState<AiConnectionScreen> {
                   ),
                   SizedBox(height: r.gapSm),
                   Text(
-                    'Anahtar Android\'in şifreli anahtar deposunda '
-                    '(Keystore destekli EncryptedSharedPreferences) '
-                    'tutulur. Uygulama kodunda veya yedek dosyasında '
-                    'YER ALMAZ. JSON yedeğine de dahil edilmez.',
+                    Platform.isIOS
+                        ? 'Anahtar iPhone\'un Anahtar Zinciri\'nde '
+                            '(Keychain) tutulur. Uygulama kodunda veya '
+                            'yedek dosyasında YER ALMAZ. JSON yedeğine '
+                            'de dahil edilmez.'
+                        : 'Anahtar Android\'in şifreli anahtar '
+                            'deposunda (Keystore destekli '
+                            'EncryptedSharedPreferences) tutulur. '
+                            'Uygulama kodunda veya yedek dosyasında '
+                            'YER ALMAZ. JSON yedeğine de dahil '
+                            'edilmez.',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],

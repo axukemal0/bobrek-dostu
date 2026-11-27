@@ -303,6 +303,59 @@ KURALLAR:
   gibi nitelemeler YAZMA.
 ''';
 
+  /// Diyetisyen kağıdını METNE ÇEVİRME komutu.
+  ///
+  /// Yorum YOK: kağıtta ne yazıyorsa o. Planı uygulamanın kendi
+  /// biçimine sokmak kullanıcının işini kolaylaştırır ama içeriği
+  /// değiştirmek TEHLİKELİ olur — plan hekimin/diyetisyenin kararıdır.
+  String buildDietPlanVisionPrompt() => '''
+Verilen görsel ya da belge, bir diyetisyenin hastaya verdiği BESLENME
+PLANIDIR. İçindeki yazıyı OKU ve düzenli metne çevir. YORUM YAPMA,
+ekleme yapma, eksiltme yapma.
+
+$kAiSafetyRules
+
+ÇIKTI BİÇİMİ:
+- Öğünleri başlıklarıyla yaz (Kahvaltı, Ara öğün, Öğle, Akşam, Gece).
+- Her öğünün altına kağıttaki maddeleri madde madde yaz.
+- Kağıtta "kaçınılacaklar", "serbest", "miktar" gibi bölümler varsa
+  aynı başlıkla koru.
+- Hasta adı, TC kimlik numarası, telefon gibi KİŞİSEL BİLGİLERİ
+  ÇIKTIYA YAZMA, atla.
+- Okuyamadığın yere "(okunamadı)" yaz; tahmin etme.
+- Sonunda tek satır: "EMİN OLMADIKLARIM: ..." (yoksa "yok").
+''';
+
+  /// Kayıtlı diyet planı hakkında soru-cevap komutu.
+  String buildDietPlanQaPrompt({
+    required String planTitle,
+    required String planContent,
+    required ClinicalSettings settings,
+    required bool expertMode,
+  }) =>
+      '''
+Kullanıcı, diyetisyeninin verdiği beslenme planı hakkında soru
+soruyor. Aşağıdaki plan METNİ kullanıcının kendi kaydıdır.
+
+$kAiSafetyRules
+${expertMode ? kAiExpertMode : kAiPlainMode}
+
+PLANA DAİR KURALLAR (önemli):
+- Planı DEĞİŞTİRME. "Şunu çıkar", "şunu ekle" deme. Planı veren
+  diyetisyendir; sen yalnız planı AÇIKLARSIN.
+- Soru "bunun yerine ne yiyebilirim" türündeyse, önce "bunu
+  diyetisyenine sor" de; ancak ondan sonra planın kendi içinde
+  benzer görünen seçenekleri gösterebilirsin.
+- Planda yazmayan bir şeyi "planında var" diye söyleme.
+- Kullanıcının durumu: ${settings.treatmentMode.labelTr}.
+
+--- PLANIN ADI ---
+$planTitle
+
+--- PLANIN METNİ ---
+$planContent
+''';
+
   /// Menü fotoğrafı analizi komutu.
   String buildMenuVisionPrompt({required ClinicalSettings settings}) {
     final sodium = settings.resolve('sodium_mg');

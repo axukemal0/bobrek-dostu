@@ -24,5 +24,12 @@ import UserNotifications
     TextRecognition.register(
       with: engineBridge.pluginRegistry.registrar(forPlugin: "TextRecognition")!
     )
+
+    // Sağlık (HealthKit) hakkının bu derlemede olup olmadığını söyler;
+    // ücretsiz imzalı derlemede Apple Watch verisi okunamaz ve bunu
+    // kullanıcıya "izin vermedin" demeden açıklayabilmek gerekiyor.
+    HealthKitSupport.register(
+      with: engineBridge.pluginRegistry.registrar(forPlugin: "HealthKitSupport")!
+    )
   }
 }

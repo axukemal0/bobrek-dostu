@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart' show Value;
+import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
@@ -9,6 +10,7 @@ import '../../core/db/database.dart';
 import '../../core/providers.dart';
 import '../../core/router/app_router.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/motion.dart';
 import '../../core/theme/neumorphic.dart';
 import '../../core/widgets/common.dart';
 import '../../core/widgets/form_fields.dart';
@@ -411,12 +413,59 @@ class _VitalTile extends ConsumerWidget {
       '${d.minute.toString().padLeft(2, '0')}';
 }
 
+// ===========================================================================
+// ÖLÇÜM EKLEME — İKİ MOD
+// ===========================================================================
+//
+// Eski ekran herkese aynı formu veriyordu: "İdrar", "sistolik",
+// "diyastolik", "SpO₂", "ödem düzeyi: yok/hafif/orta/belirgin". Hekim
+// olmayan biri bu alanların yarısını dolduramaz, "orta ödem" ile
+// "belirgin ödem" arasındaki farkı bilemez ve boş bıraktığı her alan
+// onda "yanlış mı yapıyorum" hissi bırakır.
+//
+// Çözüm iki mod:
+//  * GÜNLÜK mod — alanlar günlük dille anlatılır ("büyük tansiyon",
+//    "parmakla bastırınca iz kalıyor mu"), klinik alanlar gizlidir ve
+//    hiçbir alan zorunlu değildir.
+//  * UZMAN mod — bütün alanlar, klinik adlarıyla, iki sütunda.
+//
+// Varsayılan, kurulumda seçilen profil ayarından gelir
+// (`ProfileRow.expertMode`); üstteki anahtarla anında değiştirilebilir
+// ve seçim profile geri yazılır.
+
 class _AddVitalSheet extends ConsumerStatefulWidget {
   const _AddVitalSheet();
 
   @override
   ConsumerState<_AddVitalSheet> createState() => _AddVitalSheetState();
 }
+
+/// Günlük modda ödem, dört seviye yerine "ne görüyorsun" sorusudur.
+const List<({int level, String titleTr, String hintTr})> kEdemaPlainOptions = [
+  (
+    level: 0,
+    titleTr: 'Yok',
+    hintTr: 'Ayak bileği ve bacaklar her zamanki gibi.',
+  ),
+  (
+    level: 1,
+    titleTr: 'Çorap izi kalıyor',
+    hintTr: 'Çorabın lastiği belirgin iz bırakıyor, ayakkabı biraz dar '
+        'geliyor.',
+  ),
+  (
+    level: 2,
+    titleTr: 'Bastırınca çukur kalıyor',
+    hintTr: 'Ayak bileğine parmakla 5 saniye bastırınca çukur kalıyor '
+        've yavaş doluyor.',
+  ),
+  (
+    level: 3,
+    titleTr: 'Belirgin şişlik',
+    hintTr: 'Şişlik bacağın üstüne, karına ya da göz kapaklarına '
+        'çıkmış; ayakkabı giyilmiyor.',
+  ),
+];
 
 class _AddVitalSheetState extends ConsumerState<_AddVitalSheet> {
   final _weight = TextEditingController();
@@ -432,6 +481,9 @@ class _AddVitalSheetState extends ConsumerState<_AddVitalSheet> {
   String? _phase;
   bool _saving = false;
 
+  /// null → profildeki ayar kullanılır.
+  bool? _expertOverride;
+
   @override
   void dispose() {
     for (final c in [
@@ -442,6 +494,13 @@ class _AddVitalSheetState extends ConsumerState<_AddVitalSheet> {
     }
     super.dispose();
   }
+
+  bool get _hasAnyValue =>
+      [
+        _weight, _systolic, _diastolic, _heartRate, _spo2,
+        _urine, _temp, _glucose,
+      ].any((c) => c.text.trim().isNotEmpty) ||
+      _edema != null;
 
   Future<void> _save() async {
     setState(() => _saving = true);
@@ -484,7 +543,12 @@ class _AddVitalSheetState extends ConsumerState<_AddVitalSheet> {
   @override
   Widget build(BuildContext context) {
     final r = Responsive.fromContext(context);
+    final p = context.palette;
+    final motion = context.motion;
     final settings = ref.watch(clinicalSettingsProvider);
+    final profileExpert =
+        ref.watch(profileProvider).value?.expertMode ?? false;
+    final expert = _expertOverride ?? profileExpert;
 
     return Padding(
       padding: EdgeInsets.only(
@@ -494,161 +558,535 @@ class _AddVitalSheetState extends ConsumerState<_AddVitalSheet> {
         bottom: MediaQuery.viewInsetsOf(context).bottom + r.gapLg,
       ),
       child: SingleChildScrollView(
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              'Ölçüm ekle',
-              style: Theme.of(context).textTheme.headlineSmall,
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Ölçüm ekle',
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                ),
+                TapIcon(
+                  icon: Icons.close_rounded,
+                  semanticLabel: 'Kapat',
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
             ),
             SizedBox(height: r.gapXs),
             Text(
-              'Sadece ölçtüklerini doldur, gerisini boş bırak.',
+              expert
+                  ? 'Ölçtüklerini doldur, gerisini boş bırak.'
+                  : 'Hepsini doldurmak zorunda değilsin. Ne ölçtüysen '
+                      'onu yaz, gerisi boş kalsın.',
               style: Theme.of(context).textTheme.bodySmall,
             ),
             SizedBox(height: r.gapMd),
-            Row(
-              children: [
-                Expanded(
-                  child: LabeledField(
-                    label: 'Kilo',
-                    child: NumberField(
-                      controller: _weight,
-                      suffix: 'kg',
-                    ),
-                  ),
+
+            // --- mod anahtarı ---
+            NeuCard(
+              surface: Surface.flat,
+              padding: EdgeInsets.symmetric(
+                horizontal: r.gapMd,
+                vertical: r.gapXs,
+              ),
+              child: SwitchListTile.adaptive(
+                value: expert,
+                onChanged: (v) => setState(() => _expertOverride = v),
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Uzman alanları'),
+                subtitle: Text(
+                  expert
+                      ? 'SpO₂, kan şekeri, idrar hacmi ve klinik adlar '
+                          'açık.'
+                      : 'Kapalıyken yalnız günlük ölçümler sorulur: '
+                          'kilo, tansiyon, nabız, ateş, şişlik.',
+                  style: Theme.of(context).textTheme.bodySmall,
                 ),
-                SizedBox(width: r.gapSm),
-                Expanded(
-                  child: LabeledField(
-                    label: 'İdrar',
-                    child: NumberField(
-                      controller: _urine,
-                      suffix: 'mL',
-                      allowDecimal: false,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: r.gapMd),
-            LabeledField(
-              label: 'Tansiyon',
-              hint: 'Oturarak, 5 dakika dinlendikten sonra ölç. '
-                  'KDIGO 2024 hedefi standart ofis ölçümüne dayanır.',
-              child: Row(
-                children: [
-                  Expanded(
-                    child: NumberField(
-                      controller: _systolic,
-                      hintText: 'sistolik',
-                      allowDecimal: false,
-                    ),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: r.gapSm),
-                    child: const Text('/'),
-                  ),
-                  Expanded(
-                    child: NumberField(
-                      controller: _diastolic,
-                      hintText: 'diyastolik',
-                      allowDecimal: false,
-                    ),
-                  ),
-                ],
               ),
             ),
             SizedBox(height: r.gapMd),
-            Row(
-              children: [
-                Expanded(
-                  child: LabeledField(
-                    label: 'Nabız',
-                    child: NumberField(
-                      controller: _heartRate,
-                      suffix: '/dk',
-                      allowDecimal: false,
-                    ),
-                  ),
-                ),
-                SizedBox(width: r.gapSm),
-                Expanded(
-                  child: LabeledField(
-                    label: 'SpO₂',
-                    child: NumberField(
-                      controller: _spo2,
-                      suffix: '%',
-                      allowDecimal: false,
-                    ),
-                  ),
-                ),
-              ],
+
+            AnimatedSize(
+              duration: motion.normal,
+              curve: motion.enter,
+              alignment: Alignment.topCenter,
+              child: expert
+                  ? _buildExpertFields(context, r, settings)
+                  : _buildPlainFields(context, r, p, settings),
             ),
-            SizedBox(height: r.gapMd),
-            Row(
-              children: [
-                Expanded(
-                  child: LabeledField(
-                    label: 'Ateş',
-                    child: NumberField(
-                      controller: _temp,
-                      suffix: '°C',
-                    ),
-                  ),
-                ),
-                SizedBox(width: r.gapSm),
-                Expanded(
-                  child: LabeledField(
-                    label: 'Kan şekeri',
-                    child: NumberField(
-                      controller: _glucose,
-                      suffix: 'mg/dL',
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: r.gapMd),
-            LabeledField(
-              label: 'Şişlik (ödem) düzeyi',
-              child: ChipSelector<int>(
-                options: const [0, 1, 2, 3],
-                selected: _edema,
-                labelOf: (i) => _VitalTile.edemaLabels[i],
-                onSelected: (i) => setState(() => _edema = i),
-              ),
-            ),
-            if (settings.treatmentMode.isDialysis) ...[
-              SizedBox(height: r.gapMd),
-              LabeledField(
-                label: 'Diyaliz seansı',
-                child: ChipSelector<String>(
-                  options: const ['pre', 'post'],
-                  selected: _phase,
-                  labelOf: (s) =>
-                      s == 'pre' ? 'Seans öncesi' : 'Seans sonrası',
-                  onSelected: (s) => setState(() => _phase = s),
-                ),
-              ),
-            ],
+
             SizedBox(height: r.gapMd),
             TextField(
               controller: _note,
               maxLines: 2,
               decoration: const InputDecoration(
-                labelText: 'Not',
+                labelText: 'Not (isteğe bağlı)',
                 hintText: 'Örn. sabah aç karnına',
               ),
             ),
             SizedBox(height: r.gapLg),
             NeuButton(
-              label: _saving ? 'Kaydediliyor…' : 'Kaydet',
+              label: _saving
+                  ? 'Kaydediliyor…'
+                  : _hasAnyValue
+                      ? 'Kaydet'
+                      : 'Önce bir ölçüm gir',
               icon: Icons.check_rounded,
               expanded: true,
-              onPressed: _saving ? null : _save,
+              loading: _saving,
+              color: p.accents.weight,
+              onPressed: _saving || !_hasAnyValue ? null : _save,
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  // -------------------------------------------------------------------
+  // GÜNLÜK MOD
+  // -------------------------------------------------------------------
+  Widget _buildPlainFields(
+    BuildContext context,
+    Responsive r,
+    AppPalette p,
+    ClinicalSettings settings,
+  ) {
+    return Column(
+      key: const ValueKey('plain'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _PlainField(
+          icon: Icons.monitor_weight_outlined,
+          tone: p.accents.weight,
+          title: 'Kilo',
+          hint: 'Tartıda gördüğün sayı. Her gün aynı saatte, aynı '
+              'kıyafetle tartılmak en doğrusu.',
+          child: NumberField(controller: _weight, suffix: 'kg'),
+          onChanged: () => setState(() {}),
+        ),
+        SizedBox(height: r.gapMd),
+        _PlainField(
+          icon: Icons.favorite_outline_rounded,
+          tone: p.accents.activity,
+          title: 'Tansiyon',
+          hint: 'Cihazın ekranındaki ÜSTTEKİ büyük sayı ile ALTTAKİ '
+              'küçük sayı. Oturarak, 5 dakika dinlendikten sonra ölç.',
+          onChanged: () => setState(() {}),
+          child: Row(
+            children: [
+              Expanded(
+                child: NumberField(
+                  controller: _systolic,
+                  hintText: 'büyük (üstteki)',
+                  allowDecimal: false,
+                  onChanged: (_) => setState(() {}),
+                ),
+              ),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: r.gapSm),
+                child: const Text('/'),
+              ),
+              Expanded(
+                child: NumberField(
+                  controller: _diastolic,
+                  hintText: 'küçük (alttaki)',
+                  allowDecimal: false,
+                  onChanged: (_) => setState(() {}),
+                ),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(height: r.gapMd),
+        Row(
+          children: [
+            Expanded(
+              child: _PlainField(
+                icon: Icons.monitor_heart_outlined,
+                tone: p.accents.activity,
+                title: 'Nabız',
+                hint: 'Kalp atışı.',
+                onChanged: () => setState(() {}),
+                child: NumberField(
+                  controller: _heartRate,
+                  suffix: '/dk',
+                  allowDecimal: false,
+                  onChanged: (_) => setState(() {}),
+                ),
+              ),
+            ),
+            SizedBox(width: r.gapSm),
+            Expanded(
+              child: _PlainField(
+                icon: Icons.thermostat_outlined,
+                tone: p.accents.protein,
+                title: 'Ateş',
+                hint: 'Ölçtüysen.',
+                onChanged: () => setState(() {}),
+                child: NumberField(
+                  controller: _temp,
+                  suffix: '°C',
+                  onChanged: (_) => setState(() {}),
+                ),
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: r.gapMd),
+
+        // --- ödem: seviye değil, "ne görüyorsun" ---
+        NeuCard(
+          surface: Surface.flat,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  AccentTile(
+                    icon: Icons.water_drop_outlined,
+                    color: p.accents.fluid,
+                    size: r.s(18),
+                  ),
+                  SizedBox(width: r.gapSm),
+                  Expanded(
+                    child: Text(
+                      'Şişlik var mı?',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: r.gapXs),
+              Text(
+                'Ayak bileğine başparmağınla 5 saniye bastır, sonra '
+                'çek. Hangisi sana uyuyor?',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              SizedBox(height: r.gapSm),
+              for (final o in kEdemaPlainOptions)
+                Padding(
+                  padding: EdgeInsets.only(bottom: r.gapXs),
+                  child: _EdemaChoice(
+                    option: o,
+                    selected: _edema == o.level,
+                    onTap: () => setState(
+                      () => _edema = _edema == o.level ? null : o.level,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+
+        if (settings.treatmentMode.isDialysis) ...[
+          SizedBox(height: r.gapMd),
+          LabeledField(
+            label: 'Diyaliz seansı',
+            hint: 'Bu ölçümü seanstan önce mi sonra mı aldın?',
+            child: ChipSelector<String>(
+              options: const ['pre', 'post'],
+              selected: _phase,
+              labelOf: (s) => s == 'pre' ? 'Seans öncesi' : 'Seans sonrası',
+              onSelected: (s) => setState(() => _phase = s),
+            ),
+          ),
+          SizedBox(height: r.gapMd),
+          _PlainField(
+            icon: Icons.opacity_outlined,
+            tone: p.accents.fluid,
+            title: 'Günlük idrar',
+            hint: 'Ölçüyorsan gün boyu biriken miktar. Ölçmüyorsan boş '
+                'bırak.',
+            onChanged: () => setState(() {}),
+            child: NumberField(
+              controller: _urine,
+              suffix: 'mL',
+              allowDecimal: false,
+              onChanged: (_) => setState(() {}),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  // -------------------------------------------------------------------
+  // UZMAN MOD
+  // -------------------------------------------------------------------
+  Widget _buildExpertFields(
+    BuildContext context,
+    Responsive r,
+    ClinicalSettings settings,
+  ) {
+    return Column(
+      key: const ValueKey('expert'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: LabeledField(
+                label: 'Kilo',
+                child: NumberField(
+                  controller: _weight,
+                  suffix: 'kg',
+                  onChanged: (_) => setState(() {}),
+                ),
+              ),
+            ),
+            SizedBox(width: r.gapSm),
+            Expanded(
+              child: LabeledField(
+                label: 'İdrar',
+                child: NumberField(
+                  controller: _urine,
+                  suffix: 'mL',
+                  allowDecimal: false,
+                  onChanged: (_) => setState(() {}),
+                ),
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: r.gapMd),
+        LabeledField(
+          label: 'Tansiyon',
+          hint: 'Oturarak, 5 dakika dinlendikten sonra ölç. '
+              'KDIGO 2024 hedefi standart ofis ölçümüne dayanır.',
+          child: Row(
+            children: [
+              Expanded(
+                child: NumberField(
+                  controller: _systolic,
+                  hintText: 'sistolik',
+                  allowDecimal: false,
+                  onChanged: (_) => setState(() {}),
+                ),
+              ),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: r.gapSm),
+                child: const Text('/'),
+              ),
+              Expanded(
+                child: NumberField(
+                  controller: _diastolic,
+                  hintText: 'diyastolik',
+                  allowDecimal: false,
+                  onChanged: (_) => setState(() {}),
+                ),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(height: r.gapMd),
+        Row(
+          children: [
+            Expanded(
+              child: LabeledField(
+                label: 'Nabız',
+                child: NumberField(
+                  controller: _heartRate,
+                  suffix: '/dk',
+                  allowDecimal: false,
+                  onChanged: (_) => setState(() {}),
+                ),
+              ),
+            ),
+            SizedBox(width: r.gapSm),
+            Expanded(
+              child: LabeledField(
+                label: 'SpO₂',
+                child: NumberField(
+                  controller: _spo2,
+                  suffix: '%',
+                  allowDecimal: false,
+                  onChanged: (_) => setState(() {}),
+                ),
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: r.gapMd),
+        Row(
+          children: [
+            Expanded(
+              child: LabeledField(
+                label: 'Ateş',
+                child: NumberField(
+                  controller: _temp,
+                  suffix: '°C',
+                  onChanged: (_) => setState(() {}),
+                ),
+              ),
+            ),
+            SizedBox(width: r.gapSm),
+            Expanded(
+              child: LabeledField(
+                label: 'Kan şekeri',
+                child: NumberField(
+                  controller: _glucose,
+                  suffix: 'mg/dL',
+                  onChanged: (_) => setState(() {}),
+                ),
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: r.gapMd),
+        LabeledField(
+          label: 'Ödem düzeyi',
+          hint: 'Pretibial gode değerlendirmesi.',
+          child: ChipSelector<int>(
+            options: const [0, 1, 2, 3],
+            selected: _edema,
+            labelOf: (i) => _VitalTile.edemaLabels[i],
+            onSelected: (i) => setState(() => _edema = i),
+          ),
+        ),
+        if (settings.treatmentMode.isDialysis) ...[
+          SizedBox(height: r.gapMd),
+          LabeledField(
+            label: 'Diyaliz seansı',
+            child: ChipSelector<String>(
+              options: const ['pre', 'post'],
+              selected: _phase,
+              labelOf: (s) => s == 'pre' ? 'Seans öncesi' : 'Seans sonrası',
+              onSelected: (s) => setState(() => _phase = s),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// Günlük moddaki tek alan: ikon + günlük dille başlık + açıklama.
+class _PlainField extends StatelessWidget {
+  const _PlainField({
+    required this.icon,
+    required this.tone,
+    required this.title,
+    required this.hint,
+    required this.child,
+    required this.onChanged,
+  });
+
+  final IconData icon;
+  final Color tone;
+  final String title;
+  final String hint;
+  final Widget child;
+  final VoidCallback onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final r = Responsive.fromContext(context);
+    return NeuCard(
+      surface: Surface.flat,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              AccentTile(icon: icon, color: tone, size: r.s(18)),
+              SizedBox(width: r.gapSm),
+              Expanded(
+                child: Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: r.gapXs),
+          Text(hint, style: Theme.of(context).textTheme.bodySmall),
+          SizedBox(height: r.gapSm),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+/// Ödem seçeneği — seviye sayısı değil, tarif.
+class _EdemaChoice extends StatelessWidget {
+  const _EdemaChoice({
+    required this.option,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final ({int level, String titleTr, String hintTr}) option;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    final r = Responsive.fromContext(context);
+    final tone = p.accents.fluid;
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: '${option.titleTr}. ${option.hintTr}',
+      child: Pressable(
+        radius: 12,
+        onTap: () {
+          HapticFeedback.selectionClick();
+          onTap();
+        },
+        child: AnimatedContainer(
+          duration: context.motion.fast,
+          curve: context.motion.enter,
+          padding: EdgeInsets.all(r.gapSm),
+          decoration: BoxDecoration(
+            color: selected
+                ? p.accentFill(tone)
+                : p.backgroundDeep.withValues(alpha: 0.45),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: selected ? tone : p.divider,
+              width: selected ? 1.6 : 1,
+            ),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                selected
+                    ? Icons.radio_button_checked_rounded
+                    : Icons.radio_button_unchecked_rounded,
+                size: r.s(20),
+                color: selected ? tone : p.textMuted,
+              ),
+              SizedBox(width: r.gapSm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      option.titleTr,
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleSmall
+                          ?.copyWith(color: selected ? tone : null),
+                    ),
+                    SizedBox(height: r.s(2)),
+                    Text(
+                      option.hintTr,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

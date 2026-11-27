@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -317,8 +319,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           (pr) => pr.copyWith(lowStepsNotification: v),
                         ),
                     title: const Text('Düşük adım bildirimi'),
-                    subtitle: const Text(
-                      'Health Connect izni gerekir.',
+                    subtitle: Text(
+                      Platform.isIOS
+                          ? 'iPhone Sağlık izni gerekir.'
+                          : 'Health Connect izni gerekir.',
                     ),
                     contentPadding: EdgeInsets.zero,
                   ),

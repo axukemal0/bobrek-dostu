@@ -1,6 +1,5 @@
-import 'dart:io';
-
 import 'package:drift/drift.dart' show Value;
+import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
@@ -13,9 +12,11 @@ import '../../core/db/database.dart';
 import '../../core/providers.dart';
 import '../../core/router/app_router.dart';
 import '../../core/services/ai_service.dart';
+import '../../core/services/document_intake.dart';
 import '../../core/services/permission_service.dart';
 import '../../core/services/scanner_service.dart';
 import '../../core/theme/app_colors.dart';
+import '../../core/theme/motion.dart';
 import '../../core/theme/neumorphic.dart';
 import '../../core/widgets/common.dart';
 import '../../core/widgets/form_fields.dart';
@@ -311,8 +312,21 @@ class _AnalyteCard extends ConsumerWidget {
 }
 
 // ===========================================================================
-// TAHLİL EKLEME (elle + OCR + AI)
+// TAHLİL EKLEME
 // ===========================================================================
+//
+// Eski kurulum tek bir alt sayfada "Elle gir / Fotoğraftan" sekmeleri
+// gösteriyordu: kullanıcı daha ne yapacağını seçmeden analit çipleri,
+// referans kartı, birim ve aralık alanlarıyla karşılaşıyordu. Uzman
+// olmayan biri için bu ekran okunmuyordu bile.
+//
+// Yeni akış İKİ ADIM: önce "nasıl ekleyeceksin" (üç büyük seçenek),
+// sonra yalnız o yolun alanları. Fotoğraf ve dosya yolunda okunan her
+// değer DÜZENLENEBİLİR — okuma yanılabilir, kullanıcı düzeltebilmeli.
+
+/// Tahlil eklemenin üç yolu.
+enum _LabMethod { manual, camera, file }
+
 class _AddLabSheet extends ConsumerStatefulWidget {
   const _AddLabSheet();
 
@@ -321,12 +335,20 @@ class _AddLabSheet extends ConsumerStatefulWidget {
 }
 
 class _AddLabSheetState extends ConsumerState<_AddLabSheet> {
-  int _tab = 0;
+  _LabMethod? _method;
+
+  String get _titleTr => switch (_method) {
+        null => 'Tahlil ekle',
+        _LabMethod.manual => 'Elle gir',
+        _LabMethod.camera => 'Fotoğraftan oku',
+        _LabMethod.file => 'Dosyadan oku',
+      };
 
   @override
   Widget build(BuildContext context) {
     final r = Responsive.fromContext(context);
     final p = context.palette;
+    final motion = context.motion;
 
     return DraggableScrollableSheet(
       initialChildSize: 0.9,
@@ -342,41 +364,61 @@ class _AddLabSheetState extends ConsumerState<_AddLabSheet> {
               r.pagePadding,
               r.gapSm,
             ),
-            child: Column(
+            child: Row(
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Tahlil ekle',
-                        style: Theme.of(context).textTheme.headlineSmall,
-                      ),
-                    ),
-                    TapIcon(
-                      icon: Icons.close_rounded,
-                      semanticLabel: 'Kapat',
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
+                if (_method != null)
+                  TapIcon(
+                    icon: Icons.arrow_back_rounded,
+                    semanticLabel: 'Yöntem seçimine dön',
+                    onPressed: () => setState(() => _method = null),
+                  ),
+                Expanded(
+                  child: Text(
+                    _titleTr,
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
                 ),
-                SizedBox(height: r.gapSm),
-                SegmentedButton<int>(
-                  segments: const [
-                    ButtonSegment(value: 0, label: Text('Elle gir')),
-                    ButtonSegment(value: 1, label: Text('Fotoğraftan')),
-                  ],
-                  selected: {_tab},
-                  showSelectedIcon: false,
-                  onSelectionChanged: (s) => setState(() => _tab = s.first),
+                TapIcon(
+                  icon: Icons.close_rounded,
+                  semanticLabel: 'Kapat',
+                  onPressed: () => Navigator.pop(context),
                 ),
               ],
             ),
           ),
           Divider(height: 1, color: p.divider),
           Expanded(
-            child: _tab == 0
-                ? const _ManualLabTab()
-                : const _OcrLabTab(),
+            child: AnimatedSwitcher(
+              duration: motion.normal,
+              switchInCurve: motion.enter,
+              switchOutCurve: motion.exit,
+              transitionBuilder: (child, animation) => FadeTransition(
+                opacity: animation,
+                child: SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(0.06, 0),
+                    end: Offset.zero,
+                  ).animate(animation),
+                  child: child,
+                ),
+              ),
+              child: switch (_method) {
+                null => _LabMethodChooser(
+                    key: const ValueKey('chooser'),
+                    onPick: (m) => setState(() => _method = m),
+                  ),
+                _LabMethod.manual =>
+                  const _ManualLabTab(key: ValueKey('manual')),
+                _LabMethod.camera => const _ReaderLabTab(
+                    key: ValueKey('camera'),
+                    startWithCamera: true,
+                  ),
+                _LabMethod.file => const _ReaderLabTab(
+                    key: ValueKey('file'),
+                    startWithCamera: false,
+                  ),
+              },
+            ),
           ),
         ],
       ),
@@ -384,8 +426,809 @@ class _AddLabSheetState extends ConsumerState<_AddLabSheet> {
   }
 }
 
+/// Birinci adım: "nasıl ekleyeceksin?"
+class _LabMethodChooser extends ConsumerWidget {
+  const _LabMethodChooser({required this.onPick, super.key});
+
+  final ValueChanged<_LabMethod> onPick;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final r = Responsive.fromContext(context);
+    final p = context.palette;
+    final conn = ref.watch(aiConnectionProvider).value;
+    final aiReady = conn == AiConnectionState.ok;
+
+    return ListView(
+      padding: EdgeInsets.all(r.pagePadding),
+      children: [
+        Text(
+          'Sonuçları nasıl eklemek istersin?',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        SizedBox(height: r.gapXs),
+        Text(
+          'Üçü de aynı yere kaydeder. Okutursan değerleri kaydetmeden '
+          'önce tek tek düzeltebilirsin.',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        SizedBox(height: r.gapLg),
+        _MethodCard(
+          icon: Icons.keyboard_alt_outlined,
+          tone: p.accents.lab,
+          title: 'Elle gir',
+          subtitle: 'Tahlil kağıdına bakarak yaz. En güvenilir yol; '
+              'internet gerekmez.',
+          onTap: () => onPick(_LabMethod.manual),
+        ),
+        SizedBox(height: r.gapMd),
+        _MethodCard(
+          icon: Icons.photo_camera_outlined,
+          tone: p.accents.activity,
+          title: 'Fotoğrafını çek',
+          subtitle: 'Kağıdı çek, uygulama okusun. Okuma telefonun '
+              'içinde yapılır, fotoğraf internete gitmez.',
+          onTap: () => onPick(_LabMethod.camera),
+        ),
+        SizedBox(height: r.gapMd),
+        _MethodCard(
+          icon: Icons.folder_open_outlined,
+          tone: p.accents.appointment,
+          title: 'Dosyadan ekle',
+          subtitle: aiReady
+              ? 'Hastaneden gelen PDF ya da kayıtlı görsel. PDF yalnız '
+                  'yapay zekayla okunabilir ve göndermeden önce onay '
+                  'istenir.'
+              : 'Kayıtlı görseli telefonun içinde okur. PDF için yapay '
+                  'zeka bağlantısı gerekir (Ayarlar > Yapay Zeka).',
+          onTap: () => onPick(_LabMethod.file),
+        ),
+        SizedBox(height: r.gapLg),
+        Text(
+          kOcrDisclaimerTr,
+          style: Theme.of(context).textTheme.labelSmall,
+        ),
+      ],
+    );
+  }
+}
+
+class _MethodCard extends StatelessWidget {
+  const _MethodCard({
+    required this.icon,
+    required this.tone,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final Color tone;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final r = Responsive.fromContext(context);
+    final p = context.palette;
+    return Semantics(
+      button: true,
+      label: '$title. $subtitle',
+      child: Pressable(
+        onTap: () {
+          HapticFeedback.selectionClick();
+          onTap();
+        },
+        radius: 18,
+        child: NeuCard(
+          color: p.accentFill(tone, opacity: p.isDark ? 0.13 : 0.08),
+          padding: EdgeInsets.all(r.gapMd),
+          child: Row(
+            children: [
+              AccentTile(icon: icon, color: tone, size: r.s(24)),
+              SizedBox(width: r.gapMd),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleMedium
+                          ?.copyWith(color: tone),
+                    ),
+                    SizedBox(height: r.s(3)),
+                    Text(
+                      subtitle,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(width: r.gapSm),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: p.textMuted,
+                size: r.s(22),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// FOTOĞRAF / DOSYA İLE OKUMA + DÜZENLENEBİLİR ONAY LİSTESİ
+// ---------------------------------------------------------------------------
+
+/// Okunan tek bir satır — alanların HEPSİ düzenlenebilir.
+///
+/// Önceki sürümde kullanıcı yalnız "bu satırı al / alma" diyebiliyordu.
+/// OCR virgülü nokta okuduğunda ya da birimi kaçırdığında tek çare
+/// satırı atıp elle baştan girmekti. Artık yanlış okunan değer yerinde
+/// düzeltilir.
+class _EditableLab {
+  _EditableLab({
+    required this.rawLine,
+    required String label,
+    required String value,
+    required String unit,
+    String min = '',
+    String max = '',
+    this.analyteKey,
+  })  : label = TextEditingController(text: label),
+        value = TextEditingController(text: value),
+        unit = TextEditingController(text: unit),
+        min = TextEditingController(text: min),
+        max = TextEditingController(text: max);
+
+  final String rawLine;
+  final TextEditingController label;
+  final TextEditingController value;
+  final TextEditingController unit;
+  final TextEditingController min;
+  final TextEditingController max;
+  String? analyteKey;
+  bool include = true;
+
+  bool get isValid =>
+      label.text.trim().isNotEmpty && parseLocaleNumber(value.text) != null;
+
+  void dispose() {
+    label.dispose();
+    value.dispose();
+    unit.dispose();
+    min.dispose();
+    max.dispose();
+  }
+
+  static _EditableLab fromParsed(ParsedLabValue v) => _EditableLab(
+        rawLine: v.rawLine,
+        label: v.analyteLabel,
+        value: v.value.toString().replaceAll('.', ','),
+        unit: v.unit,
+        min: v.refMin?.toString().replaceAll('.', ',') ?? '',
+        max: v.refMax?.toString().replaceAll('.', ',') ?? '',
+        analyteKey: v.analyteKey,
+      );
+}
+
+class _ReaderLabTab extends ConsumerStatefulWidget {
+  const _ReaderLabTab({required this.startWithCamera, super.key});
+
+  /// true → kamera, false → galeri/dosya.
+  final bool startWithCamera;
+
+  @override
+  ConsumerState<_ReaderLabTab> createState() => _ReaderLabTabState();
+}
+
+class _ReaderLabTabState extends ConsumerState<_ReaderLabTab> {
+  IntakeDocument? _doc;
+  bool _busy = false;
+  String? _statusTr;
+  List<_EditableLab> _rows = [];
+  String? _aiRaw;
+  DateTime _takenAt = DateTime.now();
+
+  @override
+  void dispose() {
+    for (final row in _rows) {
+      row.dispose();
+    }
+    super.dispose();
+  }
+
+  void _replaceRows(List<_EditableLab> next) {
+    for (final row in _rows) {
+      row.dispose();
+    }
+    _rows = next;
+  }
+
+  Future<void> _pick() async {
+    final intake = ref.read(documentIntakeProvider);
+    try {
+      final IntakeDocument? doc;
+      if (widget.startWithCamera) {
+        if (!await _ensureCamera()) return;
+        doc = await intake.fromCamera();
+      } else {
+        doc = await intake.fromFiles();
+      }
+      if (doc == null || !mounted) return;
+      setState(() {
+        _doc = doc;
+        _replaceRows([]);
+        _aiRaw = null;
+        _statusTr = null;
+      });
+      if (doc.kind.supportsOnDeviceOcr) {
+        await _runOcr();
+      } else {
+        setState(
+          () => _statusTr = 'PDF seçildi. PDF\'in içindeki yazıyı telefon '
+              'tek başına çözemiyor; okumak için aşağıdaki "Yapay zekaya '
+              'okut" düğmesini kullan ya da sayfanın fotoğrafını çek.',
+        );
+      }
+    } on IntakeFailure catch (e) {
+      if (mounted) setState(() => _statusTr = e.messageTr);
+    }
+  }
+
+  Future<bool> _ensureCamera() async {
+    final service = ref.read(permissionServiceProvider);
+    if (await service.status(AppPermission.camera) ==
+        AppPermissionStatus.granted) {
+      return true;
+    }
+    if (!mounted) return false;
+    final ok = await showPermissionDialog(
+      context,
+      permissionInfo(AppPermission.camera),
+    );
+    if (!ok) return false;
+    return await service.request(AppPermission.camera) ==
+        AppPermissionStatus.granted;
+  }
+
+  Future<void> _runOcr() async {
+    final doc = _doc;
+    if (doc == null || !doc.kind.supportsOnDeviceOcr) return;
+    setState(() {
+      _busy = true;
+      _statusTr = 'Metin okunuyor (telefonun içinde)…';
+    });
+    try {
+      final result =
+          await ref.read(scannerServiceProvider).recognizeText(doc.file);
+      final parsed = parseLabLines(result.lines);
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _replaceRows(parsed.map(_EditableLab.fromParsed).toList());
+        _statusTr = parsed.isEmpty
+            ? 'Tanıdığım bir tahlil değeri bulamadım. Daha net bir '
+                'fotoğraf dene, "Yapay zekaya okut"u kullan ya da '
+                'aşağıdan elle satır ekle.'
+            : null;
+      });
+    } on Object catch (e) {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _statusTr = 'Okuma başarısız: $e';
+        });
+      }
+    }
+  }
+
+  Future<void> _runAi() async {
+    final doc = _doc;
+    if (doc == null) return;
+
+    final consent = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          doc.isPdf
+              ? 'PDF yapay zekaya gönderilecek'
+              : 'Tahlil fotoğrafı yapay zekaya gönderilecek',
+        ),
+        content: Text(
+          'Bu ${doc.isPdf ? "belge" : "fotoğraf"} Anthropic Claude API '
+          'sunucusuna gönderilecek. Üzerinde adın ve TC kimlik numaran '
+          'yazıyor olabilir — istersen önce o alanları kapatıp yeniden '
+          'çekebilirsin.\n\n'
+          'Yapay zeka yalnızca değerleri OKUR, yorumlamaz. Okunan her '
+          'değeri kaydetmeden önce düzeltip onaylarsın.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Vazgeç'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Gönder'),
+          ),
+        ],
+      ),
+    );
+    if (consent != true) return;
+
+    setState(() {
+      _busy = true;
+      _statusTr = 'Yapay zeka okuyor…';
+    });
+    try {
+      final prompt = ref.read(aiPromptBuilderProvider).buildLabVisionPrompt();
+      final model =
+          ref.read(preferencesProvider).aiModel ?? AiConfig.defaultModel;
+      final service = ref.read(aiServiceProvider);
+      final reply = doc.isPdf
+          ? await service.sendDocument(
+              systemPrompt: prompt,
+              userText: 'Bu tahlil raporundaki değerleri oku.',
+              document: doc.file,
+              model: model,
+            )
+          : await service.sendVision(
+              systemPrompt: prompt,
+              userText: 'Bu tahlil raporundaki değerleri oku.',
+              image: doc.file,
+              model: model,
+            );
+      final parsed = parseAiLabReply(reply.text);
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _aiRaw = reply.text;
+        _replaceRows(parsed.map(_EditableLab.fromParsed).toList());
+        _statusTr = parsed.isEmpty
+            ? 'Yapay zeka da okunabilir değer bulamadı. Aşağıdan elle '
+                'satır ekleyebilirsin.'
+            : null;
+      });
+    } on AiFailure catch (e) {
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _statusTr = e.messageTr;
+        });
+      }
+    }
+  }
+
+  void _addEmptyRow() {
+    setState(() {
+      _rows = [
+        ..._rows,
+        _EditableLab(rawLine: 'elle eklendi', label: '', value: '', unit: ''),
+      ];
+    });
+  }
+
+  Future<void> _save() async {
+    final db = ref.read(databaseProvider);
+    final keep = _rows.where((row) => row.include && row.isValid).toList();
+
+    for (final row in keep) {
+      final label = row.label.text.trim();
+      final value = parseLocaleNumber(row.value.text)!;
+      await db.into(db.labResultRows).insert(
+            LabResultRowsCompanion.insert(
+              analyte: row.analyteKey ??
+                  'custom_${_ManualLabTabState.normalizeKey(label)}',
+              analyteLabel: label,
+              value: value,
+              unit: row.unit.text.trim(),
+              refMin: Value(parseLocaleNumber(row.min.text)),
+              refMax: Value(parseLocaleNumber(row.max.text)),
+              origin: Value(_doc?.isPdf == true ? 'pdf' : 'ocr'),
+              confirmedByUser: const Value(true),
+              note: const Value('Belgeden okundu, kullanıcı onayladı'),
+              takenAt: _takenAt,
+            ),
+          );
+    }
+
+    final potassium =
+        keep.where((row) => row.analyteKey == 'lab_potassium').firstOrNull;
+    if (mounted && potassium != null) {
+      await evaluateAndDispatchAlerts(
+        context: context,
+        ref: ref,
+        serumPotassium: parseLocaleNumber(potassium.value.text)!,
+      );
+    }
+
+    if (mounted) Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final r = Responsive.fromContext(context);
+    final p = context.palette;
+    final conn = ref.watch(aiConnectionProvider).value;
+    final aiReady = conn == AiConnectionState.ok;
+    final doc = _doc;
+    final keepCount = _rows.where((row) => row.include && row.isValid).length;
+
+    return ListView(
+      padding: EdgeInsets.all(r.pagePadding),
+      children: [
+        if (doc != null) ...[
+          _DocumentPreview(doc: doc),
+          SizedBox(height: r.gapMd),
+        ],
+        NeuButton(
+          label: _busy
+              ? 'İşleniyor…'
+              : doc == null
+                  ? (widget.startWithCamera
+                      ? 'Tahlil kağıdını çek'
+                      : 'Dosya ya da görsel seç')
+                  : (widget.startWithCamera ? 'Yeniden çek' : 'Başka dosya'),
+          icon: widget.startWithCamera
+              ? Icons.document_scanner_outlined
+              : Icons.folder_open_outlined,
+          expanded: true,
+          loading: _busy,
+          color: p.accents.lab,
+          onPressed: _busy ? null : _pick,
+        ),
+        if (doc != null && doc.kind.supportsOnDeviceOcr) ...[
+          SizedBox(height: r.gapSm),
+          NeuButton(
+            label: 'Telefonla tekrar oku',
+            icon: Icons.refresh_rounded,
+            filled: false,
+            expanded: true,
+            color: p.accents.lab,
+            onPressed: _busy ? null : _runOcr,
+          ),
+        ],
+        if (doc != null) ...[
+          SizedBox(height: r.gapSm),
+          if (aiReady)
+            NeuButton(
+              label: 'Yapay zekaya okut (daha iyi sonuç)',
+              icon: Icons.auto_awesome_rounded,
+              filled: false,
+              expanded: true,
+              color: p.accents.appointment,
+              onPressed: _busy ? null : _runAi,
+            )
+          else
+            NeuCard(
+              surface: Surface.flat,
+              child: Text(
+                doc.isPdf
+                    ? 'PDF okumak için yapay zeka bağlantısı gerekiyor: '
+                        'Ayarlar > Yapay Zeka Bağlantısı.'
+                    : 'Yapay zeka bağlantısı kurulursa okuma belirgin '
+                        'biçimde iyileşir (Ayarlar > Yapay Zeka).',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ),
+        ],
+        if (_statusTr != null) ...[
+          SizedBox(height: r.gapMd),
+          NeuCard(
+            color: p.accentSoft.withValues(alpha: 0.5),
+            child: Text(
+              _statusTr!,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ),
+        ],
+        if (_rows.isNotEmpty) ...[
+          SizedBox(height: r.gapLg),
+          Text(
+            'Okunan değerler (${_rows.length})',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          SizedBox(height: r.gapXs),
+          Text(
+            'Her alanı düzeltebilirsin. Okuma virgülü, birimi ya da '
+            'aralığı yanlış almış olabilir — kaydettiğin şey burada '
+            'gördüğündür.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          SizedBox(height: r.gapSm),
+          for (final row in _rows) ...[
+            _EditableLabCard(
+              row: row,
+              onChanged: () => setState(() {}),
+              onRemove: () => setState(() {
+                _rows = [..._rows]..remove(row);
+                row.dispose();
+              }),
+            ),
+            SizedBox(height: r.gapSm),
+          ],
+        ],
+        if (doc != null) ...[
+          SizedBox(height: r.gapSm),
+          NeuButton(
+            label: 'Satır ekle',
+            icon: Icons.add_rounded,
+            filled: false,
+            compact: true,
+            expanded: true,
+            color: p.accents.lab,
+            onPressed: _addEmptyRow,
+          ),
+        ],
+        if (_rows.isNotEmpty) ...[
+          SizedBox(height: r.gapMd),
+          LabeledField(
+            label: 'Tahlil tarihi',
+            child: NeuButton(
+              label: '${_takenAt.day.toString().padLeft(2, '0')}.'
+                  '${_takenAt.month.toString().padLeft(2, '0')}.'
+                  '${_takenAt.year}',
+              icon: Icons.calendar_today_outlined,
+              filled: false,
+              compact: true,
+              expanded: true,
+              onPressed: () async {
+                final picked = await showDatePicker(
+                  context: context,
+                  initialDate: _takenAt,
+                  firstDate: DateTime(2000),
+                  lastDate: DateTime.now(),
+                );
+                if (picked != null) setState(() => _takenAt = picked);
+              },
+            ),
+          ),
+          SizedBox(height: r.gapMd),
+          NeuButton(
+            label: keepCount == 0
+                ? 'Kaydedilecek değer yok'
+                : '$keepCount değeri kaydet',
+            icon: Icons.check_rounded,
+            expanded: true,
+            color: p.accents.lab,
+            onPressed: keepCount == 0 ? null : _save,
+          ),
+        ],
+        if (_aiRaw != null) ...[
+          SizedBox(height: r.gapMd),
+          ExpansionTile(
+            title: Text(
+              'Yapay zekanın ham yanıtı',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            children: [
+              Padding(
+                padding: EdgeInsets.all(r.gapSm),
+                child: SelectableText(
+                  _aiRaw!,
+                  style: const TextStyle(fontSize: 12),
+                ),
+              ),
+            ],
+          ),
+        ],
+        SizedBox(height: r.gapLg),
+        Text(
+          kOcrDisclaimerTr,
+          style: Theme.of(context).textTheme.labelSmall,
+        ),
+      ],
+    );
+  }
+}
+
+class _DocumentPreview extends StatelessWidget {
+  const _DocumentPreview({required this.doc});
+
+  final IntakeDocument doc;
+
+  @override
+  Widget build(BuildContext context) {
+    final r = Responsive.fromContext(context);
+    final p = context.palette;
+    if (!doc.isPdf) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: Image.file(
+          doc.file,
+          height: r.s(170),
+          width: double.infinity,
+          fit: BoxFit.cover,
+        ),
+      );
+    }
+    return NeuCard(
+      surface: Surface.flat,
+      child: Row(
+        children: [
+          AccentTile(
+            icon: Icons.picture_as_pdf_outlined,
+            color: p.accents.appointment,
+          ),
+          SizedBox(width: r.gapMd),
+          Expanded(
+            child: Text(
+              doc.nameTr,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EditableLabCard extends StatelessWidget {
+  const _EditableLabCard({
+    required this.row,
+    required this.onChanged,
+    required this.onRemove,
+  });
+
+  final _EditableLab row;
+  final VoidCallback onChanged;
+  final VoidCallback onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final r = Responsive.fromContext(context);
+    final p = context.palette;
+    final valid = row.isValid;
+
+    return NeuCard(
+      surface: Surface.flat,
+      color: row.include
+          ? null
+          : p.backgroundDeep.withValues(alpha: p.isDark ? 0.5 : 0.7),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Checkbox(
+                value: row.include,
+                onChanged: (v) {
+                  row.include = v ?? false;
+                  onChanged();
+                },
+              ),
+              Expanded(
+                child: TextField(
+                  controller: row.label,
+                  onChanged: (_) => onChanged(),
+                  decoration: const InputDecoration(
+                    labelText: 'Tahlil adı',
+                    isDense: true,
+                  ),
+                ),
+              ),
+              TapIcon(
+                icon: Icons.delete_outline_rounded,
+                semanticLabel: 'Satırı sil',
+                onPressed: onRemove,
+              ),
+            ],
+          ),
+          SizedBox(height: r.gapSm),
+          Row(
+            children: [
+              Expanded(
+                flex: 2,
+                child: NumberField(
+                  controller: row.value,
+                  hintText: 'sonuç',
+                  onChanged: (_) => onChanged(),
+                ),
+              ),
+              SizedBox(width: r.gapSm),
+              Expanded(
+                child: TextField(
+                  controller: row.unit,
+                  decoration: const InputDecoration(
+                    hintText: 'birim',
+                    isDense: true,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: r.gapSm),
+          Row(
+            children: [
+              Expanded(
+                child: NumberField(controller: row.min, hintText: 'alt sınır'),
+              ),
+              SizedBox(width: r.gapSm),
+              Expanded(
+                child: NumberField(controller: row.max, hintText: 'üst sınır'),
+              ),
+            ],
+          ),
+          if (!valid) ...[
+            SizedBox(height: r.gapXs),
+            Text(
+              'Ad ve sonuç dolu olmadan kaydedilmez.',
+              style: Theme.of(context)
+                  .textTheme
+                  .labelSmall
+                  ?.copyWith(color: p.warning),
+            ),
+          ],
+          SizedBox(height: r.gapXs),
+          Text(
+            'ham: ${row.rawLine}',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelSmall,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Yapay zekanın "Analit | değer | birim | aralık" satırlarını çözer.
+///
+/// Ayrı bir fonksiyon: ekrandan bağımsız olduğu için test edilebiliyor.
+List<ParsedLabValue> parseAiLabReply(String text) {
+  final out = <ParsedLabValue>[];
+  for (final line in text.split('\n')) {
+    final parts = line.split('|').map((s) => s.trim()).toList();
+    if (parts.length < 3) continue;
+    final value = parseLocaleNumber(parts[1]);
+    if (value == null) continue;
+    if (parts[0].isEmpty) continue;
+
+    double? min;
+    double? max;
+    if (parts.length >= 4) {
+      final m = RegExp(r'(\d+[.,]?\d*)\s*[-–]\s*(\d+[.,]?\d*)')
+          .firstMatch(parts[3]);
+      if (m != null) {
+        min = parseLocaleNumber(m.group(1));
+        max = parseLocaleNumber(m.group(2));
+      }
+    }
+
+    String? key;
+    var best = 0;
+    final norm = parts[0].toLowerCase();
+    for (final e in kLabAliases.entries) {
+      if (norm.contains(e.key) && e.key.length > best) {
+        key = e.value.key;
+        best = e.key.length;
+      }
+    }
+
+    out.add(
+      ParsedLabValue(
+        rawLine: line,
+        analyteLabel: parts[0],
+        analyteKey: key,
+        value: value,
+        unit: parts[2],
+        refMin: min,
+        refMax: max,
+      ),
+    );
+  }
+  return out;
+}
 class _ManualLabTab extends ConsumerStatefulWidget {
-  const _ManualLabTab();
+  const _ManualLabTab({super.key});
 
   @override
   ConsumerState<_ManualLabTab> createState() => _ManualLabTabState();
@@ -635,384 +1478,3 @@ class _ManualLabTabState extends ConsumerState<_ManualLabTab> {
   }
 }
 
-/// Tahlil kağıdından okuma: önce cihaz üstü OCR, isteğe bağlı AI.
-class _OcrLabTab extends ConsumerStatefulWidget {
-  const _OcrLabTab();
-
-  @override
-  ConsumerState<_OcrLabTab> createState() => _OcrLabTabState();
-}
-
-class _OcrLabTabState extends ConsumerState<_OcrLabTab> {
-  File? _image;
-  bool _busy = false;
-  String? _statusTr;
-  List<ParsedLabValue> _parsed = const [];
-  final Set<int> _selected = {};
-  String? _aiRaw;
-  DateTime _takenAt = DateTime.now();
-
-  Future<void> _capture() async {
-    final service = ref.read(permissionServiceProvider);
-    if (await service.status(AppPermission.camera) !=
-        AppPermissionStatus.granted) {
-      if (!mounted) return;
-      final ok = await showPermissionDialog(
-        context,
-        permissionInfo(AppPermission.camera),
-      );
-      if (!ok) return;
-      if (await service.request(AppPermission.camera) !=
-          AppPermissionStatus.granted) {
-        return;
-      }
-    }
-
-    final file = await ref
-        .read(scannerServiceProvider)
-        .captureFromCamera(maxWidth: 2000);
-    if (file == null || !mounted) return;
-    setState(() {
-      _image = file;
-      _parsed = const [];
-      _selected.clear();
-      _aiRaw = null;
-    });
-    await _runOcr();
-  }
-
-  Future<void> _runOcr() async {
-    final image = _image;
-    if (image == null) return;
-    setState(() {
-      _busy = true;
-      _statusTr = 'Metin okunuyor (telefonun içinde)…';
-    });
-    try {
-      final result =
-          await ref.read(scannerServiceProvider).recognizeText(image);
-      final parsed = parseLabLines(result.lines);
-      if (!mounted) return;
-      setState(() {
-        _busy = false;
-        _parsed = parsed;
-        _selected
-          ..clear()
-          ..addAll(List.generate(parsed.length, (i) => i));
-        _statusTr = parsed.isEmpty
-            ? 'Tanıdığım bir tahlil değeri bulamadım. '
-                'Daha net bir fotoğraf dene ya da "Yapay zekaya okut" '
-                'seçeneğini kullan.'
-            : null;
-      });
-    } on Object catch (e) {
-      if (mounted) {
-        setState(() {
-          _busy = false;
-          _statusTr = 'Okuma başarısız: $e';
-        });
-      }
-    }
-  }
-
-  Future<void> _runAi() async {
-    final image = _image;
-    if (image == null) return;
-
-    final consent = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Tahlil fotoğrafı yapay zekaya gönderilecek'),
-        content: const Text(
-          'Bu fotoğraf Anthropic Claude API sunucusuna gönderilecek. '
-          'Fotoğrafta adın ve TC kimlik numaran yazıyor olabilir — '
-          'göndermeden önce bu alanları parmağınla kapatarak yeniden '
-          'çekebilirsin.\n\n'
-          'Yapay zeka yalnızca değerleri OKUR, yorumlamaz. '
-          'Okunan her değeri kaydetmeden önce onaylarsın.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Vazgeç'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Gönder'),
-          ),
-        ],
-      ),
-    );
-    if (consent != true) return;
-
-    setState(() {
-      _busy = true;
-      _statusTr = 'Yapay zeka okuyor…';
-    });
-    try {
-      final prompt =
-          ref.read(aiPromptBuilderProvider).buildLabVisionPrompt();
-      final model =
-          ref.read(preferencesProvider).aiModel ?? AiConfig.defaultModel;
-      final reply = await ref.read(aiServiceProvider).sendVision(
-            systemPrompt: prompt,
-            userText: 'Bu tahlil raporundaki değerleri oku.',
-            image: image,
-            model: model,
-          );
-      // "Analit | değer | birim | aralık" satırlarını çöz.
-      final parsed = <ParsedLabValue>[];
-      for (final line in reply.text.split('\n')) {
-        final parts = line.split('|').map((s) => s.trim()).toList();
-        if (parts.length < 3) continue;
-        final value = parseLocaleNumber(parts[1]);
-        if (value == null) continue;
-        double? min;
-        double? max;
-        if (parts.length >= 4) {
-          final m = RegExp(r'(\d+[.,]?\d*)\s*[-–]\s*(\d+[.,]?\d*)')
-              .firstMatch(parts[3]);
-          if (m != null) {
-            min = parseLocaleNumber(m.group(1));
-            max = parseLocaleNumber(m.group(2));
-          }
-        }
-        // Bilinen analitle eşleştir.
-        String? key;
-        final norm = parts[0].toLowerCase();
-        for (final e in kLabAliases.entries) {
-          if (norm.contains(e.key)) {
-            key = e.value.key;
-            break;
-          }
-        }
-        parsed.add(
-          ParsedLabValue(
-            rawLine: line,
-            analyteLabel: parts[0],
-            analyteKey: key,
-            value: value,
-            unit: parts[2],
-            refMin: min,
-            refMax: max,
-          ),
-        );
-      }
-      if (!mounted) return;
-      setState(() {
-        _busy = false;
-        _aiRaw = reply.text;
-        _parsed = parsed;
-        _selected
-          ..clear()
-          ..addAll(List.generate(parsed.length, (i) => i));
-        _statusTr = parsed.isEmpty
-            ? 'Yapay zeka da okunabilir değer bulamadı.'
-            : null;
-      });
-    } on AiFailure catch (e) {
-      if (mounted) {
-        setState(() {
-          _busy = false;
-          _statusTr = e.messageTr;
-        });
-      }
-    }
-  }
-
-  Future<void> _saveSelected() async {
-    final db = ref.read(databaseProvider);
-    for (final i in _selected) {
-      final v = _parsed[i];
-      await db.into(db.labResultRows).insert(
-            LabResultRowsCompanion.insert(
-              analyte: v.analyteKey ??
-                  'custom_${v.analyteLabel.toLowerCase().replaceAll(RegExp(r"[^a-z0-9]+"), "_")}',
-              analyteLabel: v.analyteLabel,
-              value: v.value,
-              unit: v.unit,
-              refMin: Value(v.refMin),
-              refMax: Value(v.refMax),
-              origin: const Value('ocr'),
-              confirmedByUser: const Value(true),
-              note: const Value('Fotoğraftan okundu, kullanıcı onayladı'),
-              takenAt: _takenAt,
-            ),
-          );
-    }
-
-    // Okunan değerler arasında serum potasyum varsa eşiği değerlendir.
-    final potassium = _selected
-        .map((i) => _parsed[i])
-        .where((v) => v.analyteKey == 'lab_potassium')
-        .firstOrNull;
-    if (mounted && potassium != null) {
-      await evaluateAndDispatchAlerts(
-        context: context,
-        ref: ref,
-        serumPotassium: potassium.value,
-      );
-    }
-
-    if (mounted) Navigator.pop(context);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final r = Responsive.fromContext(context);
-    final p = context.palette;
-    final conn = ref.watch(aiConnectionProvider).value;
-
-    return SingleChildScrollView(
-      padding: EdgeInsets.all(r.pagePadding),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (_image != null)
-            ClipRRect(
-              borderRadius: BorderRadius.circular(14),
-              child: Image.file(
-                _image!,
-                height: r.s(170),
-                width: double.infinity,
-                fit: BoxFit.cover,
-              ),
-            ),
-          if (_image != null) SizedBox(height: r.gapMd),
-          NeuButton(
-            label: _busy
-                ? 'İşleniyor…'
-                : (_image == null
-                    ? 'Tahlil kağıdını çek'
-                    : 'Yeniden çek'),
-            icon: Icons.document_scanner_outlined,
-            expanded: true,
-            onPressed: _busy ? null : _capture,
-          ),
-          if (_image != null && conn == AiConnectionState.ok) ...[
-            SizedBox(height: r.gapSm),
-            NeuButton(
-              label: 'Yapay zekaya okut (daha iyi sonuç)',
-              icon: Icons.auto_awesome_rounded,
-              tone: NeuTone.accent,
-              filled: false,
-              expanded: true,
-              onPressed: _busy ? null : _runAi,
-            ),
-          ],
-          SizedBox(height: r.gapSm),
-          Text(
-            kOcrDisclaimerTr,
-            style: Theme.of(context).textTheme.labelSmall,
-          ),
-          if (_statusTr != null) ...[
-            SizedBox(height: r.gapMd),
-            NeuCard(
-              color: p.accentSoft.withValues(alpha: 0.5),
-              child: Text(
-                _statusTr!,
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-            ),
-          ],
-          if (_parsed.isNotEmpty) ...[
-            SizedBox(height: r.gapLg),
-            NeuCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    'Bulunan değerleri onayla (${_parsed.length})',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  SizedBox(height: r.gapXs),
-                  Text(
-                    'Yanlış okunanı işaretini kaldırarak atlayabilirsin. '
-                    'Kaydettikten sonra her değeri elle düzeltebilirsin.',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  SizedBox(height: r.gapSm),
-                  for (final e in _parsed.indexed)
-                    CheckboxListTile(
-                      value: _selected.contains(e.$1),
-                      onChanged: (v) => setState(() {
-                        if (v == true) {
-                          _selected.add(e.$1);
-                        } else {
-                          _selected.remove(e.$1);
-                        }
-                      }),
-                      title: Text(
-                        '${e.$2.analyteLabel}: '
-                        '${e.$2.value} ${e.$2.unit}',
-                      ),
-                      subtitle: Text(
-                        [
-                          if (e.$2.refMin != null && e.$2.refMax != null)
-                            'aralık ${e.$2.refMin}-${e.$2.refMax}',
-                          'ham: ${e.$2.rawLine}',
-                        ].join(' · '),
-                        style: Theme.of(context).textTheme.labelSmall,
-                      ),
-                      contentPadding: EdgeInsets.zero,
-                      controlAffinity: ListTileControlAffinity.leading,
-                    ),
-                  SizedBox(height: r.gapMd),
-                  LabeledField(
-                    label: 'Tahlil tarihi',
-                    child: NeuButton(
-                      label: '${_takenAt.day.toString().padLeft(2, '0')}.'
-                          '${_takenAt.month.toString().padLeft(2, '0')}.'
-                          '${_takenAt.year}',
-                      icon: Icons.calendar_today_outlined,
-                      filled: false,
-                      compact: true,
-                      expanded: true,
-                      onPressed: () async {
-                        final picked = await showDatePicker(
-                          context: context,
-                          initialDate: _takenAt,
-                          firstDate: DateTime(2000),
-                          lastDate: DateTime.now(),
-                        );
-                        if (picked != null) {
-                          setState(() => _takenAt = picked);
-                        }
-                      },
-                    ),
-                  ),
-                  SizedBox(height: r.gapMd),
-                  NeuButton(
-                    label: '${_selected.length} değeri kaydet',
-                    icon: Icons.check_rounded,
-                    expanded: true,
-                    onPressed:
-                        _selected.isEmpty ? null : _saveSelected,
-                  ),
-                ],
-              ),
-            ),
-          ],
-          if (_aiRaw != null) ...[
-            SizedBox(height: r.gapMd),
-            ExpansionTile(
-              title: Text(
-                'Yapay zekanın ham yanıtı',
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
-              children: [
-                Padding(
-                  padding: EdgeInsets.all(r.gapSm),
-                  child: Text(
-                    _aiRaw!,
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}

@@ -225,6 +225,17 @@ class DietPlanRows extends Table {
   BoolColumn get active => boolean().withDefault(const Constant(true))();
   DateTimeColumn get createdAt =>
       dateTime().withDefault(currentDateAndTime)();
+
+  /// Diyetisyenin verdiği KAĞIDIN kendisi — fotoğrafı ya da PDF'i.
+  ///
+  /// Uygulamanın kendi klasörüne kopyalanır (galeri/Dosyalar'daki
+  /// özgün dosya silinse bile plan sağlam kalsın diye). Yol cihaz
+  /// dışına çıkmaz; yalnız kullanıcı "yapay zekaya okut" derse o tek
+  /// dosya gönderilir.
+  TextColumn get attachmentPath => text().nullable()();
+
+  /// 'image' | 'pdf'
+  TextColumn get attachmentKind => text().nullable()();
 }
 
 class DietAdherenceRows extends Table {

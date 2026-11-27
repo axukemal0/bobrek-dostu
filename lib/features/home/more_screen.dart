@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
@@ -46,7 +48,9 @@ class MoreScreen extends ConsumerWidget {
           _Item(
             icon: Icons.watch_outlined,
             label: 'Akıllı saat verisi',
-            subtitle: 'Health Connect: nabız, tansiyon, uyku, SpO₂',
+            subtitle: Platform.isIOS
+                ? 'Apple Watch: nabız, EKG, uyku, SpO₂'
+                : 'Health Connect: nabız, tansiyon, uyku, SpO₂',
             route: Routes.health,
           ),
           _Item(

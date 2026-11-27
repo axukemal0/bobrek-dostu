@@ -1,5 +1,6 @@
 import 'dart:io' show Platform;
 
+import 'package:flutter/services.dart';
 import 'package:health/health.dart';
 
 /// Health Connect üzerinden akıllı saat / telefon sağlık verisi.
@@ -21,6 +22,21 @@ class HealthSample {
   final double? extra;
 }
 
+/// Apple Watch'tan okunan tek bir EKG kaydı.
+class EcgRecord {
+  const EcgRecord({
+    required this.at,
+    required this.classificationTr,
+    this.averageHeartRate,
+    this.sampleCount = 0,
+  });
+
+  final DateTime at;
+  final String classificationTr;
+  final double? averageHeartRate;
+  final int sampleCount;
+}
+
 class HealthSnapshot {
   const HealthSnapshot({
     this.steps,
@@ -33,6 +49,7 @@ class HealthSnapshot {
     this.weight,
     this.ecgAvailable = false,
     this.ecgCount = 0,
+    this.ecgRecords = const [],
   });
 
   final int? steps;
@@ -50,6 +67,9 @@ class HealthSnapshot {
   final bool ecgAvailable;
   final int ecgCount;
 
+  /// iOS'ta okunan EKG kayıtları (en yeniden eskiye).
+  final List<EcgRecord> ecgRecords;
+
   bool get isEmpty =>
       steps == null &&
       heartRates.isEmpty &&
@@ -61,17 +81,64 @@ class HealthSnapshot {
 
 /// EKG hakkında kullanıcıya söylenen dürüst açıklama.
 ///
-/// `health` paketi Android'de Health Connect'i kullanır. Health Connect
-/// ham EKG dalga formunu üçüncü taraf uygulamalara AÇMAZ; yalnızca
-/// bazı üreticiler kendi uygulamalarında gösterir. Bu yüzden
-/// uygulama EKG'yi gösteremez ve bunu saklamaz.
-const String kEcgExplanationTr =
-    'EKG hakkında dürüst bilgi: Android\'in Health Connect\'i, akıllı '
-    'saatlerin ölçtüğü HAM EKG dalga formunu başka uygulamalara '
-    'açmıyor. Bu yüzden bu uygulama EKG çizgisini gösteremez. '
-    'EKG kaydını saatinin kendi uygulamasından (örn. Samsung Health, '
-    'Fitbit) PDF olarak çıkarıp doktoruna iletebilirsin. '
-    'Nabız, tansiyon, SpO₂, adım ve uyku verileri ise okunabiliyor.';
+/// İki platform BİRBİRİNDEN FARKLI, bu yüzden metin de farklı:
+///
+///  * Android — `health` paketi Health Connect'i kullanır. Health
+///    Connect ham EKG dalga formunu üçüncü taraf uygulamalara AÇMAZ;
+///    yalnız üreticinin kendi uygulaması gösterir. Uygulama EKG
+///    çizemez.
+///  * iOS — HealthKit, Apple Watch'un çektiği EKG'yi
+///    `HKElectrocardiogram` olarak PAYLAŞIR: sınıflandırma (sinüs
+///    ritmi, atriyal fibrilasyon…), ortalama nabız ve voltaj örnekleri
+///    okunabilir. Bu yüzden iOS'ta EKG kaydı listelenebiliyor.
+///
+/// Eskiden her iki platformda da Android'in metni gösteriliyordu;
+/// iPhone kullanıcısına "Android'in Health Connect'i" diye başlayan
+/// bir açıklama okutmak hem yanlış hem de güveni zedeleyici.
+String get kEcgExplanationTr => Platform.isIOS
+    ? 'EKG hakkında: Apple Watch ile çektiğin EKG kayıtları iPhone '
+        'Sağlık uygulamasında saklanır ve bu uygulama onları '
+        'OKUYABİLİR — kaydın tarihi, sınıflandırması (sinüs ritmi, '
+        'atriyal fibrilasyon vb.) ve ortalama nabzı görünür. '
+        'Hekiminin isteyeceği ayrıntılı PDF\'i yine Sağlık '
+        'uygulamasından dışa aktarman gerekir. Uygulama Sağlık\'a '
+        'hiçbir şey YAZMAZ.'
+    : 'EKG hakkında dürüst bilgi: Android\'in Health Connect\'i, '
+        'akıllı saatlerin ölçtüğü HAM EKG dalga formunu başka '
+        'uygulamalara açmıyor. Bu yüzden bu uygulama EKG çizgisini '
+        'gösteremez. EKG kaydını saatinin kendi uygulamasından (örn. '
+        'Samsung Health, Fitbit) PDF olarak çıkarıp doktoruna '
+        'iletebilirsin. Nabız, tansiyon, SpO\u2082, adım ve uyku '
+        'verileri ise okunabiliyor.';
+
+/// iPhone Sağlık (HealthKit) erişim durumu.
+class HealthKitStatus {
+  const HealthKitStatus({
+    required this.dataAvailable,
+    required this.entitled,
+    required this.signedForDevelopment,
+  });
+
+  /// Cihaz Sağlık verisi tutabiliyor mu (iPad'lerin bir kısmı tutmaz).
+  final bool dataAvailable;
+
+  /// Bu DERLEME HealthKit hakkıyla imzalanmış mı?
+  ///
+  /// Ücretsiz Apple kimliğiyle yan yüklenen derlemelerde false olur ve
+  /// izin ekranı hiç açılmaz.
+  final bool entitled;
+
+  /// Pakette provizyon profili var mı (yani geliştirme derlemesi mi)?
+  final bool signedForDevelopment;
+
+  bool get usable => dataAvailable && entitled;
+
+  static const HealthKitStatus unsupported = HealthKitStatus(
+    dataAvailable: false,
+    entitled: false,
+    signedForDevelopment: false,
+  );
+}
 
 class HealthService {
   HealthService() : _health = Health();
@@ -79,21 +146,59 @@ class HealthService {
   final Health _health;
   bool _configured = false;
 
+  static const MethodChannel _iosChannel =
+      MethodChannel('com.bobrekdostu.app/healthkit');
+
   /// Okunacak veri türleri.
-  static final List<HealthDataType> readTypes = [
-    HealthDataType.STEPS,
-    HealthDataType.HEART_RATE,
-    HealthDataType.RESTING_HEART_RATE,
-    HealthDataType.BLOOD_PRESSURE_SYSTOLIC,
-    HealthDataType.BLOOD_PRESSURE_DIASTOLIC,
-    HealthDataType.BLOOD_OXYGEN,
-    HealthDataType.SLEEP_SESSION,
-    HealthDataType.WEIGHT,
-  ];
+  ///
+  /// EKG YALNIZ iOS'ta listelenir: `HealthDataType.ELECTROCARDIOGRAM`
+  /// Android'de desteklenmiyor ve listeye konursa izin isteği
+  /// tamamen başarısız oluyor (eklenti bilinmeyen türde atıyor).
+  static List<HealthDataType> get readTypes => [
+        HealthDataType.STEPS,
+        HealthDataType.HEART_RATE,
+        HealthDataType.RESTING_HEART_RATE,
+        HealthDataType.BLOOD_PRESSURE_SYSTOLIC,
+        HealthDataType.BLOOD_PRESSURE_DIASTOLIC,
+        HealthDataType.BLOOD_OXYGEN,
+        HealthDataType.SLEEP_SESSION,
+        HealthDataType.WEIGHT,
+        if (Platform.isIOS) HealthDataType.ELECTROCARDIOGRAM,
+      ];
 
   /// Platformun sağlık servisinin kullanıcıya görünen adı.
   static String get providerNameTr =>
       Platform.isIOS ? 'Sağlık uygulaması' : 'Health Connect';
+
+  /// Verinin GELDİĞİ yerin kullanıcıya görünen adı.
+  static String get sourceNameTr =>
+      Platform.isIOS ? 'Apple Watch / iPhone Sağlık' : 'akıllı saatin';
+
+  /// iOS'ta HealthKit erişiminin gerçek durumu.
+  ///
+  /// Android'de [HealthKitStatus.unsupported] döner; orada
+  /// Health Connect'in kendi durum sorgusu ([sdkStatus]) kullanılır.
+  Future<HealthKitStatus> healthKitStatus() async {
+    if (!Platform.isIOS) return HealthKitStatus.unsupported;
+    try {
+      final raw = await _iosChannel.invokeMapMethod<String, dynamic>('status');
+      if (raw == null) return HealthKitStatus.unsupported;
+      return HealthKitStatus(
+        dataAvailable: raw['dataAvailable'] == true,
+        entitled: raw['entitled'] == true,
+        signedForDevelopment: raw['signedForDevelopment'] == true,
+      );
+    } on MissingPluginException {
+      // Yerel taraf bu derlemede yok; eski bir derleme olabilir.
+      return const HealthKitStatus(
+        dataAvailable: true,
+        entitled: true,
+        signedForDevelopment: false,
+      );
+    } on PlatformException {
+      return HealthKitStatus.unsupported;
+    }
+  }
 
   /// iOS'ta izin isteğinin sessizce başarısız olmasının en sık sebebi,
   /// uygulamanın HealthKit hakkı OLMADAN imzalanmış olmasıdır. Ücretsiz
@@ -101,11 +206,14 @@ class HealthService {
   /// yalnız ücretli üyelikteki provizyon profillerine verir. Kullanıcıya
   /// "izin vermedin" demek yanıltıcı olurdu.
   static String? get entitlementNoteTr => Platform.isIOS
-      ? 'Not: Bu uygulama ücretsiz bir Apple kimliğiyle kurulduysa '
-          'iPhone Sağlık verisine hiç erişemez — Apple bu izni yalnız '
-          'ücretli geliştirici üyeliğiyle imzalanmış uygulamalara verir. '
-          'Ölçümlerini "Kilo, ödem ve tansiyon" ekranından elle '
-          'girebilirsin.'
+      ? 'Bu derleme ücretsiz bir Apple kimliğiyle imzalanmış. Apple, '
+          'Sağlık verisi okuma hakkını yalnız ÜCRETLİ geliştirici '
+          'üyeliğiyle imzalanmış uygulamalara veriyor; bu yüzden izin '
+          'ekranı hiç açılmıyor ve Apple Watch verisi okunamıyor. '
+          'Senin bir şeyi yanlış yapmandan kaynaklanmıyor. '
+          'Üyelik alındığında TestFlight\'tan gelen sürüm bu veriyi '
+          'sorunsuz okuyacak. O zamana kadar ölçümlerini "Kilo, ödem '
+          've tansiyon" ekranından elle girebilirsin.'
       : null;
 
   Future<void> _configure() async {
@@ -177,6 +285,7 @@ class HealthService {
     final hr = <HealthSample>[];
     final spo2 = <HealthSample>[];
     final sleep = <HealthSample>[];
+    final ecg = <EcgRecord>[];
     final systolic = <DateTime, double>{};
     final diastolic = <DateTime, double>{};
     double? restingHr;
@@ -213,6 +322,23 @@ class HealthService {
           sleep.add(
             HealthSample(value: minutes, at: pt.dateFrom, unit: 'dk'),
           );
+        case HealthDataType.ELECTROCARDIOGRAM:
+          // iOS: Apple Watch EKG kaydı. Ham dalga formunu ÇİZMİYORUZ
+          // (hekime PDF olarak Sağlık uygulamasından çıkarılmalı);
+          // kaydın varlığı, sınıflandırması ve ortalama nabzı
+          // gösteriliyor.
+          final ecgValue = v;
+          if (ecgValue is ElectrocardiogramHealthValue) {
+            ecg.add(
+              EcgRecord(
+                at: pt.dateFrom,
+                classificationTr:
+                    _ecgClassificationTr(ecgValue.classification),
+                averageHeartRate: ecgValue.averageHeartRate?.toDouble(),
+                sampleCount: ecgValue.voltageValues.length,
+              ),
+            );
+          }
         default:
           break;
       }
@@ -257,9 +383,31 @@ class HealthService {
       sleepMinutes: lastNight,
       sleepSessions: sleep,
       weight: weight,
-      // Health Connect ham EKG dalga formunu dışa açmaz.
-      ecgAvailable: false,
-      ecgCount: 0,
+      // Android (Health Connect) ham EKG dalga formunu dışa açmaz;
+      // iOS'ta Apple Watch kayıtları okunabiliyor.
+      ecgAvailable: ecg.isNotEmpty,
+      ecgCount: ecg.length,
+      ecgRecords: ecg..sort((a, b) => b.at.compareTo(a.at)),
     );
   }
 }
+
+/// Apple'ın EKG sınıflandırmasının Türkçesi.
+///
+/// Çeviri YORUM DEĞİLDİR: Apple'ın kendi etiketini Türkçeye çevirir,
+/// üstüne bir değerlendirme eklemez. Karar hekimindir.
+String _ecgClassificationTr(ElectrocardiogramClassification? c) =>
+    switch (c) {
+      ElectrocardiogramClassification.SINUS_RHYTHM => 'Sinüs ritmi',
+      ElectrocardiogramClassification.ATRIAL_FIBRILLATION =>
+        'Atriyal fibrilasyon',
+      ElectrocardiogramClassification.INCONCLUSIVE_HIGH_HEART_RATE =>
+        'Sonuçsuz — nabız yüksekti',
+      ElectrocardiogramClassification.INCONCLUSIVE_LOW_HEART_RATE =>
+        'Sonuçsuz — nabız düşüktü',
+      ElectrocardiogramClassification.INCONCLUSIVE_POOR_READING =>
+        'Sonuçsuz — kayıt kalitesi düşük',
+      ElectrocardiogramClassification.INCONCLUSIVE_OTHER => 'Sonuçsuz',
+      ElectrocardiogramClassification.UNRECOGNIZED => 'Tanımlanamadı',
+      ElectrocardiogramClassification.NOT_SET || null => 'Belirtilmemiş',
+    };

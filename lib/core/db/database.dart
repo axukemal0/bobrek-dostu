@@ -46,12 +46,20 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) async {
           await m.createAll();
+        },
+        // Telefondaki veriler korunur: her sürüm yalnız EKLER.
+        //  v2 — diyet planına kağıdın kendisi (fotoğraf/PDF) eklendi.
+        onUpgrade: (m, from, to) async {
+          if (from < 2) {
+            await m.addColumn(dietPlanRows, dietPlanRows.attachmentPath);
+            await m.addColumn(dietPlanRows, dietPlanRows.attachmentKind);
+          }
         },
         beforeOpen: (details) async {
           await customStatement('PRAGMA foreign_keys = ON');

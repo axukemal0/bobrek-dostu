@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:path_provider/path_provider.dart';
 
 import 'scanner_service.dart';
 
@@ -157,6 +158,23 @@ class DocumentIntakeService {
     }
     await _checkSize(doc);
     return doc;
+  }
+
+  /// Belgeyi uygulamanın kendi klasörüne kopyalar ve yeni yolu döner.
+  ///
+  /// Kamera ve dosya seçici geçici klasörlere yazar; iOS o klasörleri
+  /// istediği zaman boşaltır. Saklanacak bir belge (diyet kağıdı gibi)
+  /// kopyalanmazsa kullanıcı bir gün planını açtığında yerinde boş bir
+  /// kare bulur.
+  Future<File> persist(IntakeDocument doc, {required String folder}) async {
+    final base = await getApplicationDocumentsDirectory();
+    final dir = Directory('${base.path}/$folder');
+    if (!dir.existsSync()) await dir.create(recursive: true);
+    final ext = doc.isPdf
+        ? 'pdf'
+        : (doc.file.path.split('.').lastOrNull?.toLowerCase() ?? 'jpg');
+    final name = '${DateTime.now().millisecondsSinceEpoch}.$ext';
+    return doc.file.copy('${dir.path}/$name');
   }
 
   Future<void> _checkSize(IntakeDocument doc) async {

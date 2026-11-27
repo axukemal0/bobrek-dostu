@@ -1,7 +1,10 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../core/providers.dart';
+import '../../core/services/health_service.dart';
 import '../../core/services/permission_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/neumorphic.dart';
@@ -63,9 +66,9 @@ class _PermissionsScreenState extends ConsumerState<PermissionsScreen> {
         context: context,
         builder: (context) => AlertDialog(
           title: const Text('İzin kalıcı olarak reddedilmiş'),
-          content: const Text(
-            'Android bu izni bir daha sormuyor. Telefon '
-            'ayarlarından elle vermen gerekiyor.',
+          content: Text(
+            '${Platform.isIOS ? "iOS" : "Android"} bu izni bir daha '
+            'sormuyor. Telefon ayarlarından elle vermen gerekiyor.',
           ),
           actions: [
             TextButton(
@@ -159,8 +162,10 @@ class _PermissionsScreenState extends ConsumerState<PermissionsScreen> {
                         'sorgularında koordinat olarak, ve acil durum '
                         'mesajındaki harita bağlantısında kullanılır. '
                         'Kimliğinle birlikte hiçbir yere gönderilmez.',
-                    'Ses tanıma: Android\'in kendi servisiyle yapılır.',
-                    'Health Connect: yalnızca OKUNUR, hiçbir şey '
+                    Platform.isIOS
+                        ? 'Ses tanıma: iPhone\'un kendi servisiyle yapılır.'
+                        : 'Ses tanıma: Android\'in kendi servisiyle yapılır.',
+                    '${HealthService.providerNameTr}: yalnızca OKUNUR, hiçbir şey '
                         'yazılmaz.',
                     'Yapay zeka: yalnızca sen bir AI özelliğini '
                         'kullandığında, o an onayladığın metin/görsel '

@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:permission_handler/permission_handler.dart';
 
 /// Uygulamanın istediği izinler ve her birinin SADE TÜRKÇE gerekçesi.
@@ -123,8 +125,28 @@ const List<PermissionInfo> kPermissionInfos = [
   ),
 ];
 
-PermissionInfo permissionInfo(AppPermission p) =>
-    kPermissionInfos.firstWhere((i) => i.permission == p);
+/// iOS'ta sağlık izni Health Connect'ten değil, iPhone'un Sağlık
+/// uygulamasından gelir. Aynı metni iki platforma göstermek iPhone
+/// kullanıcısını var olmayan bir Android servisini aramaya
+/// gönderiyordu.
+const PermissionInfo _healthInfoIos = PermissionInfo(
+  permission: AppPermission.healthConnect,
+  titleTr: 'Sağlık verisi izni',
+  featureTr: 'Apple Watch verisi (nabız, EKG, uyku, SpO₂)',
+  whyTr: 'Apple Watch\'unun ölçtüğü nabız, adım, uyku, SpO₂ ve EKG '
+      'kayıtlarını iPhone\'un Sağlık uygulamasından OKUMAK için '
+      'gerekiyor. Uygulama Sağlık\'a hiçbir şey YAZMAZ ve verilerin '
+      'telefondan çıkmaz. İzin ekranında istediğin veri türlerini tek '
+      'tek açabilirsin.',
+  optional: true,
+);
+
+PermissionInfo permissionInfo(AppPermission p) {
+  if (p == AppPermission.healthConnect && Platform.isIOS) {
+    return _healthInfoIos;
+  }
+  return kPermissionInfos.firstWhere((i) => i.permission == p);
+}
 
 /// İzin durumu.
 enum AppPermissionStatus { granted, denied, permanentlyDenied, unavailable }

@@ -7272,8 +7272,38 @@ class $DietPlanRowsTable extends DietPlanRows
     requiredDuringInsert: false,
     defaultValue: currentDateAndTime,
   );
+  static const VerificationMeta _attachmentPathMeta = const VerificationMeta(
+    'attachmentPath',
+  );
   @override
-  List<GeneratedColumn> get $columns => [id, title, content, active, createdAt];
+  late final GeneratedColumn<String> attachmentPath = GeneratedColumn<String>(
+    'attachment_path',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _attachmentKindMeta = const VerificationMeta(
+    'attachmentKind',
+  );
+  @override
+  late final GeneratedColumn<String> attachmentKind = GeneratedColumn<String>(
+    'attachment_kind',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    title,
+    content,
+    active,
+    createdAt,
+    attachmentPath,
+    attachmentKind,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -7317,6 +7347,24 @@ class $DietPlanRowsTable extends DietPlanRows
         createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
       );
     }
+    if (data.containsKey('attachment_path')) {
+      context.handle(
+        _attachmentPathMeta,
+        attachmentPath.isAcceptableOrUnknown(
+          data['attachment_path']!,
+          _attachmentPathMeta,
+        ),
+      );
+    }
+    if (data.containsKey('attachment_kind')) {
+      context.handle(
+        _attachmentKindMeta,
+        attachmentKind.isAcceptableOrUnknown(
+          data['attachment_kind']!,
+          _attachmentKindMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -7346,6 +7394,14 @@ class $DietPlanRowsTable extends DietPlanRows
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
       )!,
+      attachmentPath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}attachment_path'],
+      ),
+      attachmentKind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}attachment_kind'],
+      ),
     );
   }
 
@@ -7361,12 +7417,25 @@ class DietPlanRow extends DataClass implements Insertable<DietPlanRow> {
   final String content;
   final bool active;
   final DateTime createdAt;
+
+  /// Diyetisyenin verdiği KAĞIDIN kendisi — fotoğrafı ya da PDF'i.
+  ///
+  /// Uygulamanın kendi klasörüne kopyalanır (galeri/Dosyalar'daki
+  /// özgün dosya silinse bile plan sağlam kalsın diye). Yol cihaz
+  /// dışına çıkmaz; yalnız kullanıcı "yapay zekaya okut" derse o tek
+  /// dosya gönderilir.
+  final String? attachmentPath;
+
+  /// 'image' | 'pdf'
+  final String? attachmentKind;
   const DietPlanRow({
     required this.id,
     required this.title,
     required this.content,
     required this.active,
     required this.createdAt,
+    this.attachmentPath,
+    this.attachmentKind,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -7376,6 +7445,12 @@ class DietPlanRow extends DataClass implements Insertable<DietPlanRow> {
     map['content'] = Variable<String>(content);
     map['active'] = Variable<bool>(active);
     map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || attachmentPath != null) {
+      map['attachment_path'] = Variable<String>(attachmentPath);
+    }
+    if (!nullToAbsent || attachmentKind != null) {
+      map['attachment_kind'] = Variable<String>(attachmentKind);
+    }
     return map;
   }
 
@@ -7386,6 +7461,12 @@ class DietPlanRow extends DataClass implements Insertable<DietPlanRow> {
       content: Value(content),
       active: Value(active),
       createdAt: Value(createdAt),
+      attachmentPath: attachmentPath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(attachmentPath),
+      attachmentKind: attachmentKind == null && nullToAbsent
+          ? const Value.absent()
+          : Value(attachmentKind),
     );
   }
 
@@ -7400,6 +7481,8 @@ class DietPlanRow extends DataClass implements Insertable<DietPlanRow> {
       content: serializer.fromJson<String>(json['content']),
       active: serializer.fromJson<bool>(json['active']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      attachmentPath: serializer.fromJson<String?>(json['attachmentPath']),
+      attachmentKind: serializer.fromJson<String?>(json['attachmentKind']),
     );
   }
   @override
@@ -7411,6 +7494,8 @@ class DietPlanRow extends DataClass implements Insertable<DietPlanRow> {
       'content': serializer.toJson<String>(content),
       'active': serializer.toJson<bool>(active),
       'createdAt': serializer.toJson<DateTime>(createdAt),
+      'attachmentPath': serializer.toJson<String?>(attachmentPath),
+      'attachmentKind': serializer.toJson<String?>(attachmentKind),
     };
   }
 
@@ -7420,12 +7505,20 @@ class DietPlanRow extends DataClass implements Insertable<DietPlanRow> {
     String? content,
     bool? active,
     DateTime? createdAt,
+    Value<String?> attachmentPath = const Value.absent(),
+    Value<String?> attachmentKind = const Value.absent(),
   }) => DietPlanRow(
     id: id ?? this.id,
     title: title ?? this.title,
     content: content ?? this.content,
     active: active ?? this.active,
     createdAt: createdAt ?? this.createdAt,
+    attachmentPath: attachmentPath.present
+        ? attachmentPath.value
+        : this.attachmentPath,
+    attachmentKind: attachmentKind.present
+        ? attachmentKind.value
+        : this.attachmentKind,
   );
   DietPlanRow copyWithCompanion(DietPlanRowsCompanion data) {
     return DietPlanRow(
@@ -7434,6 +7527,12 @@ class DietPlanRow extends DataClass implements Insertable<DietPlanRow> {
       content: data.content.present ? data.content.value : this.content,
       active: data.active.present ? data.active.value : this.active,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      attachmentPath: data.attachmentPath.present
+          ? data.attachmentPath.value
+          : this.attachmentPath,
+      attachmentKind: data.attachmentKind.present
+          ? data.attachmentKind.value
+          : this.attachmentKind,
     );
   }
 
@@ -7444,13 +7543,23 @@ class DietPlanRow extends DataClass implements Insertable<DietPlanRow> {
           ..write('title: $title, ')
           ..write('content: $content, ')
           ..write('active: $active, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('attachmentPath: $attachmentPath, ')
+          ..write('attachmentKind: $attachmentKind')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, title, content, active, createdAt);
+  int get hashCode => Object.hash(
+    id,
+    title,
+    content,
+    active,
+    createdAt,
+    attachmentPath,
+    attachmentKind,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -7459,7 +7568,9 @@ class DietPlanRow extends DataClass implements Insertable<DietPlanRow> {
           other.title == this.title &&
           other.content == this.content &&
           other.active == this.active &&
-          other.createdAt == this.createdAt);
+          other.createdAt == this.createdAt &&
+          other.attachmentPath == this.attachmentPath &&
+          other.attachmentKind == this.attachmentKind);
 }
 
 class DietPlanRowsCompanion extends UpdateCompanion<DietPlanRow> {
@@ -7468,12 +7579,16 @@ class DietPlanRowsCompanion extends UpdateCompanion<DietPlanRow> {
   final Value<String> content;
   final Value<bool> active;
   final Value<DateTime> createdAt;
+  final Value<String?> attachmentPath;
+  final Value<String?> attachmentKind;
   const DietPlanRowsCompanion({
     this.id = const Value.absent(),
     this.title = const Value.absent(),
     this.content = const Value.absent(),
     this.active = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.attachmentPath = const Value.absent(),
+    this.attachmentKind = const Value.absent(),
   });
   DietPlanRowsCompanion.insert({
     this.id = const Value.absent(),
@@ -7481,6 +7596,8 @@ class DietPlanRowsCompanion extends UpdateCompanion<DietPlanRow> {
     required String content,
     this.active = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.attachmentPath = const Value.absent(),
+    this.attachmentKind = const Value.absent(),
   }) : title = Value(title),
        content = Value(content);
   static Insertable<DietPlanRow> custom({
@@ -7489,6 +7606,8 @@ class DietPlanRowsCompanion extends UpdateCompanion<DietPlanRow> {
     Expression<String>? content,
     Expression<bool>? active,
     Expression<DateTime>? createdAt,
+    Expression<String>? attachmentPath,
+    Expression<String>? attachmentKind,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -7496,6 +7615,8 @@ class DietPlanRowsCompanion extends UpdateCompanion<DietPlanRow> {
       if (content != null) 'content': content,
       if (active != null) 'active': active,
       if (createdAt != null) 'created_at': createdAt,
+      if (attachmentPath != null) 'attachment_path': attachmentPath,
+      if (attachmentKind != null) 'attachment_kind': attachmentKind,
     });
   }
 
@@ -7505,6 +7626,8 @@ class DietPlanRowsCompanion extends UpdateCompanion<DietPlanRow> {
     Value<String>? content,
     Value<bool>? active,
     Value<DateTime>? createdAt,
+    Value<String?>? attachmentPath,
+    Value<String?>? attachmentKind,
   }) {
     return DietPlanRowsCompanion(
       id: id ?? this.id,
@@ -7512,6 +7635,8 @@ class DietPlanRowsCompanion extends UpdateCompanion<DietPlanRow> {
       content: content ?? this.content,
       active: active ?? this.active,
       createdAt: createdAt ?? this.createdAt,
+      attachmentPath: attachmentPath ?? this.attachmentPath,
+      attachmentKind: attachmentKind ?? this.attachmentKind,
     );
   }
 
@@ -7533,6 +7658,12 @@ class DietPlanRowsCompanion extends UpdateCompanion<DietPlanRow> {
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
+    if (attachmentPath.present) {
+      map['attachment_path'] = Variable<String>(attachmentPath.value);
+    }
+    if (attachmentKind.present) {
+      map['attachment_kind'] = Variable<String>(attachmentKind.value);
+    }
     return map;
   }
 
@@ -7543,7 +7674,9 @@ class DietPlanRowsCompanion extends UpdateCompanion<DietPlanRow> {
           ..write('title: $title, ')
           ..write('content: $content, ')
           ..write('active: $active, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('attachmentPath: $attachmentPath, ')
+          ..write('attachmentKind: $attachmentKind')
           ..write(')'))
         .toString();
   }
@@ -13699,6 +13832,8 @@ typedef $$DietPlanRowsTableCreateCompanionBuilder =
       required String content,
       Value<bool> active,
       Value<DateTime> createdAt,
+      Value<String?> attachmentPath,
+      Value<String?> attachmentKind,
     });
 typedef $$DietPlanRowsTableUpdateCompanionBuilder =
     DietPlanRowsCompanion Function({
@@ -13707,6 +13842,8 @@ typedef $$DietPlanRowsTableUpdateCompanionBuilder =
       Value<String> content,
       Value<bool> active,
       Value<DateTime> createdAt,
+      Value<String?> attachmentPath,
+      Value<String?> attachmentKind,
     });
 
 class $$DietPlanRowsTableFilterComposer
@@ -13740,6 +13877,16 @@ class $$DietPlanRowsTableFilterComposer
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get attachmentPath => $composableBuilder(
+    column: $table.attachmentPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get attachmentKind => $composableBuilder(
+    column: $table.attachmentKind,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -13777,6 +13924,16 @@ class $$DietPlanRowsTableOrderingComposer
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get attachmentPath => $composableBuilder(
+    column: $table.attachmentPath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get attachmentKind => $composableBuilder(
+    column: $table.attachmentKind,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$DietPlanRowsTableAnnotationComposer
@@ -13802,6 +13959,16 @@ class $$DietPlanRowsTableAnnotationComposer
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<String> get attachmentPath => $composableBuilder(
+    column: $table.attachmentPath,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get attachmentKind => $composableBuilder(
+    column: $table.attachmentKind,
+    builder: (column) => column,
+  );
 }
 
 class $$DietPlanRowsTableTableManager
@@ -13840,12 +14007,16 @@ class $$DietPlanRowsTableTableManager
                 Value<String> content = const Value.absent(),
                 Value<bool> active = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<String?> attachmentPath = const Value.absent(),
+                Value<String?> attachmentKind = const Value.absent(),
               }) => DietPlanRowsCompanion(
                 id: id,
                 title: title,
                 content: content,
                 active: active,
                 createdAt: createdAt,
+                attachmentPath: attachmentPath,
+                attachmentKind: attachmentKind,
               ),
           createCompanionCallback:
               ({
@@ -13854,12 +14025,16 @@ class $$DietPlanRowsTableTableManager
                 required String content,
                 Value<bool> active = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<String?> attachmentPath = const Value.absent(),
+                Value<String?> attachmentKind = const Value.absent(),
               }) => DietPlanRowsCompanion.insert(
                 id: id,
                 title: title,
                 content: content,
                 active: active,
                 createdAt: createdAt,
+                attachmentPath: attachmentPath,
+                attachmentKind: attachmentKind,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
