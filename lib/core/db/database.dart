@@ -321,11 +321,64 @@ class DatabaseKeyStore {
   Future<void> deleteKey() => _storage.delete(key: _keyName);
 }
 
+/// Şifreli veritabanı açılamadı.
+///
+/// [unreadable] true ise dosya var ama ELDEKİ ANAHTARLA ÇÖZÜLEMİYOR
+/// (SQLCipher böyle bir dosyayı "file is not a database" diye bildirir).
+/// Bu, anahtar zincirindeki anahtarın kaybolduğu anlamına gelir —
+/// yedekten geri yükleme, anahtar zincirinin sıfırlanması ya da farklı
+/// bir imzayla yeniden kurulum sonrası olabilir. O veriye bir daha
+/// ulaşılamaz; tek çıkış dosyayı kenara koyup sıfırdan başlamaktır.
+class DatabaseOpenFailure implements Exception {
+  const DatabaseOpenFailure(this.cause, {required this.unreadable});
+
+  final Object cause;
+  final bool unreadable;
+
+  @override
+  String toString() => 'DatabaseOpenFailure($cause)';
+}
+
+/// Şifreli veritabanının dosya yolu.
+Future<File> databaseFile({String fileName = 'bobrek_dostu.sqlite'}) async {
+  final dir = await getApplicationDocumentsDirectory();
+  return File(p.join(dir.path, fileName));
+}
+
+/// Çözülemeyen veritabanını KENARA KOYAR (silmez) ve yolunu döner.
+///
+/// Silmiyoruz: dosya bugün okunamıyor ama bir gün anahtar bulunursa
+/// (başka bir yedekten) işe yarayabilir. Kullanıcıya da "sildim"
+/// demektense "kenara aldım" demek dürüst olanı.
+Future<String> setAsideUnreadableDatabase({
+  String fileName = 'bobrek_dostu.sqlite',
+}) async {
+  final file = await databaseFile(fileName: fileName);
+  final stamp = DateTime.now().millisecondsSinceEpoch;
+  final target = '${file.path}.okunamayan-$stamp';
+  if (file.existsSync()) await file.rename(target);
+  // SQLite yan dosyaları da taşınmalı; kalırlarsa yeni veritabanı
+  // onların üstüne denk gelip aynı hatayı tekrar üretebilir.
+  for (final suffix in ['-wal', '-shm', '-journal']) {
+    final side = File('${file.path}$suffix');
+    if (side.existsSync()) await side.rename('$target$suffix');
+  }
+  return target;
+}
+
 /// Şifreli veritabanını açar.
 ///
 /// SQLCipher kullanılamazsa (örn. kütüphane yüklenemedi) uygulama
 /// SESSİZCE şifresiz veritabanına DÜŞMEZ; hata fırlatır ve çağıran
 /// taraf kullanıcıya durumu açıkça söyler.
+///
+/// DİKKAT — BU FONKSİYON BAĞLANTIYI GERÇEKTEN AÇAR. Drift'in
+/// çalıştırıcısı tembeldir: nesneyi kurmak dosyaya dokunmaz, ilk
+/// sorguya kadar bekler. Eskiden burada yalnız nesne kuruluyordu, bu
+/// yüzden "dosya çözülemiyor" hatası main()'in try bloğunun DIŞINDA,
+/// ilk sorguda patlıyordu: yakalayan kimse olmadığı için uygulama
+/// açılış ekranında sonsuza kadar asılı kalıyordu — ne hata, ne
+/// çıkış. Artık küçük bir sorgu çalıştırılıp sonuç burada denetleniyor.
 Future<AppDatabase> openEncryptedDatabase({
   required DatabaseKeyStore keyStore,
   String fileName = 'bobrek_dostu.sqlite',
@@ -334,9 +387,7 @@ Future<AppDatabase> openEncryptedDatabase({
   await applyWorkaroundToOpenSqlCipherOnOldAndroidVersions();
   open.overrideFor(OperatingSystem.android, openCipherOnAndroid);
 
-  final dir = await getApplicationDocumentsDirectory();
-  final file = File(p.join(dir.path, fileName));
-
+  final file = await databaseFile(fileName: fileName);
   final key = await keyStore.getOrCreate();
 
   final executor = NativeDatabase.createInBackground(
@@ -362,5 +413,18 @@ Future<AppDatabase> openEncryptedDatabase({
     },
   );
 
-  return AppDatabase(executor);
+  final db = AppDatabase(executor);
+  try {
+    // Göçleri de tetikleyen en küçük gerçek iş.
+    await db.customSelect('SELECT 1').get();
+    return db;
+  } on Object catch (e) {
+    await db.close().catchError((_) {});
+    final text = e.toString().toLowerCase();
+    throw DatabaseOpenFailure(
+      e,
+      unreadable: text.contains('file is not a database') ||
+          text.contains('(code 26)'),
+    );
+  }
 }

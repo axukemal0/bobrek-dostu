@@ -9,6 +9,14 @@ import 'core/services/secure_store.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await _start();
+}
+
+/// Veritabanını açar ve uygulamayı başlatır.
+///
+/// Ayrı bir fonksiyon: "veriyi sıfırla" düğmesi aynı yoldan yeniden
+/// girebilsin diye.
+Future<void> _start() async {
 
   // Tek elle kullanım: dikey yönlendirme (tablette yatay da serbest).
   await SystemChrome.setPreferredOrientations([
@@ -19,6 +27,7 @@ Future<void> main() async {
   ]);
 
   Object? startupError;
+  var unreadable = false;
   AppDatabase? db;
 
   try {
@@ -26,13 +35,16 @@ Future<void> main() async {
     db = await openEncryptedDatabase(
       keyStore: DatabaseKeyStore(store.raw),
     );
-  } on Object catch (e) {
+  } on DatabaseOpenFailure catch (e) {
     // Şifreli veritabanı açılamazsa ŞİFRESİZ veriye DÜŞMEYİZ.
+    startupError = e.cause;
+    unreadable = e.unreadable;
+  } on Object catch (e) {
     startupError = e;
   }
 
   if (db == null) {
-    runApp(StartupErrorApp(error: startupError));
+    runApp(StartupErrorApp(error: startupError, unreadable: unreadable));
     return;
   }
 
@@ -47,13 +59,77 @@ Future<void> main() async {
 /// Veritabanı açılamadığında gösterilen ekran.
 ///
 /// Sessizce şifresiz çalışmak yerine durumu açıkça söyler.
-class StartupErrorApp extends StatelessWidget {
-  const StartupErrorApp({required this.error, super.key});
+class StartupErrorApp extends StatefulWidget {
+  const StartupErrorApp({
+    required this.error,
+    this.unreadable = false,
+    super.key,
+  });
 
   final Object? error;
 
+  /// Dosya var ama eldeki anahtarla çözülemiyor.
+  final bool unreadable;
+
+  @override
+  State<StartupErrorApp> createState() => _StartupErrorAppState();
+}
+
+class _StartupErrorAppState extends State<StartupErrorApp> {
+  bool _resetting = false;
+
+  /// [dialogContext] Navigator'ın ALTINDAN gelmeli.
+  ///
+  /// State'in kendi context'i MaterialApp'in ÜSTÜNDE kalıyor; oradan
+  /// showDialog çağırmak sessizce başarısız oluyordu (düğmeye
+  /// basıldığında hiçbir şey olmuyordu).
+  Future<void> _resetData(BuildContext dialogContext) async {
+    final confirmed = await showDialog<bool>(
+      context: dialogContext,
+      builder: (context) => AlertDialog(
+        title: const Text('Sıfırdan başla'),
+        content: const Text(
+          'Okunamayan veritabanı dosyası kenara alınacak ve uygulama '
+          'BOŞ bir veritabanıyla açılacak.\n\n'
+          'Eski kayıtlarına (tahlil, ilaç, sıvı, kilo) bir daha '
+          'ulaşamayacaksın — şifre anahtarı kaybolduğu için o dosya '
+          'zaten çözülemiyor. Dosya silinmiyor, yalnız kenara '
+          'alınıyor.\n\n'
+          'Devam edeyim mi?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Vazgeç'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Sıfırdan başla'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    setState(() => _resetting = true);
+    try {
+      await setAsideUnreadableDatabase();
+      await _start();
+    } on Object catch (e) {
+      if (mounted) {
+        setState(() => _resetting = false);
+        if (dialogContext.mounted) {
+          ScaffoldMessenger.maybeOf(dialogContext)?.showSnackBar(
+            SnackBar(content: Text('Sıfırlanamadı: $e')),
+          );
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final error = widget.error;
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
@@ -64,7 +140,8 @@ class StartupErrorApp extends StatelessWidget {
         ),
       ),
       home: Scaffold(
-        body: SafeArea(
+        body: Builder(
+          builder: (context) => SafeArea(
           child: Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24),
@@ -78,8 +155,10 @@ class StartupErrorApp extends StatelessWidget {
                     color: Color(0xFF9E3528),
                   ),
                   const SizedBox(height: 16),
-                  const Text(
-                    'Şifreli veritabanı açılamadı',
+                  Text(
+                    widget.unreadable
+                        ? 'Kayıtlı veri çözülemiyor'
+                        : 'Şifreli veritabanı açılamadı',
                     style: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
@@ -87,22 +166,58 @@ class StartupErrorApp extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  const Text(
-                    'Uygulama verilerini yalnızca şifreli olarak saklar. '
-                    'Şifreleme kurulamadığı için veri yazmayı durdurdum — '
-                    'sağlık bilgilerin korumasız kaydedilmeyecek.\n\n'
-                    'Yapabileceklerin:\n'
-                    '• Uygulamayı kapatıp tekrar aç.\n'
-                    '• Telefonu yeniden başlat.\n'
-                    '• Sorun sürerse uygulamayı kaldırıp yeniden kur '
-                    '(bu durumda cihazdaki veriler silinir).',
-                    style: TextStyle(
+                  Text(
+                    widget.unreadable
+                        ? 'Veritabanı dosyası yerinde ama ŞİFRE ANAHTARI '
+                            'eşleşmiyor; bu yüzden içeriği okunamıyor. '
+                            'Anahtar telefonun güvenli deposunda tutulur '
+                            've yedekten geri yükleme, anahtar deposunun '
+                            'sıfırlanması ya da uygulamanın farklı bir '
+                            'imzayla yeniden kurulması sonrası '
+                            'kaybolabilir.\n\n'
+                            'Bu dosya bir daha açılamaz. Aşağıdaki '
+                            'düğmeyle onu kenara alıp boş bir '
+                            'veritabanıyla devam edebilirsin.'
+                        : 'Uygulama verilerini yalnızca şifreli olarak '
+                            'saklar. Şifreleme kurulamadığı için veri '
+                            'yazmayı durdurdum — sağlık bilgilerin '
+                            'korumasız kaydedilmeyecek.\n\n'
+                            'Yapabileceklerin:\n'
+                            '• Uygulamayı kapatıp tekrar aç.\n'
+                            '• Telefonu yeniden başlat.\n'
+                            '• Sorun sürerse uygulamayı kaldırıp '
+                            'yeniden kur (bu durumda cihazdaki veriler '
+                            'silinir).',
+                    style: const TextStyle(
                       fontSize: 15,
                       height: 1.5,
                       color: Color(0xFF574F44),
                     ),
                   ),
                   const SizedBox(height: 20),
+                  if (widget.unreadable)
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed:
+                            _resetting ? null : () => _resetData(context),
+                        icon: _resetting
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.restart_alt_rounded),
+                        label: Text(
+                          _resetting
+                              ? 'Sıfırlanıyor…'
+                              : 'Kenara al ve sıfırdan başla',
+                        ),
+                      ),
+                    ),
+                  if (widget.unreadable) const SizedBox(height: 20),
                   if (error != null)
                     Container(
                       width: double.infinity,
@@ -124,6 +239,7 @@ class StartupErrorApp extends StatelessWidget {
               ),
             ),
           ),
+        ),
         ),
       ),
     );
