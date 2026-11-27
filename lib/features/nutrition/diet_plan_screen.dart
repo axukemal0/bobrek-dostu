@@ -676,6 +676,7 @@ class _PlanQaSheetState extends ConsumerState<_PlanQaSheet> {
       expand: false,
       builder: (context, controller) => ListView(
         controller: controller,
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         padding: EdgeInsets.fromLTRB(
           r.pagePadding,
           r.gapMd,
@@ -1003,6 +1004,7 @@ class _PlanSheetState extends ConsumerState<_PlanSheet> {
       expand: false,
       builder: (context, controller) => ListView(
         controller: controller,
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         padding: EdgeInsets.fromLTRB(
           r.pagePadding,
           r.gapMd,

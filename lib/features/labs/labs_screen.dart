@@ -440,6 +440,7 @@ class _LabMethodChooser extends ConsumerWidget {
     final aiReady = conn == AiConnectionState.ok;
 
     return ListView(
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       padding: EdgeInsets.all(r.pagePadding),
       children: [
         Text(
@@ -861,6 +862,7 @@ class _ReaderLabTabState extends ConsumerState<_ReaderLabTab> {
     final keepCount = _rows.where((row) => row.include && row.isValid).length;
 
     return ListView(
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       padding: EdgeInsets.all(r.pagePadding),
       children: [
         if (doc != null) ...[

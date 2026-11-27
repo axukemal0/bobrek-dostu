@@ -54,67 +54,95 @@ class _ClinicalSettingsScreenState
           ),
         ],
       ),
+      // DİKKAT — BU EKRANIN EN KÖTÜ UI HATASI BURADAYDI.
+      //
+      // Önceden üst blok (bilgi kartı + ağırlık kartı + sekme çubuğu)
+      // SABİT bir Column'du, değer listesi de altında Expanded. Ağırlık
+      // kartı uzun olduğu için sekme çubuğu ekranın ortasına iniyor,
+      // listeye kalan yer avuç içi kadar kalıyor ve ilk kart çubuğun
+      // hemen altında YARIM görünüyordu — kaydırınca da sekme çubuğu
+      // yerinde durduğu için kartlar onun altından kayıp çıkıyordu.
+      //
+      // Artık tek bir kaydırma var: üst bloklar da kayıyor, sekme
+      // çubuğu YAPIŞIK (pinned) başlık olarak tepede kalıyor ve
+      // arkasında donuk bir zemin var, böylece altından geçen kart
+      // çubuğun içinden görünmüyor.
       body: SafeArea(
-        child: Column(
-          children: [
-            // --- bilgi + sekmeler ---
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: r.pagePadding),
-              child: ContentColumn(
-                child: Column(
-                  children: [
-                    GlassCard(
-                      padding: EdgeInsets.all(r.gapMd),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Bu değerler SANA aittir',
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                          SizedBox(height: r.gapXs),
-                          Text(
-                            'Uygulama hiçbir alt/üst sınır dayatmaz. '
-                            'Varsayılanlar kılavuz referanslarıdır ve '
-                            'her birinin yanında kaynağı, yılı ve '
-                            'doğrulama durumu yazar. $kReferenceCaveatTr',
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ],
+        child: CustomScrollView(
+          slivers: [
+            SliverPadding(
+              padding: EdgeInsets.fromLTRB(
+                r.pagePadding,
+                r.gapSm,
+                r.pagePadding,
+                0,
+              ),
+              sliver: SliverToBoxAdapter(
+                child: ContentColumn(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      GlassCard(
+                        padding: EdgeInsets.all(r.gapMd),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Bu değerler SANA aittir',
+                              style:
+                                  Theme.of(context).textTheme.titleMedium,
+                            ),
+                            SizedBox(height: r.gapXs),
+                            Text(
+                              'Uygulama hiçbir alt/üst sınır dayatmaz. '
+                              'Varsayılanlar kılavuz referanslarıdır ve '
+                              'her birinin yanında kaynağı, yılı ve '
+                              'doğrulama durumu yazar. $kReferenceCaveatTr',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    SizedBox(height: r.gapMd),
-                    _BodyWeightCard(settings: settings),
-                    SizedBox(height: r.gapMd),
-                    SegmentedButton<ValueKind>(
-                      segments: [
-                        for (final k in ValueKind.values)
-                          ButtonSegment(
-                            value: k,
-                            label: Text(k.shortTr),
-                            tooltip: k.labelTr,
-                          ),
-                      ],
-                      selected: {_tab},
-                      showSelectedIcon: false,
-                      onSelectionChanged: (s) =>
-                          setState(() => _tab = s.first),
-                    ),
-                    SizedBox(height: r.gapSm),
-                  ],
+                      SizedBox(height: r.gapMd),
+                      _BodyWeightCard(settings: settings),
+                      SizedBox(height: r.gapMd),
+                    ],
+                  ),
                 ),
               ),
             ),
-
-            // --- değer listesi ---
-            Expanded(
-              child: ListView.separated(
-                padding: EdgeInsets.fromLTRB(
-                  r.pagePadding,
-                  r.gapSm,
-                  r.pagePadding,
-                  r.gapXl * 2,
+            SliverPersistentHeader(
+              pinned: true,
+              delegate: _TabBarHeader(
+                height: r.s(64),
+                background: p.background,
+                divider: p.divider,
+                horizontalPadding: r.pagePadding,
+                maxWidth: r.maxContentWidth,
+                child: SegmentedButton<ValueKind>(
+                  segments: [
+                    for (final k in ValueKind.values)
+                      ButtonSegment(
+                        value: k,
+                        label: Text(k.shortTr),
+                        tooltip: k.labelTr,
+                      ),
+                  ],
+                  selected: {_tab},
+                  showSelectedIcon: false,
+                  onSelectionChanged: (sel) =>
+                      setState(() => _tab = sel.first),
                 ),
+              ),
+            ),
+            SliverPadding(
+              padding: EdgeInsets.fromLTRB(
+                r.pagePadding,
+                r.gapSm,
+                r.pagePadding,
+                r.gapXl,
+              ),
+              sliver: SliverList.separated(
                 itemCount: defs.length + 1,
                 separatorBuilder: (_, _) => SizedBox(height: r.gapSm),
                 itemBuilder: (context, i) {
@@ -140,6 +168,71 @@ class _ClinicalSettingsScreenState
   }
 }
 
+/// Yapışık sekme çubuğu.
+///
+/// Arkasında DOLU bir zemin var: saydam bırakılırsa altından geçen
+/// kartlar çubuğun içinden görünüyor ve ekran bozuk duruyor.
+class _TabBarHeader extends SliverPersistentHeaderDelegate {
+  const _TabBarHeader({
+    required this.child,
+    required this.height,
+    required this.background,
+    required this.divider,
+    required this.horizontalPadding,
+    required this.maxWidth,
+  });
+
+  final Widget child;
+  final double height;
+  final Color background;
+  final Color divider;
+  final double horizontalPadding;
+  final double maxWidth;
+
+  @override
+  double get minExtent => height;
+
+  @override
+  double get maxExtent => height;
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    return Container(
+      height: height,
+      decoration: BoxDecoration(
+        color: background,
+        border: Border(
+          bottom: BorderSide(
+            // Çizgi yalnız altına içerik kaydığında belirsin.
+            color: overlapsContent || shrinkOffset > 0
+                ? divider
+                : Colors.transparent,
+          ),
+        ),
+      ),
+      padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+      alignment: Alignment.center,
+      child: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: maxWidth),
+          child: child,
+        ),
+      ),
+    );
+  }
+
+  @override
+  bool shouldRebuild(_TabBarHeader old) =>
+      old.child != child ||
+      old.height != height ||
+      old.background != background ||
+      old.divider != divider;
+}
+
 /// Vücut ağırlığı / kuru ağırlık kartı — g/kg hesapları buna bağlı.
 class _BodyWeightCard extends ConsumerWidget {
   const _BodyWeightCard({required this.settings});
@@ -160,36 +253,35 @@ class _BodyWeightCard extends ConsumerWidget {
           ),
           SizedBox(height: r.gapXs),
           Text(
-            'g/kg/gün türü hedefler bu kiloyla çarpılır. '
-            'Kuru ağırlık, diyaliz arası kilo artışı yüzdesi için '
-            'kullanılır.',
+            'İkisi de İSTEĞE BAĞLIDIR; boş bırakabilirsin. Uygulamanın '
+            'geri kalanı yine çalışır.',
             style: Theme.of(context).textTheme.bodySmall,
           ),
           SizedBox(height: r.gapMd),
-          Row(
-            children: [
-              Expanded(
-                child: _InlineNumber(
-                  label: 'Vücut ağırlığı',
-                  unit: 'kg',
-                  value: settings.bodyWeightKg,
-                  onChanged: (v) => ref
-                      .read(clinicalSettingsProvider.notifier)
-                      .setBodyWeight(v),
-                ),
-              ),
-              SizedBox(width: r.gapSm),
-              Expanded(
-                child: _InlineNumber(
-                  label: 'Kuru ağırlık',
-                  unit: 'kg',
-                  value: settings.dryWeightKg,
-                  onChanged: (v) => ref
-                      .read(clinicalSettingsProvider.notifier)
-                      .setDryWeight(v),
-                ),
-              ),
-            ],
+          _InlineNumber(
+            label: 'Vücut ağırlığı',
+            optionalNoteTr: 'Yalnız "g/kg/gün" cinsinden verilen '
+                'hedefleri (protein gibi) güne çevirmek için kullanılır. '
+                'Boşsa o hedefler gram cinsinden gösterilmez.',
+            unit: 'kg',
+            value: settings.bodyWeightKg,
+            onChanged: (v) =>
+                ref.read(clinicalSettingsProvider.notifier).setBodyWeight(v),
+          ),
+          SizedBox(height: r.gapMd),
+          _InlineNumber(
+            label: 'Kuru ağırlık',
+            optionalNoteTr: settings.treatmentMode.isDialysis
+                ? 'Diyaliz sonrası ulaşılması hedeflenen kilo. Diyaliz '
+                    'arası kilo artışı yüzdesi bununla hesaplanır. '
+                    'Bilmiyorsan boş bırak.'
+                : 'Yalnız DİYALİZ hastalarında anlamlıdır (diyaliz '
+                    'sonrası hedef kilo). Senin durumunda gerekmiyor, '
+                    'boş bırakabilirsin.',
+            unit: 'kg',
+            value: settings.dryWeightKg,
+            onChanged: (v) =>
+                ref.read(clinicalSettingsProvider.notifier).setDryWeight(v),
           ),
           SizedBox(height: r.gapMd),
           LabeledField(
@@ -227,6 +319,7 @@ class _InlineNumber extends StatefulWidget {
     required this.unit,
     required this.value,
     required this.onChanged,
+    this.optionalNoteTr,
   });
 
   final String label;
@@ -234,39 +327,104 @@ class _InlineNumber extends StatefulWidget {
   final double? value;
   final ValueChanged<double?> onChanged;
 
+  /// Doluysa alanın altına "İsteğe bağlı" rozeti ve bu açıklama konur.
+  final String? optionalNoteTr;
+
   @override
   State<_InlineNumber> createState() => _InlineNumberState();
 }
 
 class _InlineNumberState extends State<_InlineNumber> {
   late final TextEditingController _c = TextEditingController(
-    text: widget.value?.toStringAsFixed(1) ?? '',
+    text: _format(widget.value),
   );
+  final _focus = FocusNode();
+
+  static String _format(double? v) => v == null ? '' : _trim(v);
+
+  /// 55 → "55", 55,5 → "55,5". Her kaydedişte ".0" eklemek alanı
+  /// sürekli yeniden yazıyordu.
+  static String _trim(double v) {
+    final s = v.toStringAsFixed(1);
+    final out = s.endsWith('.0') ? s.substring(0, s.length - 2) : s;
+    return out.replaceAll('.', ',');
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // DİKKAT — ESKİ HATA: değer HER TUŞ VURUŞUNDA kaydediliyordu.
+    // Kayıt ayarları değiştiriyor, ayar değişimi bu alanı yeniden
+    // çiziyor, çizim de denetleyicinin metnini PROGRAMLI olarak
+    // yeniden yazıyordu. Programlı yazma imleci bozuyor ve giriş
+    // süzgecinden geçmiyor; kullanıcı "0000000000" gibi bir şey
+    // yazabiliyor, alan taşıyordu. Artık kayıt YALNIZ odak
+    // bırakıldığında yapılıyor: yazarken alana kimse dokunmuyor.
+    _focus.addListener(() {
+      if (!_focus.hasFocus) _commit();
+    });
+  }
+
+  void _commit() {
+    final parsed = parseLocaleNumber(_c.text);
+    if (parsed != widget.value) widget.onChanged(parsed);
+    final text = _format(parsed);
+    if (_c.text != text) _c.text = text;
+  }
 
   @override
   void didUpdateWidget(_InlineNumber old) {
     super.didUpdateWidget(old);
+    // Alan yazılırken DIŞARIDAN gelen değişiklik metni ezmesin.
+    if (_focus.hasFocus) return;
     if (old.value != widget.value) {
-      final text = widget.value?.toStringAsFixed(1) ?? '';
+      final text = _format(widget.value);
       if (_c.text != text) _c.text = text;
     }
   }
 
   @override
   void dispose() {
+    _focus.dispose();
     _c.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final p = context.palette;
+    final r = Responsive.fromContext(context);
     return LabeledField(
       label: widget.label,
-      child: NumberField(
-        controller: _c,
-        suffix: widget.unit,
-        hintText: '—',
-        onChanged: (v) => widget.onChanged(parseLocaleNumber(v)),
+      trailing: widget.optionalNoteTr == null
+          ? null
+          : Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: p.backgroundDeep.withValues(alpha: 0.8),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: p.divider),
+              ),
+              child: Text(
+                'isteğe bağlı',
+                style: Theme.of(context)
+                    .textTheme
+                    .labelSmall
+                    ?.copyWith(color: p.textMuted),
+              ),
+            ),
+      hint: widget.optionalNoteTr,
+      child: Padding(
+        padding: EdgeInsets.only(bottom: r.gapXs),
+        child: NumberField(
+          controller: _c,
+          focusNode: _focus,
+          suffix: widget.unit,
+          hintText: 'boş bırakılabilir',
+          maxIntegerDigits: 3,
+          maxDecimals: 1,
+          onChanged: (_) {},
+        ),
       ),
     );
   }

@@ -155,19 +155,43 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   0,
                 ),
                 child: ContentColumn(
+                  // Başlık yeniden kuruldu.
+                  //
+                  // Önceden küçük gri bir "İyi akşamlar" yazısının
+                  // altına ad geliyordu: selam, adın üstünde asılı
+                  // duran etiketsiz bir not gibi duruyor ve günün
+                  // hangi saatinde olduğumuz dışında hiçbir şey
+                  // söylemiyordu. Artık üstte TARİH (günün hangi günü
+                  // olduğunu bilmek takvim ve diyaliz günleri için
+                  // gerçekten işe yarıyor), altta tek cümlelik selam
+                  // ve ad birlikte; yanında günün saatine göre
+                  // renklenen bir simge var.
                   child: Row(
                     children: [
+                      AccentTile(
+                        icon: greeting.icon,
+                        color: greeting.tone(p),
+                        size: r.s(22),
+                      ),
+                      SizedBox(width: r.gapMd),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              greeting,
-                              style:
-                                  Theme.of(context).textTheme.bodySmall,
+                              formatTurkishDate(DateTime.now()),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelSmall
+                                  ?.copyWith(
+                                    color: greeting.tone(p),
+                                    letterSpacing: 0.8,
+                                    fontWeight: FontWeight.w800,
+                                  ),
                             ),
+                            SizedBox(height: r.s(2)),
                             Text(
-                              profile?.name ?? 'Böbrek Dostu',
+                              greeting.sentenceFor(profile?.name),
                               style: Theme.of(context)
                                   .textTheme
                                   .headlineMedium,
@@ -440,13 +464,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  static String _greeting() {
-    final h = DateTime.now().hour;
-    if (h < 6) return 'İyi geceler';
-    if (h < 12) return 'Günaydın';
-    if (h < 18) return 'İyi günler';
-    return 'İyi akşamlar';
-  }
+  static Greeting _greeting() => Greeting.now();
 
   static String _hm(DateTime d) =>
       '${d.hour.toString().padLeft(2, '0')}:'
@@ -907,3 +925,71 @@ Future<bool> showPermissionDialog(
   );
   return result ?? false;
 }
+
+
+// ---------------------------------------------------------------------------
+// SELAMLAMA
+// ---------------------------------------------------------------------------
+
+/// Günün saatine göre selam, simge ve renk.
+///
+/// Tek bir kelimeden ibaret olmaması önemli: ad varsa cümle "İyi
+/// akşamlar, Kemal" olur; yoksa selam tek başına durur ve altında
+/// boşlukta kalan bir "Böbrek Dostu" yazısı belirmez.
+enum Greeting {
+  night,
+  morning,
+  day,
+  evening;
+
+  static Greeting now({DateTime? at}) {
+    final h = (at ?? DateTime.now()).hour;
+    if (h < 5 || h >= 21) return Greeting.night;
+    if (h < 11) return Greeting.morning;
+    if (h < 17) return Greeting.day;
+    return Greeting.evening;
+  }
+
+  String get wordTr => switch (this) {
+        Greeting.night => 'İyi geceler',
+        Greeting.morning => 'Günaydın',
+        Greeting.day => 'İyi günler',
+        Greeting.evening => 'İyi akşamlar',
+      };
+
+  IconData get icon => switch (this) {
+        Greeting.night => Icons.nightlight_round,
+        Greeting.morning => Icons.wb_twilight_rounded,
+        Greeting.day => Icons.wb_sunny_rounded,
+        Greeting.evening => Icons.nights_stay_outlined,
+      };
+
+  Color tone(AppPalette p) => switch (this) {
+        Greeting.night => p.accents.medication,
+        Greeting.morning => p.accents.energy,
+        Greeting.day => p.accents.activity,
+        Greeting.evening => p.accents.appointment,
+      };
+
+  /// "İyi akşamlar, Kemal" — ad yoksa yalnız selam.
+  String sentenceFor(String? name) {
+    final trimmed = name?.trim();
+    if (trimmed == null || trimmed.isEmpty) return wordTr;
+    // Yalnız ilk ad: tam ad başlığı iki satıra taşırıyordu.
+    final first = trimmed.split(RegExp(r'\s+')).first;
+    return '$wordTr, $first';
+  }
+}
+
+const List<String> _trWeekdays = [
+  'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar',
+];
+
+const List<String> _trMonths = [
+  'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
+  'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık',
+];
+
+/// "27 Kasım, Cuma" — cihaz diline bağlı değil, her zaman Türkçe.
+String formatTurkishDate(DateTime d) =>
+    '${d.day} ${_trMonths[d.month - 1]}, ${_trWeekdays[d.weekday - 1]}';

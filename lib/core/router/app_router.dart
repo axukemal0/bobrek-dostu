@@ -257,22 +257,30 @@ CustomTransitionPage<void> _fadePage(Widget child, GoRouterState state) =>
     CustomTransitionPage<void>(
       key: state.pageKey,
       child: child,
-      transitionDuration: const Duration(milliseconds: 240),
+      transitionDuration: const Duration(milliseconds: 280),
       reverseTransitionDuration: const Duration(milliseconds: 180),
       transitionsBuilder: (context, animation, secondary, child) {
         final media = MediaQuery.maybeOf(context);
         final reduce = media?.disableAnimations ?? false;
         if (reduce) return child;
+        // Sekme geçişi: içeri gelen sayfa hafifçe büyüyerek ve
+        // yukarı kayarak belirir, giden sayfa yerinde soluklaşır.
+        // Tek başına fade "bir şey değişti" demiyordu; ölçek değişimi
+        // yön duygusu veriyor ama 0,985 → 1 kadar küçük bir fark
+        // olduğu için göz yormuyor.
+        final curved =
+            CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
         return FadeTransition(
           opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
           child: SlideTransition(
             position: Tween<Offset>(
-              begin: const Offset(0, 0.015),
+              begin: const Offset(0, 0.022),
               end: Offset.zero,
-            ).animate(
-              CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+            ).animate(curved),
+            child: ScaleTransition(
+              scale: Tween<double>(begin: 0.985, end: 1).animate(curved),
+              child: child,
             ),
-            child: child,
           ),
         );
       },

@@ -571,22 +571,34 @@ class SectionFab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = context.palette;
+    final motion = context.motion;
     final fg = p.onAccent(tone);
-    return FloatingActionButton.extended(
-      onPressed: () {
-        HapticFeedback.lightImpact();
-        onPressed();
-      },
-      icon: Icon(icon, color: fg),
-      label: Text(
-        label,
-        style: Theme.of(context).textTheme.labelLarge?.copyWith(color: fg),
+    // Buton sayfa açılırken yerine oturur: hafif bir yaylanma
+    // ("settle") yalnız burada kullanılıyor, gezinmede değil.
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: motion.reduceMotion ? 1 : 0.6, end: 1),
+      duration: motion.slow,
+      curve: motion.settle,
+      builder: (context, t, child) => Transform.scale(
+        scale: t,
+        child: Opacity(opacity: t.clamp(0.0, 1.0), child: child),
       ),
-      backgroundColor: tone,
-      foregroundColor: fg,
-      elevation: 3,
-      highlightElevation: 6,
-      extendedPadding: const EdgeInsets.symmetric(horizontal: 20),
+      child: FloatingActionButton.extended(
+        onPressed: () {
+          HapticFeedback.lightImpact();
+          onPressed();
+        },
+        icon: Icon(icon, color: fg),
+        label: Text(
+          label,
+          style: Theme.of(context).textTheme.labelLarge?.copyWith(color: fg),
+        ),
+        backgroundColor: tone,
+        foregroundColor: fg,
+        elevation: 3,
+        highlightElevation: 6,
+        extendedPadding: const EdgeInsets.symmetric(horizontal: 20),
+      ),
     );
   }
 }
@@ -621,31 +633,43 @@ class KeyboardDismissBar extends StatelessWidget {
             child: Material(
               color: Colors.transparent,
               child: Container(
-                height: 44,
+                height: 46,
                 decoration: BoxDecoration(
                   color: p.surface,
                   border: Border(
                     top: BorderSide(color: p.divider),
                     bottom: BorderSide(color: p.divider),
                   ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: p.shadowDark,
+                      offset: const Offset(0, -2),
+                      blurRadius: 8,
+                    ),
+                  ],
                 ),
                 alignment: Alignment.centerRight,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: TextButton(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: TextButton.icon(
                   onPressed: () {
                     HapticFeedback.selectionClick();
                     FocusManager.instance.primaryFocus?.unfocus();
                   },
+                  icon: Icon(
+                    Icons.keyboard_hide_rounded,
+                    size: 20,
+                    color: p.primary,
+                  ),
                   style: TextButton.styleFrom(
-                    minimumSize: const Size(72, 40),
+                    minimumSize: const Size(88, 42),
                     foregroundColor: p.primary,
                   ),
-                  child: Text(
+                  label: Text(
                     'Bitti',
-                    style: Theme.of(context)
-                        .textTheme
-                        .labelLarge
-                        ?.copyWith(color: p.primary),
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          color: p.primary,
+                          fontWeight: FontWeight.w800,
+                        ),
                   ),
                 ),
               ),

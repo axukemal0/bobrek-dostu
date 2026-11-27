@@ -164,6 +164,40 @@ class AppTheme {
           ),
         ),
       ),
+      // M3'ün varsayılanı seçili bölümü `secondaryContainer` ile boyar;
+      // bizim paletimizde o renk SICAK KAHVE bir ton (accentSoft) ve
+      // koyu temada "Hedef | Alarm | Lab" çubuğu çamurlu bir blok gibi
+      // görünüyordu. Seçili bölüm artık birincil rengin yumuşak
+      // dolgusu, yazısı da birincil renk.
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: ButtonStyle(
+          backgroundColor: WidgetStateProperty.resolveWith(
+            (s) => s.contains(WidgetState.selected)
+                ? p.primarySoft
+                : Colors.transparent,
+          ),
+          foregroundColor: WidgetStateProperty.resolveWith(
+            (s) => s.contains(WidgetState.selected)
+                ? (p.isDark ? p.primary : p.success)
+                : p.textSecondary,
+          ),
+          overlayColor:
+              WidgetStateProperty.all(p.primary.withValues(alpha: 0.10)),
+          side: WidgetStateProperty.all(BorderSide(color: p.divider)),
+          textStyle: WidgetStateProperty.resolveWith(
+            (s) => text.labelLarge!.copyWith(
+              fontWeight:
+                  s.contains(WidgetState.selected) ? FontWeight.w800 : null,
+            ),
+          ),
+          shape: WidgetStateProperty.all(
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          ),
+          padding: WidgetStateProperty.all(
+            const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+          ),
+        ),
+      ),
       listTileTheme: ListTileThemeData(
         iconColor: p.textSecondary,
         titleTextStyle: text.titleMedium,

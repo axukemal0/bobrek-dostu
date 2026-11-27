@@ -13,6 +13,18 @@ import '../../core/theme/neumorphic.dart';
 import '../../core/widgets/common.dart';
 import '../../core/widgets/responsive.dart';
 
+Color _labTone(AppPalette p) => p.accents.lab;
+Color _weightTone(AppPalette p) => p.accents.weight;
+Color _appointmentTone(AppPalette p) => p.accents.appointment;
+Color _activityTone(AppPalette p) => p.accents.activity;
+Color _energyTone(AppPalette p) => p.accents.energy;
+Color _potassiumTone(AppPalette p) => p.accents.potassium;
+Color _proteinTone(AppPalette p) => p.accents.protein;
+Color _sodiumTone(AppPalette p) => p.accents.sodium;
+Color _phosphorusTone(AppPalette p) => p.accents.phosphorus;
+Color _fluidTone(AppPalette p) => p.accents.fluid;
+Color _medicationTone(AppPalette p) => p.accents.medication;
+
 class MoreScreen extends ConsumerWidget {
   const MoreScreen({super.key});
 
@@ -30,24 +42,28 @@ class MoreScreen extends ConsumerWidget {
           _Item(
             icon: Icons.science_outlined,
             label: 'Laboratuvar takibi',
+            tone: _labTone,
             subtitle: 'Manuel giriş, tahlil fotoğrafı, grafik ve trend',
             route: Routes.labs,
           ),
           _Item(
             icon: Icons.monitor_weight_outlined,
             label: 'Kilo, ödem ve tansiyon',
+            tone: _weightTone,
             subtitle: 'Günlük kayıt, grafikler, diyaliz arası kilo artışı',
             route: Routes.weight,
           ),
           _Item(
             icon: Icons.calendar_month_outlined,
             label: 'Diyaliz ve randevu takvimi',
+            tone: _appointmentTone,
             subtitle: 'Seans günleri, kontrol ve tahlil tarihleri',
             route: Routes.calendar,
           ),
           _Item(
             icon: Icons.watch_outlined,
             label: 'Akıllı saat verisi',
+            tone: _activityTone,
             subtitle: Platform.isIOS
                 ? 'Apple Watch: nabız, EKG, uyku, SpO₂'
                 : 'Health Connect: nabız, tansiyon, uyku, SpO₂',
@@ -56,6 +72,7 @@ class MoreScreen extends ConsumerWidget {
           _Item(
             icon: Icons.restaurant_menu_outlined,
             label: 'Diyet planı ve uyum',
+            tone: _energyTone,
             subtitle: 'Planını gir, günlük uyumu işaretle',
             route: Routes.dietPlan,
           ),
@@ -68,6 +85,7 @@ class MoreScreen extends ConsumerWidget {
           _Item(
             icon: Icons.chat_bubble_outline_rounded,
             label: 'Yapay zeka sohbeti',
+            tone: _potassiumTone,
             subtitle: conn == AiConnectionState.ok
                 ? 'Hastalıkla ilgili sorularını sor'
                 : 'Önce bağlantıyı kurman gerekiyor',
@@ -77,18 +95,21 @@ class MoreScreen extends ConsumerWidget {
           _Item(
             icon: Icons.place_outlined,
             label: 'Yakındaki restoranlar',
+            tone: _proteinTone,
             subtitle: 'Mesafe, süre ve mutfağa göre uygunluk',
             route: Routes.places,
           ),
           _Item(
             icon: Icons.luggage_outlined,
             label: 'Seyahat planlayıcı',
+            tone: _sodiumTone,
             subtitle: 'Yolda ne yenir, sıvı ve ilaç saatleri',
             route: Routes.travel,
           ),
           _Item(
             icon: Icons.menu_book_outlined,
             label: 'Okuma',
+            tone: _phosphorusTone,
             subtitle: 'Güvenilir kaynaklardan içerik, çevrimdışı okunur',
             route: Routes.reading,
           ),
@@ -101,12 +122,14 @@ class MoreScreen extends ConsumerWidget {
           _Item(
             icon: Icons.picture_as_pdf_outlined,
             label: 'Doktor raporu (PDF)',
+            tone: _labTone,
             subtitle: 'Son 1 veya 3 ayın özeti, grafiklerle',
             route: Routes.report,
           ),
           _Item(
             icon: Icons.family_restroom_outlined,
             label: 'Yakın modu',
+            tone: _appointmentTone,
             subtitle: 'Günlük/haftalık özeti tek dokunuşla paylaş',
             route: Routes.caregiver,
           ),
@@ -126,12 +149,14 @@ class MoreScreen extends ConsumerWidget {
           _Item(
             icon: Icons.tune_rounded,
             label: 'Klinik Ayarlar',
+            tone: _medicationTone,
             subtitle: 'Tüm eşikler ve hedefler — serbestçe düzenlenebilir',
             route: Routes.clinicalSettings,
           ),
           _Item(
             icon: Icons.key_outlined,
             label: 'Yapay Zeka Bağlantısı',
+            tone: _potassiumTone,
             subtitle: conn == AiConnectionState.ok
                 ? 'Bağlı — model ve veri paylaşımını yönet'
                 : 'Anahtarını ekle',
@@ -140,12 +165,14 @@ class MoreScreen extends ConsumerWidget {
           _Item(
             icon: Icons.menu_book_outlined,
             label: 'Kaynaklar',
+            tone: _phosphorusTone,
             subtitle: 'Her klinik değerin kaynağı, yılı ve bağlantısı',
             route: Routes.sources,
           ),
           _Item(
             icon: Icons.shield_outlined,
             label: 'İzinler',
+            tone: _fluidTone,
             subtitle: 'Hangi izin ne için — tek tek yönet',
             route: Routes.permissions,
           ),
@@ -210,6 +237,7 @@ class _Item {
     required this.label,
     required this.subtitle,
     required this.route,
+    this.tone,
     this.dimmed = false,
     this.danger = false,
   });
@@ -218,6 +246,12 @@ class _Item {
   final String label;
   final String subtitle;
   final String route;
+
+  /// Satırın rengi ([AppAccents]). Hepsi aynı yeşilken bu liste bir
+  /// renk şeridine değil, gri bir dizine benziyordu; renk burada
+  /// "hangi alan" bilgisini taşıyor.
+  final Color Function(AppPalette)? tone;
+
   final bool dimmed;
   final bool danger;
 }
@@ -231,7 +265,9 @@ class _MoreTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = context.palette;
     final r = Responsive.fromContext(context);
-    final tone = item.danger ? p.danger : p.primary;
+    final tone = item.danger
+        ? p.danger
+        : (item.tone?.call(p) ?? p.primary);
 
     return NeuCard(
       onTap: () => context.push(item.route),
