@@ -8,6 +8,7 @@ import 'core/theme/app_colors.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/app_typography.dart';
 import 'core/theme/motion.dart';
+import 'core/widgets/common.dart' show KeyboardDismissBar;
 import 'features/settings/lock_gate.dart';
 
 class BobrekDostuApp extends ConsumerStatefulWidget {
@@ -92,7 +93,10 @@ class _BobrekDostuAppState extends ConsumerState<BobrekDostuApp>
             palette: palette,
             child: AppMotionScope(
               motion: AppMotion(reduceMotion: reduceMotion),
-              child: LockGate(child: child ?? const SizedBox.shrink()),
+              // Sayısal klavyeyi kapatan "Bitti" çubuğu (yalnız iOS).
+              child: KeyboardDismissBar(
+                child: LockGate(child: child ?? const SizedBox.shrink()),
+              ),
             ),
           ),
         );

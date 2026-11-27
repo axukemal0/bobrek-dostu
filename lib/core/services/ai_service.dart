@@ -179,6 +179,43 @@ class AiService {
     }
   }
 
+  /// GERÇEK bir mesaj gönderen tanılama testi.
+  ///
+  /// `GET /v1/models` yalnız anahtarın geçerli olduğunu söyler; mesaj
+  /// gönderimi başka sebeplerle (jeton bütçesi, model hakkı, kota)
+  /// başarısız olabilir ve kullanıcı o zaman "anahtarı girdim ama
+  /// çalışmıyor" durumunda kalır. Bu test birkaç kuruşluk gerçek bir
+  /// istek atar ve HATANIN HAM METNİNİ geri verir.
+  Future<AiTestResult> probeMessage({String? model}) async {
+    final target = model ?? AiConfig.defaultModel;
+    try {
+      final reply = await sendChat(
+        systemPrompt: 'Türkçe yanıt ver. Yalnızca "hazır" yaz.',
+        messages: const [(role: 'user', text: 'Bağlantı testi.')],
+        model: target,
+        maxTokens: 2048,
+      );
+      final used = (reply.inputTokens ?? 0) + (reply.outputTokens ?? 0);
+      return AiTestResult(
+        ok: true,
+        messageTr: 'Mesaj gönderildi ve yanıt alındı. '
+            'Model: $target. Harcanan jeton: $used.\n\n'
+            'Modelin yanıtı: "${reply.text.trim()}"',
+      );
+    } on AiFailure catch (e) {
+      return AiTestResult(
+        ok: false,
+        messageTr: '${e.messageTr}'
+            '${lastErrorDetail == null ? "" : "\n\n--- ham yanıt ---\n$lastErrorDetail"}',
+      );
+    } on Object catch (e) {
+      return AiTestResult(
+        ok: false,
+        messageTr: 'Beklenmedik hata: $e',
+      );
+    }
+  }
+
   /// Anahtar biçimi ön kontrolü (ağ isteği yapmadan).
   static bool looksLikeAnthropicKey(String key) {
     final k = key.trim();
@@ -196,7 +233,7 @@ class AiService {
       'model': model ?? AiConfig.defaultModel,
       'max_tokens': maxTokens,
       'system': systemPrompt,
-      'output_config': {'effort': AiConfig.effort},
+      'output_config': {'effort': AiConfig.chatEffort},
       'messages': [
         for (final m in messages)
           {
@@ -238,7 +275,7 @@ class AiService {
       'model': model ?? AiConfig.defaultModel,
       'max_tokens': maxTokens,
       'system': systemPrompt,
-      'output_config': {'effort': AiConfig.effort},
+      'output_config': {'effort': AiConfig.visionEffort},
       'messages': [
         {
           'role': 'user',
@@ -259,6 +296,51 @@ class AiService {
     return _postMessages(payload);
   }
 
+  /// PDF belgesi + metin (tahlil raporu, diyetisyen listesi).
+  ///
+  /// Telefonda PDF'in metin katmanını çözen bir çözümleyici yok; bu
+  /// yüzden PDF yalnız bu yolla okunabilir ve çağıran ekran kullanıcıdan
+  /// AÇIK onay alır.
+  Future<AiReply> sendDocument({
+    required String systemPrompt,
+    required String userText,
+    required File document,
+    String? model,
+    int maxTokens = AiConfig.maxTokensVision,
+  }) async {
+    final bytes = await document.readAsBytes();
+    if (bytes.length > 20 * 1024 * 1024) {
+      throw const AiFailure(
+        'Belge çok büyük (20 MB üstü). Yalnız gerekli sayfaları içeren '
+        'daha küçük bir PDF dene.',
+      );
+    }
+
+    final payload = <String, dynamic>{
+      'model': model ?? AiConfig.defaultModel,
+      'max_tokens': maxTokens,
+      'system': systemPrompt,
+      'output_config': {'effort': AiConfig.visionEffort},
+      'messages': [
+        {
+          'role': 'user',
+          'content': [
+            {
+              'type': 'document',
+              'source': {
+                'type': 'base64',
+                'media_type': 'application/pdf',
+                'data': base64Encode(bytes),
+              },
+            },
+            {'type': 'text', 'text': userText},
+          ],
+        },
+      ],
+    };
+    return _postMessages(payload);
+  }
+
   static String? _mediaTypeFor(String path) {
     final lower = path.toLowerCase();
     if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
@@ -268,10 +350,15 @@ class AiService {
     return null;
   }
 
+  /// Son başarısız isteğin ham sunucu yanıtı — Yapay Zeka Bağlantısı
+  /// ekranındaki tanılama kutusunda gösterilir. Kullanıcı "çalışmıyor"
+  /// dediğinde elimizde yalnız Türkçe bir cümle kalmasın diye tutulur.
+  String? lastErrorDetail;
+
   Future<AiReply> _postMessages(Map<String, dynamic> payload) async {
     final key = await _requireKey();
     try {
-      final res = await _client
+      var res = await _client
           .post(
             Uri.parse('${AiConfig.apiBase}${AiConfig.messagesPath}'),
             headers: await _headers(key),
@@ -279,9 +366,33 @@ class AiService {
           )
           .timeout(AiConfig.timeout);
 
+      // Sunucu `output_config` alanını tanımazsa (eski API sürümü, farklı
+      // bir uç nokta) istek 400 ile döner. Bu alan bir iyileştirmedir,
+      // zorunlu değil: bir kez de onsuz denenir. Böylece tek bir isteğe
+      // bağlı parametre yüzünden yapay zeka tamamen çalışmaz hâle gelmez.
+      if (res.statusCode == 400 && payload.containsKey('output_config')) {
+        final body = utf8.decode(res.bodyBytes).toLowerCase();
+        if (body.contains('output_config') ||
+            body.contains('extra inputs') ||
+            body.contains('unexpected')) {
+          final retry = Map<String, dynamic>.from(payload)
+            ..remove('output_config');
+          res = await _client
+              .post(
+                Uri.parse('${AiConfig.apiBase}${AiConfig.messagesPath}'),
+                headers: await _headers(key),
+                body: jsonEncode(retry),
+              )
+              .timeout(AiConfig.timeout);
+        }
+      }
+
       if (res.statusCode != 200) {
+        lastErrorDetail =
+            'HTTP ${res.statusCode}\n${utf8.decode(res.bodyBytes)}';
         throw AiFailure(_statusMessageTr(res), statusCode: res.statusCode);
       }
+      lastErrorDetail = null;
 
       final body = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
       final stopReason = body['stop_reason'] as String?;
@@ -315,6 +426,17 @@ class AiService {
       final text = sb.toString().trim();
 
       if (text.isEmpty) {
+        // Jeton bütçesi düşünme aşamasında bittiyse içerik yalnız
+        // `thinking` bloklarından oluşur ve metin boş gelir. Bunu
+        // "boş yanıt" diye geçmek kullanıcıyı yanlış yere bakmaya
+        // yönlendiriyordu.
+        if (stopReason == 'max_tokens') {
+          throw const AiFailure(
+            'Model yanıtı tamamlayamadan uzunluk sınırına takıldı. '
+            'Daha kısa bir soru sor ya da Ayarlar > Yapay Zeka '
+            'Bağlantısı\'ndan daha hızlı bir model (Haiku) seç.',
+          );
+        }
         throw const AiFailure(
           'Model boş bir yanıt döndürdü. Tekrar dene; sürerse '
           'Ayarlar\'dan başka bir model seçmeyi dene.',
@@ -364,6 +486,28 @@ class AiService {
     }
 
     final detail = apiMessage == null ? '' : '\n\nSunucu notu: $apiMessage';
+    final lower = (apiMessage ?? '').toLowerCase();
+
+    // BAKİYE / FATURALANDIRMA — en sık karşılaşılan ve en yanıltıcı hata.
+    //
+    // Anthropic, kredisi bitmiş bir hesapta `GET /v1/models` isteğini
+    // SORUNSUZ yanıtlar ama `POST /v1/messages` isteğine 400 döner.
+    // Yani "Bağlantıyı test et" yeşil yanar, sonra hiçbir yapay zeka
+    // özelliği çalışmaz. Önceki metin bu durumda "model adı yanlış
+    // olabilir, başka model dene" diyordu; kullanıcı da üç modeli
+    // sırayla deneyip hepsinde aynı duvara çarpıyordu. Hata artık adıyla
+    // söyleniyor.
+    if (lower.contains('credit balance') ||
+        lower.contains('billing') ||
+        lower.contains('insufficient') ||
+        lower.contains('purchase credits')) {
+      return 'Anthropic hesabında KULLANILABİLİR KREDİ YOK. Anahtarın '
+          'geçerli (bu yüzden bağlantı testi başarılı oluyor) ama mesaj '
+          'göndermek ücretli: platform.claude.com adresinde '
+          '"Plans & Billing" bölümünden kredi yüklemen gerekiyor. '
+          'Kredi yükleyene kadar uygulamanın yapay zeka dışındaki tüm '
+          'bölümleri normal çalışır.$detail';
+    }
 
     return switch (res.statusCode) {
       400 => 'İstek geçersiz (400). Seçili model adı yanlış olabilir — '

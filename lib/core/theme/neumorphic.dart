@@ -300,6 +300,7 @@ class NeuButton extends StatelessWidget {
     this.icon,
     this.filled = true,
     this.tone = NeuTone.primary,
+    this.color,
     this.expanded = false,
     this.compact = false,
     this.loading = false,
@@ -311,6 +312,14 @@ class NeuButton extends StatelessWidget {
   final IconData? icon;
   final bool filled;
   final NeuTone tone;
+
+  /// Bölüm rengi ([AppAccents]). Verildiğinde [tone] yerine bu kullanılır.
+  ///
+  /// Her ekranın birincil eylemi o bölümün rengini taşısın diye var:
+  /// ilaç sayfasındaki "Aldım" mor, sıvı sayfasındaki "Ekle" camgöbeği
+  /// olur. Önceden her dolu buton aynı yeşildi ve renk hiçbir iş
+  /// yapmıyordu.
+  final Color? color;
   final bool expanded;
   final bool compact;
 
@@ -322,12 +331,13 @@ class NeuButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = context.palette;
     final enabled = onPressed != null && !loading;
-    final base = switch (tone) {
-      NeuTone.primary => p.primary,
-      NeuTone.accent => p.accent,
-      NeuTone.danger => p.danger,
-      NeuTone.neutral => p.textSecondary,
-    };
+    final base = color ??
+        switch (tone) {
+          NeuTone.primary => p.primary,
+          NeuTone.accent => p.accent,
+          NeuTone.danger => p.danger,
+          NeuTone.neutral => p.textSecondary,
+        };
 
     // Devre dışı buton soluk bir dolguya boyanıp üstüne beyaz yazı
     // yazılınca okunmuyordu. Kapalı durumda butonu nötr bir yüzeye
@@ -338,10 +348,14 @@ class NeuButton extends StatelessWidget {
         : filled
             ? base
             : p.surface;
+    // Dolgunun ÜSTÜNDEKİ yazı rengi dolgunun parlaklığından türetilir.
+    // Sabit `onPrimary` kullanmak bölüm renkleri gelince kırılıyordu:
+    // koyu temada açık mor dolgunun üstündeki koyu yeşil yazı
+    // okunmuyordu.
     final fg = !enabled
         ? p.textMuted
         : filled
-            ? p.onPrimary
+            ? p.onAccent(base)
             : base;
 
     final child = Row(

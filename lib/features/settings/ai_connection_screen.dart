@@ -47,11 +47,35 @@ class _AiConnectionScreenState extends ConsumerState<AiConnectionScreen> {
         .read(aiConnectionProvider.notifier)
         .saveAndTest(_key.text.trim(), model: model);
     if (!mounted) return;
+    if (!result.ok) {
+      setState(() {
+        _testing = false;
+        _result = result;
+      });
+      return;
+    }
+
+    // Anahtar geçerli. Ama bu HENÜZ "yapay zeka çalışıyor" demek değil:
+    // `GET /v1/models` ücretsizdir ve kredisi bitmiş bir hesapta da
+    // yanıt verir. "Bağlandı" yazıp sonra her özelliğin hata vermesi
+    // en kötü sonuçtu — kullanıcı nerede arayacağını bilemiyordu.
+    // Bu yüzden kaydetmenin hemen ardından GERÇEK bir mesaj gönderilir.
+    // Birkaç yüz jeton harcar (kuruşun altında) ve sonucu kesinleştirir.
+    setState(() => _result = const AiTestResult(
+          ok: true,
+          messageTr: 'Anahtar geçerli. Şimdi gerçek bir mesaj '
+              'gönderilerek yapay zekanın çalıştığı doğrulanıyor…',
+        ));
+    final probe = await ref.read(aiServiceProvider).probeMessage(model: model);
+    if (!mounted) return;
     setState(() {
       _testing = false;
-      _result = result;
-      if (result.ok) _key.clear();
+      _result = probe;
+      if (probe.ok) _key.clear();
     });
+    if (!probe.ok) {
+      await ref.read(aiConnectionProvider.notifier).markFailed();
+    }
   }
 
   Future<void> _retest() async {
@@ -63,6 +87,25 @@ class _AiConnectionScreenState extends ConsumerState<AiConnectionScreen> {
         ref.read(preferencesProvider).aiModel ?? AiConfig.defaultModel;
     final result =
         await ref.read(aiConnectionProvider.notifier).retest(model: model);
+    if (!mounted) return;
+    setState(() {
+      _testing = false;
+      _result = result;
+    });
+  }
+
+  /// Gerçek bir mesaj gönderir. "Anahtar geçerli ama sohbet çalışmıyor"
+  /// durumunu ayırt etmenin tek yolu bu: model listesi sorgusu
+  /// (ücretsiz test) mesaj gönderimiyle aynı yoldan geçmiyor.
+  Future<void> _probe() async {
+    setState(() {
+      _testing = true;
+      _result = null;
+    });
+    final model =
+        ref.read(preferencesProvider).aiModel ?? AiConfig.defaultModel;
+    final result =
+        await ref.read(aiServiceProvider).probeMessage(model: model);
     if (!mounted) return;
     setState(() {
       _testing = false;
@@ -241,6 +284,28 @@ class _AiConnectionScreenState extends ConsumerState<AiConnectionScreen> {
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.labelSmall,
                   ),
+                  if (state != AiConnectionState.noKey) ...[
+                    SizedBox(height: r.gapMd),
+                    NeuButton(
+                      label: 'Gerçek mesaj gönder (sohbet testi)',
+                      icon: Icons.send_rounded,
+                      filled: false,
+                      compact: true,
+                      expanded: true,
+                      loading: _testing,
+                      onPressed: _testing ? null : _probe,
+                    ),
+                    SizedBox(height: r.gapXs),
+                    Text(
+                      'Bu test tek cümlelik gerçek bir istek gönderir ve '
+                      'birkaç kuruş tutar. Anahtar geçerli olduğu hâlde '
+                      'sohbet çalışmıyorsa sebebi BUNU çalıştırınca '
+                      'görünür; hata çıkarsa sunucunun ham yanıtı da '
+                      'aşağıda yazar.',
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.labelSmall,
+                    ),
+                  ],
                   if (state != AiConnectionState.noKey) ...[
                     SizedBox(height: r.gapSm),
                     TextButton.icon(

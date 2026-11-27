@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../theme/app_colors.dart';
@@ -46,6 +47,49 @@ class LabeledField extends StatelessWidget {
   }
 }
 
+/// Sayı biçimini kaynağında sınırlayan giriş süzgeci.
+///
+/// Kullanıcı "8,00000000000000" ya da "0000000000000" yazabiliyordu;
+/// alan taşıyor ve kayıt anlamsız bir sayıya dönüşüyordu. Süzgeç
+/// yazarken engeller — yani hatalı değer hiç oluşmaz, sonradan
+/// düzeltilmez.
+class _NumberInputFormatter extends TextInputFormatter {
+  const _NumberInputFormatter({
+    required this.allowDecimal,
+    required this.maxIntegerDigits,
+    required this.maxDecimals,
+  });
+
+  final bool allowDecimal;
+  final int maxIntegerDigits;
+  final int maxDecimals;
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final text = newValue.text;
+    if (text.isEmpty) return newValue;
+
+    // Yalnız rakam ve (izinliyse) tek bir ayraç.
+    final allowed = RegExp(allowDecimal ? r'^\d*[.,]?\d*$' : r'^\d*$');
+    if (!allowed.hasMatch(text)) return oldValue;
+
+    final sep = text.indexOf(RegExp(r'[.,]'));
+    final whole = sep < 0 ? text : text.substring(0, sep);
+    final frac = sep < 0 ? '' : text.substring(sep + 1);
+
+    if (whole.length > maxIntegerDigits) return oldValue;
+    if (frac.length > maxDecimals) return oldValue;
+    // Baştaki sıfır yığını ("000000") sayıyı değiştirmez, alanı doldurur.
+    if (whole.length > 1 && whole.startsWith('0') && !whole.startsWith('0.')) {
+      return oldValue;
+    }
+    return newValue;
+  }
+}
+
 /// Sayısal giriş alanı. Türkçe klavyede virgül de kabul eder.
 class NumberField extends StatelessWidget {
   const NumberField({
@@ -55,6 +99,9 @@ class NumberField extends StatelessWidget {
     this.allowDecimal = true,
     this.onChanged,
     this.textAlign = TextAlign.start,
+    this.maxIntegerDigits = 6,
+    this.maxDecimals = 2,
+    this.focusNode,
     super.key,
   });
 
@@ -65,15 +112,33 @@ class NumberField extends StatelessWidget {
   final ValueChanged<String>? onChanged;
   final TextAlign textAlign;
 
+  /// Virgülden önce en çok kaç basamak (varsayılan 6: 999999).
+  final int maxIntegerDigits;
+
+  /// Virgülden sonra en çok kaç basamak (varsayılan 2).
+  final int maxDecimals;
+
+  final FocusNode? focusNode;
+
   @override
   Widget build(BuildContext context) {
     return TextField(
       controller: controller,
+      focusNode: focusNode,
       keyboardType: allowDecimal
           ? const TextInputType.numberWithOptions(decimal: true)
           : TextInputType.number,
       textAlign: textAlign,
       onChanged: onChanged,
+      textInputAction: TextInputAction.done,
+      onSubmitted: (_) => FocusManager.instance.primaryFocus?.unfocus(),
+      inputFormatters: [
+        _NumberInputFormatter(
+          allowDecimal: allowDecimal,
+          maxIntegerDigits: maxIntegerDigits,
+          maxDecimals: allowDecimal ? maxDecimals : 0,
+        ),
+      ],
       decoration: InputDecoration(
         hintText: hintText,
         suffixText: suffix,

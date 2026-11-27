@@ -14,6 +14,7 @@ import 'services/api_client.dart';
 import 'services/backup_service.dart';
 import 'services/caregiver_service.dart';
 import 'services/food_service.dart';
+import 'services/document_intake.dart';
 import 'services/health_service.dart';
 import 'services/notification_service.dart';
 import 'services/permission_service.dart';
@@ -69,6 +70,11 @@ final scannerServiceProvider = Provider<ScannerService>((ref) {
   ref.onDispose(() => unawaited(s.dispose()));
   return s;
 });
+
+/// Kamera / galeri / PDF — üçü de tek kapıdan geçer.
+final documentIntakeProvider = Provider<DocumentIntakeService>(
+  (ref) => DocumentIntakeService(ref.watch(scannerServiceProvider)),
+);
 
 final healthServiceProvider = Provider<HealthService>((ref) => HealthService());
 
@@ -594,6 +600,17 @@ class AiConnectionNotifier extends AsyncNotifier<AiConnectionState> {
       result.ok ? AiConnectionState.ok : AiConnectionState.failed,
     );
     return result;
+  }
+
+  /// Anahtar geçerli ama MESAJ gönderilemiyor (kredi yok, kota dolu,
+  /// model hakkı yok). Anahtarı silmeden durumu "başarısız"a çeker;
+  /// böylece ekranlar yapay zeka düğmelerini "çalışıyor" gibi
+  /// göstermez.
+  Future<void> markFailed() async {
+    await ref
+        .read(databaseProvider)
+        .writeSetting('ai_connection_verified', 'false');
+    state = const AsyncValue.data(AiConnectionState.failed);
   }
 
   Future<void> deleteKey() async {

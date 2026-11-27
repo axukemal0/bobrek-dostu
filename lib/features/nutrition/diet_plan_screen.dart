@@ -31,20 +31,19 @@ class _DietPlanScreenState extends ConsumerState<DietPlanScreen> {
       appBar: AppBar(title: const Text('Diyet planı')),
       floatingActionButtonLocation:
           ShellFabLocation(BottomBarInset.of(context)),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: SectionFab(
+        label: 'Plan ekle',
+        tone: p.accents.energy,
         onPressed: () => showModalBottomSheet<void>(
           context: context,
           isScrollControlled: true,
           useSafeArea: true,
           builder: (context) => const _PlanSheet(),
         ),
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('Plan ekle'),
-        backgroundColor: p.primary,
-        foregroundColor: p.onPrimary,
       ),
       body: SafeArea(
         child: PageBody(
+          hasFab: true,
           children: [
             GlassCard(
               child: Column(

@@ -150,15 +150,14 @@ class _MedicationsScreenState extends ConsumerState<MedicationsScreen> {
       backgroundColor: p.background,
       floatingActionButtonLocation:
           ShellFabLocation(BottomBarInset.of(context)),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: SectionFab(
+        label: 'İlaç ekle',
+        tone: p.accents.medication,
         onPressed: () => _showMedSheet(context),
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('İlaç ekle'),
-        backgroundColor: p.primary,
-        foregroundColor: p.onPrimary,
       ),
       body: SafeArea(
         child: PageBody(
+          hasFab: true,
           children: [
             Text(
               'İlaçlar',
@@ -604,6 +603,7 @@ class _DoseCard extends ConsumerWidget {
                   icon: Icons.check_rounded,
                   compact: true,
                   expanded: true,
+                  color: p.accents.medication,
                   onPressed: () => mark('taken'),
                 ),
               ),
@@ -615,6 +615,7 @@ class _DoseCard extends ConsumerWidget {
                   filled: false,
                   compact: true,
                   expanded: true,
+                  color: p.accents.medication,
                   onPressed: snooze,
                 ),
               ),

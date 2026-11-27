@@ -1,10 +1,12 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/services.dart';
 
 import '../../clinical/definitions.dart';
 import '../../clinical/evaluator.dart';
 import '../../clinical/sources.dart';
 import '../theme/app_colors.dart';
+import '../theme/motion.dart';
 import '../theme/neumorphic.dart';
 import 'app_shell.dart';
 import 'responsive.dart';
@@ -417,6 +419,7 @@ class PageBody extends StatelessWidget {
     required this.children,
     this.showDisclaimer = true,
     this.padBottom = true,
+    this.hasFab = false,
     this.controller,
     super.key,
   });
@@ -424,41 +427,87 @@ class PageBody extends StatelessWidget {
   final List<Widget> children;
   final bool showDisclaimer;
   final bool padBottom;
+
+  /// Sayfada kayan eylem butonu varsa son kartın altına onun kadar yer
+  /// bırakılır. Eskiden bu boşluk HER sayfaya veriliyordu; butonu olmayan
+  /// ekranlarda uyarı şeridinin altında kocaman bir boşluk kalıyordu.
+  final bool hasFab;
   final ScrollController? controller;
 
   @override
   Widget build(BuildContext context) {
     final r = Responsive.fromContext(context);
     return LayoutBuilder(
-      builder: (context, _) => SingleChildScrollView(
-        controller: controller,
-        padding: EdgeInsets.only(
+      builder: (context, constraints) {
+        final padding = EdgeInsets.only(
           left: r.pagePadding,
           right: r.pagePadding,
           top: r.gapSm,
           // Alt gezinme çubuğu gövdenin üstünde durduğu için onun yüksekliği
           // kadar fazladan boşluk bırakılır (kabuk dışındaki sayfalarda 0).
-          bottom: (padBottom ? r.gapXl : r.gapMd) + BottomBarInset.of(context),
-        ),
-        child: ContentColumn(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Kartlar sırayla içeri kaymıyor: her kart için ayrı denetleyici
-              // + Opacity katmanı hem kareleri düşürüyordu hem de kullanıcıyı
-              // sayfanın yüklenişini izlemeye zorluyordu. İçerik anında gelir.
-              for (var i = 0; i < children.length; i++) ...[
-                if (i > 0) SizedBox(height: r.gapMd),
-                children[i],
-              ],
-              if (showDisclaimer) ...[
-                SizedBox(height: r.gapLg),
-                const MedicalDisclaimerBanner(compact: true),
-              ],
+          bottom: (padBottom ? r.gapSm : 0) +
+              (hasFab ? r.s(72) : 0) +
+              BottomBarInset.of(context),
+        );
+
+        // Sayfanın gövdesine kalan yükseklik. Kısa sayfalarda uyarı
+        // şeridi bu yüksekliğin ALTINA itilir.
+        final available = constraints.maxHeight.isFinite
+            ? (constraints.maxHeight - padding.vertical).clamp(0.0, 20000.0)
+            : 0.0;
+
+        final cards = Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Kartlar kısa bir gecikmeyle içeri süzülür. Gecikme en çok
+            // altı kart sürer ([AppMotion.stagger]) ve her kart kendi
+            // katmanında çizilir; böylece sayfanın açılışı canlı durur
+            // ama kullanıcı yüklenmeyi İZLEMEK zorunda kalmaz.
+            for (var i = 0; i < children.length; i++) ...[
+              if (i > 0) SizedBox(height: r.gapMd),
+              FadeSlideIn(
+                delay: context.motion.stagger(i),
+                child: children[i],
+              ),
             ],
+          ],
+        );
+
+        return SingleChildScrollView(
+          controller: controller,
+          // Parmakla kaydırınca klavye kapansın: sayısal klavyede kapatma
+          // tuşu olmadığı için kullanıcı başka türlü sıkışabiliyor.
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          padding: padding,
+          child: ContentColumn(
+            // DİKKAT — sayfanın altındaki BOŞLUK SORUNU buradan çözülür.
+            //
+            // Uyarı şeridi son kartın hemen altına konuyordu; kısa bir
+            // sayfada (örn. "Henüz tahlil yok") şerit ekranın ortasında
+            // asılı kalıyor ve altında kocaman bir boşluk oluyordu.
+            // Artık gövdeye en az "ekran kadar" yükseklik veriliyor ve
+            // iki parça arasındaki artık boşluk şeridi ALTA itiyor
+            // (`spaceBetween`). Uzun sayfalarda artık boşluk sıfırdır,
+            // yani davranış değişmez. Burada esnek (Expanded/Spacer)
+            // çocuk YOK: o yüzden pahalı bir intrinsic ölçüm gerekmez.
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: available),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  cards,
+                  if (showDisclaimer)
+                    Padding(
+                      padding: EdgeInsets.only(top: r.gapMd),
+                      child: const MedicalDisclaimerBanner(compact: true),
+                    ),
+                ],
+              ),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
@@ -495,6 +544,221 @@ class AccentTile extends StatelessWidget {
         border: Border.all(color: color.withValues(alpha: 0.22)),
       ),
       child: Icon(icon, color: color, size: dimension),
+    );
+  }
+}
+
+/// Bölüm rengiyle boyanmış kayan eylem butonu.
+///
+/// Her ekranın birincil eylemi o bölümün rengini taşır (bkz. [AppAccents]).
+/// Önceden hepsi aynı yeşildi: ekranlar birbirinden ayırt edilemiyordu ve
+/// renk hiçbir iş yapmıyordu. Buton ayrıca gezinme çubuğunun üstüne
+/// kaldırılır — [ShellFabLocation] bunu [BottomBarInset] ile yapar.
+class SectionFab extends StatelessWidget {
+  const SectionFab({
+    required this.label,
+    required this.onPressed,
+    required this.tone,
+    this.icon = Icons.add_rounded,
+    super.key,
+  });
+
+  final String label;
+  final VoidCallback onPressed;
+  final Color tone;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    final fg = p.onAccent(tone);
+    return FloatingActionButton.extended(
+      onPressed: () {
+        HapticFeedback.lightImpact();
+        onPressed();
+      },
+      icon: Icon(icon, color: fg),
+      label: Text(
+        label,
+        style: Theme.of(context).textTheme.labelLarge?.copyWith(color: fg),
+      ),
+      backgroundColor: tone,
+      foregroundColor: fg,
+      elevation: 3,
+      highlightElevation: 6,
+      extendedPadding: const EdgeInsets.symmetric(horizontal: 20),
+    );
+  }
+}
+
+/// Sayısal klavyeyi kapatmak için klavyenin üstünde beliren çubuk.
+///
+/// iOS'un sayı tuş takımında "Bitti" / "Return" tuşu YOKTUR; alan tam
+/// ekranı kaplayan bir alt sayfadaysa kullanıcı klavyeyi kapatamıyordu
+/// (kilo ve tahlil girişlerinde yaşanan sorun buydu). Bu çubuk odak
+/// varken görünür ve odağı bırakır. Android'de sistemin kendi geri tuşu
+/// işi gördüğü için gösterilmez.
+class KeyboardDismissBar extends StatelessWidget {
+  const KeyboardDismissBar({required this.child, super.key});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (defaultTargetPlatform != TargetPlatform.iOS) return child;
+    final media = MediaQuery.of(context);
+    final keyboard = media.viewInsets.bottom;
+    final p = context.palette;
+
+    return Stack(
+      children: [
+        child,
+        if (keyboard > 0)
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: keyboard,
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                height: 44,
+                decoration: BoxDecoration(
+                  color: p.surface,
+                  border: Border(
+                    top: BorderSide(color: p.divider),
+                    bottom: BorderSide(color: p.divider),
+                  ),
+                ),
+                alignment: Alignment.centerRight,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: TextButton(
+                  onPressed: () {
+                    HapticFeedback.selectionClick();
+                    FocusManager.instance.primaryFocus?.unfocus();
+                  },
+                  style: TextButton.styleFrom(
+                    minimumSize: const Size(72, 40),
+                    foregroundColor: p.primary,
+                  ),
+                  child: Text(
+                    'Bitti',
+                    style: Theme.of(context)
+                        .textTheme
+                        .labelLarge
+                        ?.copyWith(color: p.primary),
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// İçeri süzülerek giren sarmalayıcı.
+///
+/// Tek bir denetleyici kullanır ve kendi katmanında kalır
+/// ([RepaintBoundary]); listede onlarca öğe olduğunda bile sayfanın
+/// geri kalanını yeniden çizdirmez. "Hareketi azalt" açıkken hiçbir
+/// denetleyici kurulmaz — animasyon sıfır maliyetle kaybolur.
+class FadeSlideIn extends StatefulWidget {
+  const FadeSlideIn({
+    required this.child,
+    this.delay = Duration.zero,
+    this.offset = 14,
+    super.key,
+  });
+
+  final Widget child;
+  final Duration delay;
+  final double offset;
+
+  @override
+  State<FadeSlideIn> createState() => _FadeSlideInState();
+}
+
+class _FadeSlideInState extends State<FadeSlideIn>
+    with SingleTickerProviderStateMixin {
+  AnimationController? _c;
+  bool _init = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_init) return;
+    _init = true;
+    if (context.motion.reduceMotion) return;
+    final c = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _c = c;
+    if (widget.delay == Duration.zero) {
+      c.forward();
+    } else {
+      Future<void>.delayed(widget.delay, () {
+        if (mounted) c.forward();
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _c?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = _c;
+    if (c == null) return widget.child;
+    final curved = CurvedAnimation(parent: c, curve: Curves.easeOutCubic);
+    return RepaintBoundary(
+      child: AnimatedBuilder(
+        animation: curved,
+        builder: (context, child) => Opacity(
+          opacity: curved.value,
+          child: Transform.translate(
+            offset: Offset(0, widget.offset * (1 - curved.value)),
+            child: child,
+          ),
+        ),
+        child: widget.child,
+      ),
+    );
+  }
+}
+
+/// Değiştiğinde sayıyı sayarak gösteren metin.
+///
+/// Rakamlar tablo genişliğinde çizilir ([AppTypography.numeric]), bu
+/// yüzden sayarken satır oynamaz.
+class CountUpText extends StatelessWidget {
+  const CountUpText({
+    required this.value,
+    this.decimals = 0,
+    this.style,
+    this.suffix,
+    super.key,
+  });
+
+  final double value;
+  final int decimals;
+  final TextStyle? style;
+  final String? suffix;
+
+  @override
+  Widget build(BuildContext context) {
+    final motion = context.motion;
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: value, end: value),
+      duration: motion.slow,
+      curve: motion.emphasized,
+      builder: (context, v, _) => Text(
+        '${v.toStringAsFixed(decimals)}${suffix ?? ''}',
+        style: style,
+      ),
     );
   }
 }

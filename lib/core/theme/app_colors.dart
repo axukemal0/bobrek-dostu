@@ -14,11 +14,20 @@ import 'package:material_ui/material_ui.dart';
 /// "Operate" yüzeyinde rengin asıl görevi budur.
 ///
 /// Kurallar:
-///  * Ana eylem rengi (yeşil) burada YOK. Buton rengi süse harcanmaz;
-///    birincil eylem her zaman aynı yeşille bulunur.
+///  * Her BÖLÜMÜN tek bir rengi vardır ve o bölümdeki birincil eylem
+///    (FAB, "Kaydet", "Aldım") o renkle boyanır. Önceki sürümde her
+///    buton aynı yeşildi; ekranlar birbirinin aynı çıkıyor ve renk
+///    "burası neresi" sorusuna hiç cevap vermiyordu. Renk artık yön
+///    bulma işi yapıyor: ilaç sayfasındaki mor buton, sıvı sayfasındaki
+///    camgöbeği butonla karışmaz.
+///  * Bölüm rengi SAYFA BAŞINA tektir. Bir ekranda iki farklı vurgu
+///    rengi dolu buton olmaz.
 ///  * Kırmızı/kehribar anlamlarına dokunulmaz (tehlike, uyarı).
 ///  * Renk tek başına bilgi taşımaz: her ölçeğin yanında adı ve sayısı
 ///    yazar, aşım ayrıca kırmızıya döner.
+///  * Beş besin rengi yalnız besin ekranında yan yana gelir; altı bölüm
+///    rengi yalnız ana ekran/gezinme çubuğunda. İki küme kendi içinde
+///    ayırt edilebilir, kümeler arası benzerlik sorun değildir.
 ///
 /// Tüm değerler WCAG AA (metin için ≥4,5:1) hesaplanarak seçildi; yüksek
 /// kontrast temalarında ≥7:1'e çekilir.
@@ -61,46 +70,59 @@ class AppAccents {
         _ => medication,
       };
 
+  /// Bölüm anahtarına göre renk (yönlendirme yolları ve kart karoları).
+  Color forSection(String key) => switch (key) {
+        'home' => medication, // yalnız geri dönüş; ana sayfa primary kullanır
+        'nutrition' || 'food' || 'diet' => energy,
+        'fluid' => fluid,
+        'medication' || 'meds' => medication,
+        'lab' || 'labs' => lab,
+        'weight' || 'vitals' => weight,
+        'activity' || 'health' => activity,
+        'appointment' || 'calendar' => appointment,
+        _ => lab,
+      };
+
   static const AppAccents light = AppAccents(
     energy: Color(0xFF8A6520),
     protein: Color(0xFF9C5033),
-    sodium: Color(0xFF44608A),
-    potassium: Color(0xFF7A3F6B),
-    phosphorus: Color(0xFF55682C),
-    fluid: Color(0xFF1F6B7A),
-    medication: Color(0xFF3C6B54),
-    lab: Color(0xFF454F8C),
+    sodium: Color(0xFF3D5C8C),
+    potassium: Color(0xFF7D3A72),
+    phosphorus: Color(0xFF4F6124),
+    fluid: Color(0xFF0F6579),
+    medication: Color(0xFF70409A),
+    lab: Color(0xFF3C47A0),
     weight: Color(0xFF8A5230),
-    activity: Color(0xFFA0486B),
-    appointment: Color(0xFF5F4C9B),
+    activity: Color(0xFF4F6B1E),
+    appointment: Color(0xFF9E3B5C),
   );
 
   static const AppAccents dark = AppAccents(
-    energy: Color(0xFFE0BC6E),
-    protein: Color(0xFFE8A182),
-    sodium: Color(0xFF9FB8E0),
-    potassium: Color(0xFFD59FC6),
-    phosphorus: Color(0xFFAFC47A),
-    fluid: Color(0xFF7FC4D4),
-    medication: Color(0xFF8FC2A6),
-    lab: Color(0xFFA4ADE6),
-    weight: Color(0xFFE0A882),
-    activity: Color(0xFFEC9BB8),
-    appointment: Color(0xFFB6A9E8),
+    energy: Color(0xFFE9C06B),
+    protein: Color(0xFFF0A184),
+    sodium: Color(0xFF8FB6E8),
+    potassium: Color(0xFFE0A2D6),
+    phosphorus: Color(0xFFB9CC74),
+    fluid: Color(0xFF63C9E0),
+    medication: Color(0xFFD4A3EC),
+    lab: Color(0xFF9BA7F2),
+    weight: Color(0xFFEDA87A),
+    activity: Color(0xFFAFD36E),
+    appointment: Color(0xFFF2A0B6),
   );
 
   static const AppAccents highContrastLight = AppAccents(
-    energy: Color(0xFF6E5019),
-    protein: Color(0xFF84432B),
-    sodium: Color(0xFF3D567C),
-    potassium: Color(0xFF7A3F6B),
-    phosphorus: Color(0xFF485825),
-    fluid: Color(0xFF1A5A67),
-    medication: Color(0xFF325A47),
-    lab: Color(0xFF454F8C),
-    weight: Color(0xFF7C492B),
-    activity: Color(0xFF8A3D5C),
-    appointment: Color(0xFF54438A),
+    energy: Color(0xFF6F511A),
+    protein: Color(0xFF85442B),
+    sodium: Color(0xFF395683),
+    potassium: Color(0xFF7D3A72),
+    phosphorus: Color(0xFF4A5B22),
+    fluid: Color(0xFF0E5D70),
+    medication: Color(0xFF6F3F98),
+    lab: Color(0xFF3C47A0),
+    weight: Color(0xFF7B492B),
+    activity: Color(0xFF455D1A),
+    appointment: Color(0xFF913654),
   );
 
   /// Koyu temanın renkleri siyah zeminde zaten ≥9:1 çıkıyor.
@@ -175,6 +197,25 @@ class AppPalette {
 
   bool get isDark => brightness == Brightness.dark;
 
+  /// Bir vurgu renginin ÜSTÜNE yazılacak metin/ikon rengi.
+  ///
+  /// Koyu temada vurgular açık tonlardır (üstüne koyu yazılır), açık
+  /// temada koyudur (üstüne beyaz). Sabit bir `onPrimary` kullanmak
+  /// bölüm renkleri gelince kırılıyordu: mor dolgunun üstündeki krem
+  /// yazı açık temada okunmuyordu. Bu yüzden karar parlaklıkla verilir.
+  Color onAccent(Color accent) =>
+      accent.computeLuminance() > 0.45
+          ? const Color(0xFF14120F)
+          : const Color(0xFFFFFFFF);
+
+  /// Vurgu renginin zemine karışan yumuşak dolgusu (kart, karo, rozet).
+  Color accentFill(Color accent, {double? opacity}) =>
+      accent.withValues(alpha: opacity ?? (isDark ? 0.18 : 0.11));
+
+  /// Vurgu renginin ince kenarı.
+  Color accentEdge(Color accent) =>
+      accent.withValues(alpha: isDark ? 0.34 : 0.28);
+
   /// Sıcak krem — varsayılan tema.
   static const AppPalette warmLight = AppPalette(
     brightness: Brightness.light,
@@ -185,11 +226,11 @@ class AppPalette {
     glassBorder: Color(0x66FFFFFF),
     shadowDark: Color(0x1A5C5242),
     shadowLight: Color(0xCCFFFFFF),
-    primary: Color(0xFF3C6B54),
+    primary: Color(0xFF2F6B4F),
     onPrimary: Color(0xFFFBF8F1),
-    primarySoft: Color(0xFFDCE8E0),
-    accent: Color(0xFF8A6A20),
-    accentSoft: Color(0xFFF2E6CA),
+    primarySoft: Color(0xFFD8E8DE),
+    accent: Color(0xFF8A6520),
+    accentSoft: Color(0xFFF4E6C6),
     textPrimary: Color(0xFF2A2621),
     textSecondary: Color(0xFF574F44),
     textMuted: Color(0xFF7A7164),
@@ -230,18 +271,18 @@ class AppPalette {
   /// Gece modu — sıcaklığı koruyan koyu kahve/antrasit.
   static const AppPalette warmDark = AppPalette(
     brightness: Brightness.dark,
-    background: Color(0xFF1C1A17),
-    backgroundDeep: Color(0xFF141311),
-    surface: Color(0xFF26231F),
-    surfaceGlass: Color(0xCC2B2823),
+    background: Color(0xFF1B1A18),
+    backgroundDeep: Color(0xFF121210),
+    surface: Color(0xFF28251F),
+    surfaceGlass: Color(0xCC2E2A24),
     glassBorder: Color(0x1FFFFFFF),
     shadowDark: Color(0x66000000),
     shadowLight: Color(0x0DFFFFFF),
-    primary: Color(0xFF8FC2A6),
-    onPrimary: Color(0xFF12201A),
-    primarySoft: Color(0xFF2A3A32),
-    accent: Color(0xFFD9B56A),
-    accentSoft: Color(0xFF3A3225),
+    primary: Color(0xFF86CBA6),
+    onPrimary: Color(0xFF0E1D16),
+    primarySoft: Color(0xFF2C3E34),
+    accent: Color(0xFFE2BE76),
+    accentSoft: Color(0xFF3E3527),
     textPrimary: Color(0xFFF2EDE2),
     textSecondary: Color(0xFFC9C1B2),
     textMuted: Color(0xFF9E968A),

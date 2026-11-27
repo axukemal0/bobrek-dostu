@@ -40,12 +40,10 @@ class LabsScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('Laboratuvar')),
       floatingActionButtonLocation:
           ShellFabLocation(BottomBarInset.of(context)),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: SectionFab(
+        label: 'Tahlil ekle',
+        tone: p.accents.lab,
         onPressed: () => _showAddSheet(context),
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('Tahlil ekle'),
-        backgroundColor: p.primary,
-        foregroundColor: p.onPrimary,
       ),
       body: SafeArea(
         child: labsAsync.when(
@@ -54,6 +52,7 @@ class LabsScreen extends ConsumerWidget {
           data: (labs) {
             if (labs.isEmpty) {
               return PageBody(
+                hasFab: true,
                 children: [
                   const EmptyState(
                     title: 'Henüz tahlil yok',
@@ -73,6 +72,7 @@ class LabsScreen extends ConsumerWidget {
             }
 
             return PageBody(
+              hasFab: true,
               children: [
                 for (final entry in grouped.entries)
                   _AnalyteCard(

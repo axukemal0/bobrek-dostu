@@ -11,6 +11,11 @@ import 'responsive.dart';
 /// Gövde çubuğun altına uzandığı için (buzlu cam ancak arkasından içerik
 /// akarsa anlamlıdır) sayfaların alt boşluğu bu kadar artmalı; yoksa son
 /// kart çubuğun altında kalır.
+///
+/// DİKKAT: bu değer çubuğun yüksekliği + CİHAZIN ALT GÜVENLİ ALANI'dır.
+/// Önceden yalnız çubuk yüksekliği veriliyordu; iPhone'da ana ekran
+/// çubuğunun kapladığı ~34 pt hesaba katılmadığı için "İlaç ekle" gibi
+/// kayan butonlar gezinme çubuğunun altında yarım kalıyordu.
 class BottomBarInset extends InheritedWidget {
   const BottomBarInset({
     required this.height,
@@ -121,13 +126,14 @@ class AppShell extends StatelessWidget {
     final p = context.palette;
     final r = Responsive.fromContext(context);
     final barHeight = r.isCompact ? 68.0 : 74.0;
+    final totalBarHeight = barHeight + MediaQuery.paddingOf(context).bottom;
 
     return Scaffold(
       backgroundColor: p.background,
       // Gövde çubuğun altına uzanır: içerik camın arkasından akar.
       extendBody: true,
       body: BottomBarInset(
-        height: barHeight,
+        height: totalBarHeight,
         child: SafeArea(bottom: false, child: child),
       ),
       bottomNavigationBar: GlassBar(

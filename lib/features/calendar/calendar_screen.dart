@@ -48,15 +48,14 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       appBar: AppBar(title: const Text('Takvim')),
       floatingActionButtonLocation:
           ShellFabLocation(BottomBarInset.of(context)),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: SectionFab(
+        label: 'Randevu ekle',
+        tone: p.accents.appointment,
         onPressed: () => _showSheet(context),
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('Randevu ekle'),
-        backgroundColor: p.primary,
-        foregroundColor: p.onPrimary,
       ),
       body: SafeArea(
         child: PageBody(
+          hasFab: true,
           children: [
             if (settings.treatmentMode.isDialysis && dialysisDays != null)
               NeuCard(

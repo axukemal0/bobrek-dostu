@@ -58,7 +58,7 @@ dependencies:
   # google_mlkit_text_recognition iOS simülatöründe arm64 desteklemiyor
   # ve modeli uygulamaya gömüyordu.
 
-  # --- Sağlık verisi (Health Connect) ---
+  # --- Sağlık verisi (Health Connect / Apple Health) ---
   health: ^13.1.1
 
   # DİKKAT — sürüm kilidi:

@@ -42,17 +42,32 @@ class AiConfig {
     ),
   ];
 
-  /// Yanıt uzunluğu üst sınırı (akışsız istekler için güvenli değer).
-  static const int maxTokensChat = 4096;
-  static const int maxTokensVision = 2048;
+  /// Yanıt uzunluğu üst sınırı.
+  ///
+  /// DİKKAT — BURASI BİR HATA KAYNAĞIYDI. Claude 5.x modellerinde
+  /// "düşünme" (thinking) KAPATILAMAZ ve düşünme jetonları da
+  /// `max_tokens` bütçesinden harcanır. Sınır 4096'dayken model
+  /// bütçeyi düşünürken bitiriyor, yanıt metni hiç üretilemiyordu:
+  /// sunucu 200 dönüyor ama içerikte metin bloğu olmuyordu ve
+  /// uygulama "Model boş bir yanıt döndürdü" diyordu. Üç modelde de
+  /// aynı olmasının sebebi buydu. Akışsız istekte zaman aşımına
+  /// girmeyecek kadar yüksek bir tavan veriyoruz.
+  static const int maxTokensChat = 16000;
+  static const int maxTokensVision = 12000;
 
-  /// Anthropic "effort" ayarı: düşük = daha az token, daha hızlı.
-  /// Mobil kullanımda ve maliyet açısından 'medium' dengeli.
-  static const String effort = 'medium';
+  /// Anthropic "effort" ayarı: düşünmenin derinliğini belirler.
+  ///
+  /// Sohbet telefonda hızlı olmalı — 'low'. Tahlil kağıdı ve yemek
+  /// fotoğrafı okumak gerçek bir çıkarım işi, orada 'medium'.
+  static const String chatEffort = 'low';
+  static const String visionEffort = 'medium';
 
   /// Bağlantı testinde kullanılan istek: GET /v1/models.
   /// Token harcamaz, bu yüzden "Bağlantıyı test et" ücretsizdir.
-  static const Duration timeout = Duration(seconds: 60);
+  ///
+  /// Düşünme açıkken yanıt birkaç on saniye sürebilir; 60 saniye
+  /// kısaydı.
+  static const Duration timeout = Duration(seconds: 150);
   static const Duration testTimeout = Duration(seconds: 20);
 
   /// Anahtarın nasıl alınacağını anlatan resmî adres.

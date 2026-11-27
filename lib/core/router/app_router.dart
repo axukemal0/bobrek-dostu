@@ -1,4 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cupertino_ui/cupertino_ui.dart' show CupertinoPage;
+import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -69,11 +71,13 @@ final routerProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(
         path: Routes.splash,
-        builder: (context, state) => const SplashScreen(),
+        pageBuilder: (context, state) =>
+            _screenPage(const SplashScreen(), state),
       ),
       GoRoute(
         path: Routes.onboarding,
-        builder: (context, state) => const OnboardingScreen(),
+        pageBuilder: (context, state) =>
+            _screenPage(const OnboardingScreen(), state),
       ),
 
       // Alt navigasyonlu kabuk (tek elle kullanım).
@@ -113,71 +117,88 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Tam ekran sayfalar.
       GoRoute(
         path: Routes.labs,
-        builder: (context, state) => const LabsScreen(),
+        pageBuilder: (context, state) =>
+            _screenPage(const LabsScreen(), state),
       ),
       GoRoute(
         path: Routes.calendar,
-        builder: (context, state) => const CalendarScreen(),
+        pageBuilder: (context, state) =>
+            _screenPage(const CalendarScreen(), state),
       ),
       GoRoute(
         path: Routes.weight,
-        builder: (context, state) => const WeightScreen(),
+        pageBuilder: (context, state) =>
+            _screenPage(const WeightScreen(), state),
       ),
       GoRoute(
         path: Routes.health,
-        builder: (context, state) => const HealthScreen(),
+        pageBuilder: (context, state) =>
+            _screenPage(const HealthScreen(), state),
       ),
       GoRoute(
         path: Routes.ai,
-        builder: (context, state) => const AiChatScreen(),
+        pageBuilder: (context, state) =>
+            _screenPage(const AiChatScreen(), state),
       ),
       GoRoute(
         path: Routes.places,
-        builder: (context, state) => const PlacesScreen(),
+        pageBuilder: (context, state) =>
+            _screenPage(const PlacesScreen(), state),
       ),
       GoRoute(
         path: Routes.travel,
-        builder: (context, state) => const TravelScreen(),
+        pageBuilder: (context, state) =>
+            _screenPage(const TravelScreen(), state),
       ),
       GoRoute(
         path: Routes.reading,
-        builder: (context, state) => const ReadingScreen(),
+        pageBuilder: (context, state) =>
+            _screenPage(const ReadingScreen(), state),
       ),
       GoRoute(
         path: Routes.emergency,
-        builder: (context, state) => const EmergencyScreen(),
+        pageBuilder: (context, state) =>
+            _screenPage(const EmergencyScreen(), state),
       ),
       GoRoute(
         path: Routes.report,
-        builder: (context, state) => const ReportScreen(),
+        pageBuilder: (context, state) =>
+            _screenPage(const ReportScreen(), state),
       ),
       GoRoute(
         path: Routes.dietPlan,
-        builder: (context, state) => const DietPlanScreen(),
+        pageBuilder: (context, state) =>
+            _screenPage(const DietPlanScreen(), state),
       ),
       GoRoute(
         path: Routes.caregiver,
-        builder: (context, state) => const CaregiverScreen(),
+        pageBuilder: (context, state) =>
+            _screenPage(const CaregiverScreen(), state),
       ),
       GoRoute(
         path: Routes.settings,
-        builder: (context, state) => const SettingsScreen(),
+        pageBuilder: (context, state) =>
+            _screenPage(const SettingsScreen(), state),
         routes: [
           GoRoute(
             path: 'klinik',
-            builder: (context, state) => const ClinicalSettingsScreen(),
+            pageBuilder: (context, state) =>
+                _screenPage(const ClinicalSettingsScreen(), state),
           ),
           GoRoute(
             path: 'yapay-zeka',
-            builder: (context, state) => const AiConnectionScreen(),
+            pageBuilder: (context, state) =>
+                _screenPage(const AiConnectionScreen(), state),
           ),
           GoRoute(
             path: 'kaynaklar',
-            builder: (context, state) => const SourcesScreen(),
+            pageBuilder: (context, state) =>
+                _screenPage(const SourcesScreen(), state),
           ),
           GoRoute(
             path: 'izinler',
-            builder: (context, state) => const PermissionsScreen(),
+            pageBuilder: (context, state) =>
+                _screenPage(const PermissionsScreen(), state),
           ),
         ],
       ),
@@ -213,6 +234,23 @@ final routerProvider = Provider<GoRouter>((ref) {
     ),
   );
 });
+
+
+/// İtilen tam ekran sayfalar.
+///
+/// iOS'ta SOLDAN KAYDIRARAK GERİ GİTME jesti `CupertinoPageRoute`'un
+/// kendi jest algılayıcısına bağlıdır. `MaterialPage` + tema geçişi
+/// kombinasyonu bu jesti güvenilir biçimde taşımıyordu (cihazda
+/// çalışmıyordu), bu yüzden iOS'ta sayfa tipi doğrudan `CupertinoPage`
+/// seçiliyor: kaydırarak geri gitme, kenardan sürükleme sırasında
+/// sayfanın parallaks kayması ve iptal animasyonu birlikte gelir.
+/// Android'de Material geçişi korunur.
+Page<void> _screenPage(Widget child, GoRouterState state) {
+  if (defaultTargetPlatform == TargetPlatform.iOS) {
+    return CupertinoPage<void>(key: state.pageKey, child: child);
+  }
+  return MaterialPage<void>(key: state.pageKey, child: child);
+}
 
 /// Sekme geçişleri yumuşak fade ile.
 CustomTransitionPage<void> _fadePage(Widget child, GoRouterState state) =>

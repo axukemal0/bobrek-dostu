@@ -31,12 +31,10 @@ class NutritionScreen extends ConsumerWidget {
       backgroundColor: p.background,
       floatingActionButtonLocation:
           ShellFabLocation(BottomBarInset.of(context)),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: SectionFab(
+        label: 'Yemek ekle',
+        tone: p.accents.energy,
         onPressed: () => showAddFoodSheet(context, ref),
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('Yemek ekle'),
-        backgroundColor: p.primary,
-        foregroundColor: p.onPrimary,
       ),
       body: SafeArea(
         child: logsAsync.when(
@@ -65,6 +63,7 @@ class NutritionScreen extends ConsumerWidget {
             );
 
             return PageBody(
+              hasFab: true,
               children: [
                 _DayNav(day: day),
 

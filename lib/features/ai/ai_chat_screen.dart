@@ -96,6 +96,18 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
               content: e.messageTr,
             ),
           );
+    } on Object catch (e) {
+      // AiFailure DIŞINDAKİ hatalar (bağlam hazırlanırken, veritabanında)
+      // önceden yakalanmıyordu: istisna sessizce yukarı gidiyor, ekranda
+      // hiçbir şey olmuyordu. Kullanıcı için bu "yapay zeka çalışmıyor"
+      // demekti ve hiçbir ipucu kalmıyordu.
+      await db.into(db.chatMessageRows).insert(
+            ChatMessageRowsCompanion.insert(
+              role: 'system_note',
+              content: 'Beklenmedik bir hata oldu ve soru gönderilemedi.\n\n'
+                  '$e',
+            ),
+          );
     } finally {
       if (mounted) setState(() => _sending = false);
       _scrollToEnd();

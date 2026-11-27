@@ -32,17 +32,15 @@ class WeightScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('Kilo, ödem ve tansiyon')),
       floatingActionButtonLocation:
           ShellFabLocation(BottomBarInset.of(context)),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: SectionFab(
+        label: 'Ölçüm ekle',
+        tone: p.accents.weight,
         onPressed: () => showModalBottomSheet<void>(
           context: context,
           isScrollControlled: true,
           useSafeArea: true,
           builder: (context) => const _AddVitalSheet(),
         ),
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('Ölçüm ekle'),
-        backgroundColor: p.primary,
-        foregroundColor: p.onPrimary,
       ),
       body: SafeArea(
         child: vitalsAsync.when(
@@ -51,6 +49,7 @@ class WeightScreen extends ConsumerWidget {
           data: (vitals) {
             if (vitals.isEmpty) {
               return PageBody(
+                hasFab: true,
                 children: [
                   const EmptyState(
                     title: 'Henüz ölçüm yok',
@@ -107,6 +106,7 @@ class WeightScreen extends ConsumerWidget {
                 : null;
 
             return PageBody(
+              hasFab: true,
               children: [
                 // --- IDWG ---
                 if (idwg != null)
