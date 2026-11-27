@@ -712,6 +712,17 @@ const String kMedicalDisclaimerTr =
 const String kReferenceCaveatTr =
     'Referans/kılavuz değeri — klinik karar sana ait.';
 
+/// Türkçe dışındaki dillerde her sayfanın altında görünür.
+///
+/// Uygulamanın metinleri Türkçe yazıldı ve diğer dillere MAKİNE ile
+/// çevrildi; klinik metinleri (ilaç uyarıları, tahlil yorumları, diyet
+/// kuralları) hiçbir uzman gözden geçirmedi. Bu bir tıp uygulamasında
+/// saklanacak bir şey değil: kullanıcı hangi metne ne kadar
+/// güvenebileceğini bilmeli ve şüphede Türkçe aslına dönebilmeli.
+const String kMachineTranslationNoticeTr =
+    'Bu metin makine çevirisidir ve bir uzman tarafından gözden '
+    'geçirilmemiştir. Şüphede kalırsan Türkçe aslına bak.';
+
 const String kPrivacyNoteTr =
     'Verilerin telefonda, şifreli olarak saklanır. Hiçbir veri '
     'otomatik olarak dışarı gönderilmez. Yalnızca yapay zeka '

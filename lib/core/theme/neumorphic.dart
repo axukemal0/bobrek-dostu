@@ -1,9 +1,10 @@
 import 'dart:ui';
 
-import 'package:material_ui/material_ui.dart';
+import 'package:material_ui/material_ui.dart' hide Text;
 
 import 'app_colors.dart';
 import 'motion.dart';
+import '../i18n/text.dart';
 
 /// Yüzey derinliği — tasarım dilinin tek hiyerarşisi.
 ///

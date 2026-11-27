@@ -1,7 +1,7 @@
 import 'package:drift/drift.dart' show Value;
 import 'package:drift/drift.dart' as d;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:material_ui/material_ui.dart';
+import 'package:material_ui/material_ui.dart' hide Text;
 
 import '../../clinical/settings.dart';
 import '../../core/db/database.dart';
@@ -15,6 +15,7 @@ import '../../core/widgets/form_fields.dart';
 import '../../core/widgets/app_shell.dart';
 import '../../core/widgets/responsive.dart';
 import '../home/home_screen.dart' show showPermissionDialog;
+import '../../core/i18n/text.dart';
 
 const Map<String, ({String labelTr, IconData icon})> kAppointmentKinds = {
   'dialysis': (labelTr: 'Diyaliz seansı', icon: Icons.bloodtype_outlined),

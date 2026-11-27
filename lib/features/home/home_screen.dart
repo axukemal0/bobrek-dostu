@@ -3,7 +3,7 @@ import 'dart:io' show Platform;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
-import 'package:material_ui/material_ui.dart';
+import 'package:material_ui/material_ui.dart' hide Text;
 
 import '../../clinical/definitions.dart';
 import '../../clinical/evaluator.dart';
@@ -20,6 +20,7 @@ import '../../core/widgets/nutrient_meter.dart';
 import '../../core/widgets/responsive.dart';
 import '../medications/medication_logic.dart';
 import 'day_tip.dart';
+import '../../core/i18n/text.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});

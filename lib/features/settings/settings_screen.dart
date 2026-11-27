@@ -3,7 +3,7 @@ import 'dart:io' show Platform;
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:material_ui/material_ui.dart';
+import 'package:material_ui/material_ui.dart' hide Text;
 import 'update_card.dart';
 import '../../core/services/permission_service.dart';
 import '../home/home_screen.dart' show showPermissionDialog;
@@ -11,6 +11,7 @@ import '../home/home_screen.dart' show showPermissionDialog;
 import '../../clinical/definitions.dart';
 import '../../core/config/app_config.dart';
 import '../../core/db/database.dart';
+import '../../core/i18n/languages.dart';
 import '../../core/providers.dart';
 import '../../core/router/app_router.dart';
 import '../../core/services/ai_service.dart';
@@ -23,6 +24,7 @@ import '../../core/widgets/common.dart';
 import '../../core/widgets/form_fields.dart';
 import '../../core/widgets/responsive.dart';
 import 'lock_gate.dart';
+import '../../core/i18n/text.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -50,6 +52,42 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       body: SafeArea(
         child: PageBody(
           children: [
+            // ============ DİL ============
+            // En üstte duruyor: yanlış dile düşen biri aşağı inmek
+            // zorunda kalmadan geri dönebilmeli. Dil adları kendi
+            // dillerinde yazılı, o yüzden hangi dilde olursan ol okunur.
+            const SectionHeader(
+              title: 'Dil',
+              icon: Icons.translate_rounded,
+            ),
+            NeuCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    'Uygulamanın dili. Türkçe dışındaki diller makine '
+                    'çevirisidir; klinik metinler bir uzman tarafından '
+                    'gözden geçirilmedi.',
+                  ),
+                  SizedBox(height: r.gapMd),
+                  Wrap(
+                    spacing: r.gapSm,
+                    runSpacing: r.gapSm,
+                    children: [
+                      for (final language in AppLanguage.values)
+                        _LanguageChip(
+                          language: language,
+                          selected: language == prefs.language,
+                          onTap: () => ref
+                              .read(preferencesProvider.notifier)
+                              .update((p) => p.copyWith(language: language)),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
             // ============ KLİNİK ============
             const SectionHeader(
               title: 'Klinik',
@@ -933,6 +971,78 @@ class _NavTile extends StatelessWidget {
             ),
             Icon(Icons.chevron_right_rounded, color: p.textMuted),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Dil seçim düğmesi.
+///
+/// Dil adı ÇEVRİLMEZ ([Text.verbatim]): "Deutsch" her dilde Deutsch'tur.
+/// Latin dışı adlar (العربية, हिन्दी, 中文) gömülü yazı tipinde yok;
+/// Flutter o karakterleri sistem yazı tipinden alır — burada istenen
+/// davranış tam olarak budur, yoksa seçici okunamazdı.
+class _LanguageChip extends StatelessWidget {
+  const _LanguageChip({
+    required this.language,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final AppLanguage language;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    final r = Responsive.fromContext(context);
+    final radius = BorderRadius.circular(r.s(14));
+
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: language.nativeName,
+      child: Material(
+        color: selected ? p.primary : p.surfaceGlass,
+        borderRadius: radius,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: radius,
+          child: Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: r.s(14),
+              vertical: r.s(9),
+            ),
+            decoration: BoxDecoration(
+              borderRadius: radius,
+              border: Border.all(
+                color: selected ? p.primary : p.glassBorder,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (selected) ...[
+                  Icon(
+                    Icons.check_rounded,
+                    size: r.s(16),
+                    color: p.onPrimary,
+                  ),
+                  SizedBox(width: r.s(6)),
+                ],
+                Text.verbatim(
+                  language.nativeName,
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: selected ? p.onPrimary : p.textPrimary,
+                        fontWeight:
+                            selected ? FontWeight.w700 : FontWeight.w600,
+                      ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

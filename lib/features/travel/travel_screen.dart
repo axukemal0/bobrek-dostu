@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:material_ui/material_ui.dart';
+import 'package:material_ui/material_ui.dart' hide Text;
 import 'package:share_plus/share_plus.dart';
 
 import '../../core/config/ai_config.dart';
@@ -17,6 +17,7 @@ import '../../core/theme/neumorphic.dart';
 import '../../core/widgets/common.dart';
 import '../../core/widgets/form_fields.dart';
 import '../../core/widgets/responsive.dart';
+import '../../core/i18n/text.dart';
 
 class TravelScreen extends ConsumerStatefulWidget {
   const TravelScreen({super.key});

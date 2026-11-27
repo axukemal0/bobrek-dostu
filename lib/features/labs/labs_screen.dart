@@ -2,7 +2,7 @@ import 'package:drift/drift.dart' show Value;
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:material_ui/material_ui.dart';
+import 'package:material_ui/material_ui.dart' hide Text;
 
 import '../../clinical/definitions.dart';
 import '../../clinical/settings.dart';
@@ -25,6 +25,7 @@ import '../../core/widgets/responsive.dart';
 import '../../core/widgets/trend_chart.dart';
 import '../emergency/alert_dispatcher.dart';
 import '../home/home_screen.dart' show showPermissionDialog;
+import '../../core/i18n/text.dart';
 
 class LabsScreen extends ConsumerWidget {
   const LabsScreen({super.key});

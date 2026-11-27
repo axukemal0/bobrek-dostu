@@ -1,8 +1,9 @@
 import 'package:flutter/services.dart';
-import 'package:material_ui/material_ui.dart';
+import 'package:material_ui/material_ui.dart' hide Text;
 
 import '../theme/app_colors.dart';
 import 'responsive.dart';
+import '../i18n/text.dart';
 
 /// Etiketli alan sarmalayıcı.
 class LabeledField extends StatelessWidget {

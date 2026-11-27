@@ -2,7 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cupertino_ui/cupertino_ui.dart' show CupertinoPage;
 import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:go_router/go_router.dart';
-import 'package:material_ui/material_ui.dart';
+import 'package:material_ui/material_ui.dart' hide Text;
 
 import '../../features/ai/ai_chat_screen.dart';
 import '../../features/calendar/calendar_screen.dart';
@@ -29,6 +29,7 @@ import '../../features/settings/sources_screen.dart';
 import '../../features/travel/travel_screen.dart';
 import '../../features/weight/weight_screen.dart';
 import '../widgets/app_shell.dart';
+import '../i18n/text.dart';
 
 class Routes {
   const Routes._();

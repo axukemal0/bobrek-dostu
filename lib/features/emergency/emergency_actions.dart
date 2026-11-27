@@ -1,8 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:material_ui/material_ui.dart';
+import 'package:material_ui/material_ui.dart' hide Text;
 
 import '../../core/config/app_config.dart';
 import '../../core/providers.dart';
+import '../../core/i18n/text.dart';
 
 /// 112'yi arar. Onay istemez — acil durumda gecikme olmaması için.
 ///

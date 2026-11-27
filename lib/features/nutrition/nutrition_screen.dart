@@ -1,7 +1,7 @@
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:material_ui/material_ui.dart';
+import 'package:material_ui/material_ui.dart' hide Text;
 
 import '../../clinical/evaluator.dart';
 import '../../core/db/database.dart';
@@ -15,6 +15,7 @@ import '../../core/widgets/app_shell.dart';
 import '../../core/widgets/nutrient_meter.dart';
 import '../../core/widgets/responsive.dart';
 import 'add_food_sheet.dart';
+import '../../core/i18n/text.dart';
 
 class NutritionScreen extends ConsumerWidget {
   const NutritionScreen({super.key});

@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 
+import '../i18n/i18n.dart';
 import 'app_colors.dart';
 
 /// Metin boyutu kademeleri (erişilebilirlik ayarı).
@@ -7,25 +8,41 @@ enum TextScaleStep { normal, large, extraLarge }
 
 extension TextScaleStepX on TextScaleStep {
   String get labelTr => switch (this) {
-        TextScaleStep.normal => 'Normal',
-        TextScaleStep.large => 'Büyük',
-        TextScaleStep.extraLarge => 'Çok büyük',
-      };
+    TextScaleStep.normal => 'Normal',
+    TextScaleStep.large => 'Büyük',
+    TextScaleStep.extraLarge => 'Çok büyük',
+  };
 
   /// Uygulama içi ek ölçek. Sistemin kendi ölçeği bunun üzerine biner;
   /// toplam ölçek [AppTypography.clampedScale] ile sınırlanır.
   double get factor => switch (this) {
-        TextScaleStep.normal => 1.0,
-        TextScaleStep.large => 1.18,
-        TextScaleStep.extraLarge => 1.38,
-      };
+    TextScaleStep.normal => 1.0,
+    TextScaleStep.large => 1.18,
+    TextScaleStep.extraLarge => 1.38,
+  };
 }
 
 class AppTypography {
   const AppTypography._();
 
-  static const String serif = 'PlayfairDisplay';
-  static const String sans = 'Nunito';
+  /// Başlık ve gövde yazı tipleri — DİLE GÖRE.
+  ///
+  /// Gömülü Nunito ve Playfair, `tools/subset_fonts.sh` ile Latin +
+  /// Türkçe kümesine indirgenmiştir (972 KB -> 252 KB). Kiril, Arap,
+  /// Devanagari ve CJK glifleri bu dosyalarda YOKTUR. O dillerde gömülü
+  /// yazı tipi istenirse Flutter eksik karakterleri sistem yazı tipinden
+  /// alır ve ekranda İKİ farklı yazı tipi karışır — noktalama bir yüzden,
+  /// harfler başka yüzden gelir, satır yükseklikleri tutmaz.
+  ///
+  /// Bu yüzden Latin dışı dillerde gömülü yazı tipi hiç istenmez: null
+  /// verilir ve her şey sistemin kendi yazı tipiyle yazılır (iOS'ta
+  /// SF Pro, SF Arabic, Kohinoor Devanagari, PingFang SC — hepsi bu
+  /// yazılar için özel tasarlanmıştır). Tek tip tutarlı metin, karışık
+  /// metinden iyidir.
+  static String? get serif =>
+      I18n.active.latinScript ? 'PlayfairDisplay' : null;
+
+  static String? get sans => I18n.active.latinScript ? 'Nunito' : null;
 
   /// Sistem ölçeği + uygulama ölçeği birleşimini makul sınırda tutar.
   /// Taşmayı önlemek için üst sınır 2.0.
@@ -180,13 +197,16 @@ class AppTypography {
       );
 
   /// Küçük sayısal etiketler (birim, tarih, sayaç).
-  static TextStyle numericSmall(AppPalette p, {double size = 14, Color? color}) =>
-      TextStyle(
-        fontFamily: sans,
-        fontSize: size,
-        fontWeight: FontWeight.w700,
-        height: 1.2,
-        color: color ?? p.textSecondary,
-        fontFeatures: const [FontFeature.tabularFigures()],
-      );
+  static TextStyle numericSmall(
+    AppPalette p, {
+    double size = 14,
+    Color? color,
+  }) => TextStyle(
+    fontFamily: sans,
+    fontSize: size,
+    fontWeight: FontWeight.w700,
+    height: 1.2,
+    color: color ?? p.textSecondary,
+    fontFeatures: const [FontFeature.tabularFigures()],
+  );
 }

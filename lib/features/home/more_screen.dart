@@ -2,7 +2,7 @@ import 'dart:io' show Platform;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:material_ui/material_ui.dart';
+import 'package:material_ui/material_ui.dart' hide Text;
 
 import '../../core/config/app_config.dart';
 import '../../core/providers.dart';
@@ -12,6 +12,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/neumorphic.dart';
 import '../../core/widgets/common.dart';
 import '../../core/widgets/responsive.dart';
+import '../../core/i18n/text.dart';
 
 Color _labTone(AppPalette p) => p.accents.lab;
 Color _weightTone(AppPalette p) => p.accents.weight;

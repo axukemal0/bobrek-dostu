@@ -1,4 +1,4 @@
-import 'package:material_ui/material_ui.dart';
+import 'package:material_ui/material_ui.dart' hide Text;
 import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/services.dart';
 
@@ -8,6 +8,9 @@ import '../../clinical/sources.dart';
 import '../theme/app_colors.dart';
 import '../theme/motion.dart';
 import '../theme/neumorphic.dart';
+import '../i18n/i18n.dart';
+import '../i18n/languages.dart';
+import '../i18n/text.dart';
 import 'app_shell.dart';
 import 'responsive.dart';
 
@@ -90,12 +93,34 @@ class MedicalDisclaimerBanner extends StatelessWidget {
             Icon(Icons.info_outline_rounded, size: r.s(16), color: p.accent),
             SizedBox(width: r.gapSm),
             Expanded(
-              child: Text(
-                kMedicalDisclaimerTr,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: p.textSecondary,
-                      height: 1.35,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    kMedicalDisclaimerTr,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: p.textSecondary,
+                          height: 1.35,
+                        ),
+                  ),
+
+                  // Türkçe dışındaki her dilde makine çevirisi uyarısı.
+                  // Klinik metinleri (ilaç uyarıları, tahlil yorumları,
+                  // diyet kuralları) hiçbir uzman gözden geçirmedi;
+                  // kullanıcının bunu bilmeye hakkı var. Uyarı şeridi
+                  // her sayfanın altında olduğu için tek yerden gelir.
+                  if (I18n.active != AppLanguage.tr) ...[
+                    SizedBox(height: r.gapXs),
+                    Text(
+                      kMachineTranslationNoticeTr,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: p.textMuted,
+                            height: 1.3,
+                            fontStyle: FontStyle.italic,
+                          ),
                     ),
+                  ],
+                ],
               ),
             ),
           ],

@@ -1,11 +1,12 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:material_ui/material_ui.dart';
+import 'package:material_ui/material_ui.dart' hide Text;
 
 import 'app.dart';
 import 'core/db/database.dart';
 import 'core/providers.dart';
 import 'core/services/secure_store.dart';
+import 'core/i18n/text.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();

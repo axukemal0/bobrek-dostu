@@ -3,13 +3,14 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:local_auth/local_auth.dart';
-import 'package:material_ui/material_ui.dart';
+import 'package:material_ui/material_ui.dart' hide Text;
 
 import '../../core/providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/neumorphic.dart';
 import '../../core/brand/brand_mark.dart';
 import '../../core/widgets/responsive.dart';
+import '../../core/i18n/text.dart';
 
 /// PIN hash'i (SHA-256 + sabit tuz yerine kullanıcıya özgü tuz).
 ///

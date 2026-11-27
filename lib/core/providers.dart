@@ -8,6 +8,8 @@ import 'package:material_ui/material_ui.dart';
 import '../clinical/definitions.dart';
 import '../clinical/settings.dart';
 import 'db/database.dart';
+import 'i18n/i18n.dart';
+import 'i18n/languages.dart';
 import 'services/ai_prompts.dart';
 import 'services/ai_service.dart';
 import 'services/api_client.dart';
@@ -53,17 +55,21 @@ final aiServiceProvider = Provider<AiService>((ref) {
   return service;
 });
 
-final aiPromptBuilderProvider =
-    Provider<AiPromptBuilder>((ref) => const AiPromptBuilder());
+final aiPromptBuilderProvider = Provider<AiPromptBuilder>(
+  (ref) => const AiPromptBuilder(),
+);
 
-final weatherServiceProvider =
-    Provider<WeatherService>((ref) => WeatherService(ref.watch(apiClientProvider)));
+final weatherServiceProvider = Provider<WeatherService>(
+  (ref) => WeatherService(ref.watch(apiClientProvider)),
+);
 
-final placesServiceProvider =
-    Provider<PlacesService>((ref) => PlacesService(ref.watch(apiClientProvider)));
+final placesServiceProvider = Provider<PlacesService>(
+  (ref) => PlacesService(ref.watch(apiClientProvider)),
+);
 
-final foodServiceProvider =
-    Provider<FoodService>((ref) => FoodService(ref.watch(apiClientProvider)));
+final foodServiceProvider = Provider<FoodService>(
+  (ref) => FoodService(ref.watch(apiClientProvider)),
+);
 
 final scannerServiceProvider = Provider<ScannerService>((ref) {
   final s = ScannerService();
@@ -103,19 +109,22 @@ final smartNotificationsProvider = Provider<SmartNotifications>(
   ),
 );
 
-final permissionServiceProvider =
-    Provider<PermissionService>((ref) => const PermissionService());
+final permissionServiceProvider = Provider<PermissionService>(
+  (ref) => const PermissionService(),
+);
 
 final smsServiceProvider = Provider<SmsService>((ref) => const SmsService());
 
 final ttsServiceProvider = Provider<TtsService>((ref) => TtsService());
 final sttServiceProvider = Provider<SttService>((ref) => SttService());
 
-final reportServiceProvider =
-    Provider<ReportService>((ref) => ReportService(ref.watch(databaseProvider)));
+final reportServiceProvider = Provider<ReportService>(
+  (ref) => ReportService(ref.watch(databaseProvider)),
+);
 
-final backupServiceProvider =
-    Provider<BackupService>((ref) => BackupService(ref.watch(databaseProvider)));
+final backupServiceProvider = Provider<BackupService>(
+  (ref) => BackupService(ref.watch(databaseProvider)),
+);
 
 final caregiverServiceProvider = Provider<CaregiverService>(
   (ref) => CaregiverService(ref.watch(databaseProvider)),
@@ -129,8 +138,9 @@ final readingServiceProvider = Provider<ReadingService>(
 );
 
 /// v1'de senkronizasyon yoktur; arayüz ileride değiştirilebilir.
-final syncRepositoryProvider =
-    Provider<SyncRepository>((ref) => const NoOpSyncRepository());
+final syncRepositoryProvider = Provider<SyncRepository>(
+  (ref) => const NoOpSyncRepository(),
+);
 
 // ---------------------------------------------------------------------------
 // UYGULAMA AYARLARI
@@ -157,6 +167,7 @@ class AppPreferences {
     this.mealMarkReminder = true,
     this.mealMarkReminderHour = 21,
     this.aiModel,
+    this.language = AppLanguage.tr,
   });
 
   /// Ayarlar diskten OKUNDU mu?
@@ -201,6 +212,11 @@ class AppPreferences {
 
   final String? aiModel;
 
+  /// Arayüz dili. Taban dil Türkçe'dir; diğerleri çeviri sözlüğünden
+  /// gelir (bkz. lib/core/i18n/). İlk açılışta telefonun dili desteklenen
+  /// diller arasındaysa o seçilir.
+  final AppLanguage language;
+
   AppPreferences copyWith({
     bool? loaded,
     TextScaleStep? textScaleStep,
@@ -222,54 +238,54 @@ class AppPreferences {
     bool? mealMarkReminder,
     int? mealMarkReminderHour,
     String? aiModel,
-  }) =>
-      AppPreferences(
-        loaded: loaded ?? this.loaded,
-        textScaleStep: textScaleStep ?? this.textScaleStep,
-        highContrast: highContrast ?? this.highContrast,
-        reduceMotion: reduceMotion ?? this.reduceMotion,
-        darkMode: darkMode ?? this.darkMode,
-        followSystemDark: followSystemDark ?? this.followSystemDark,
-        lockEnabled: lockEnabled ?? this.lockEnabled,
-        useBiometrics: useBiometrics ?? this.useBiometrics,
-        onboardingCompleted: onboardingCompleted ?? this.onboardingCompleted,
-        aiShareLabs: aiShareLabs ?? this.aiShareLabs,
-        aiShareMedications: aiShareMedications ?? this.aiShareMedications,
-        aiShareClinicalSettings:
-            aiShareClinicalSettings ?? this.aiShareClinicalSettings,
-        autoSmsOnAlarm: autoSmsOnAlarm ?? this.autoSmsOnAlarm,
-        waterReminders: waterReminders ?? this.waterReminders,
-        smartNotifications: smartNotifications ?? this.smartNotifications,
-        dailySummary: dailySummary ?? this.dailySummary,
-        lowStepsNotification:
-            lowStepsNotification ?? this.lowStepsNotification,
-        mealMarkReminder: mealMarkReminder ?? this.mealMarkReminder,
-        mealMarkReminderHour:
-            mealMarkReminderHour ?? this.mealMarkReminderHour,
-        aiModel: aiModel ?? this.aiModel,
-      );
+    AppLanguage? language,
+  }) => AppPreferences(
+    loaded: loaded ?? this.loaded,
+    textScaleStep: textScaleStep ?? this.textScaleStep,
+    highContrast: highContrast ?? this.highContrast,
+    reduceMotion: reduceMotion ?? this.reduceMotion,
+    darkMode: darkMode ?? this.darkMode,
+    followSystemDark: followSystemDark ?? this.followSystemDark,
+    lockEnabled: lockEnabled ?? this.lockEnabled,
+    useBiometrics: useBiometrics ?? this.useBiometrics,
+    onboardingCompleted: onboardingCompleted ?? this.onboardingCompleted,
+    aiShareLabs: aiShareLabs ?? this.aiShareLabs,
+    aiShareMedications: aiShareMedications ?? this.aiShareMedications,
+    aiShareClinicalSettings:
+        aiShareClinicalSettings ?? this.aiShareClinicalSettings,
+    autoSmsOnAlarm: autoSmsOnAlarm ?? this.autoSmsOnAlarm,
+    waterReminders: waterReminders ?? this.waterReminders,
+    smartNotifications: smartNotifications ?? this.smartNotifications,
+    dailySummary: dailySummary ?? this.dailySummary,
+    lowStepsNotification: lowStepsNotification ?? this.lowStepsNotification,
+    mealMarkReminder: mealMarkReminder ?? this.mealMarkReminder,
+    mealMarkReminderHour: mealMarkReminderHour ?? this.mealMarkReminderHour,
+    aiModel: aiModel ?? this.aiModel,
+    language: language ?? this.language,
+  );
 
   Map<String, dynamic> toJson() => {
-        'textScaleStep': textScaleStep.name,
-        'highContrast': highContrast,
-        'reduceMotion': reduceMotion,
-        'darkMode': darkMode,
-        'followSystemDark': followSystemDark,
-        'lockEnabled': lockEnabled,
-        'useBiometrics': useBiometrics,
-        'onboardingCompleted': onboardingCompleted,
-        'aiShareLabs': aiShareLabs,
-        'aiShareMedications': aiShareMedications,
-        'aiShareClinicalSettings': aiShareClinicalSettings,
-        'autoSmsOnAlarm': autoSmsOnAlarm,
-        'waterReminders': waterReminders,
-        'smartNotifications': smartNotifications,
-        'dailySummary': dailySummary,
-        'lowStepsNotification': lowStepsNotification,
-        'mealMarkReminder': mealMarkReminder,
-        'mealMarkReminderHour': mealMarkReminderHour,
-        'aiModel': aiModel,
-      };
+    'textScaleStep': textScaleStep.name,
+    'highContrast': highContrast,
+    'reduceMotion': reduceMotion,
+    'darkMode': darkMode,
+    'followSystemDark': followSystemDark,
+    'lockEnabled': lockEnabled,
+    'useBiometrics': useBiometrics,
+    'onboardingCompleted': onboardingCompleted,
+    'aiShareLabs': aiShareLabs,
+    'aiShareMedications': aiShareMedications,
+    'aiShareClinicalSettings': aiShareClinicalSettings,
+    'autoSmsOnAlarm': autoSmsOnAlarm,
+    'waterReminders': waterReminders,
+    'smartNotifications': smartNotifications,
+    'dailySummary': dailySummary,
+    'lowStepsNotification': lowStepsNotification,
+    'mealMarkReminder': mealMarkReminder,
+    'mealMarkReminderHour': mealMarkReminderHour,
+    'aiModel': aiModel,
+    'language': language.code,
+  };
 
   static AppPreferences fromJson(Map<String, dynamic>? j) {
     if (j == null) return const AppPreferences(loaded: true);
@@ -288,8 +304,7 @@ class AppPreferences {
       onboardingCompleted: j['onboardingCompleted'] as bool? ?? false,
       aiShareLabs: j['aiShareLabs'] as bool? ?? true,
       aiShareMedications: j['aiShareMedications'] as bool? ?? true,
-      aiShareClinicalSettings:
-          j['aiShareClinicalSettings'] as bool? ?? true,
+      aiShareClinicalSettings: j['aiShareClinicalSettings'] as bool? ?? true,
       autoSmsOnAlarm: j['autoSmsOnAlarm'] as bool? ?? false,
       waterReminders: j['waterReminders'] as bool? ?? false,
       smartNotifications: j['smartNotifications'] as bool? ?? true,
@@ -298,6 +313,7 @@ class AppPreferences {
       mealMarkReminder: j['mealMarkReminder'] as bool? ?? true,
       mealMarkReminderHour: j['mealMarkReminderHour'] as int? ?? 21,
       aiModel: j['aiModel'] as String?,
+      language: AppLanguage.fromCode(j['language'] as String?),
     );
   }
 }
@@ -317,13 +333,29 @@ class PreferencesNotifier extends Notifier<AppPreferences> {
     final json = await db.readJsonSetting(kPreferencesKey);
     // json null olsa bile "okundu" işaretlenir: kilit kararı
     // bekletilmesin, ama okuma öncesi de verilmesin.
-    state = AppPreferences.fromJson(json);
+    var prefs = AppPreferences.fromJson(json);
+
+    // İLK AÇILIŞ: telefonun dili desteklenenler arasındaysa onu seç.
+    // Kullanıcı bir kez dil seçtikten sonra burası çalışmaz; telefonun
+    // dili değişse bile uygulamanın dili kullanıcınınki kalır.
+    if (json == null || json['language'] == null) {
+      prefs = prefs.copyWith(
+        language: AppLanguage.fromCode(
+          WidgetsBinding.instance.platformDispatcher.locale.languageCode,
+        ),
+      );
+    }
+
+    I18n.use(prefs.language);
+    state = prefs;
   }
 
-  Future<void> update(
-    AppPreferences Function(AppPreferences) transform,
-  ) async {
+  Future<void> update(AppPreferences Function(AppPreferences) transform) async {
     final next = transform(state);
+    // Sözlük widget ağacının DIŞINDAN da okunuyor (PDF raporu, bildirim
+    // metinleri, klinik değerlendirici). Bu yüzden dil, çizimden önce
+    // burada ayarlanır.
+    I18n.use(next.language);
     state = next;
     await ref
         .read(databaseProvider)
@@ -333,8 +365,8 @@ class PreferencesNotifier extends Notifier<AppPreferences> {
 
 final preferencesProvider =
     NotifierProvider<PreferencesNotifier, AppPreferences>(
-  PreferencesNotifier.new,
-);
+      PreferencesNotifier.new,
+    );
 
 /// Sistemin açık/koyu teması — DİNLENİR, tek seferlik okunmaz.
 ///
@@ -366,8 +398,8 @@ class SystemBrightnessNotifier extends Notifier<Brightness>
 
 final systemBrightnessProvider =
     NotifierProvider<SystemBrightnessNotifier, Brightness>(
-  SystemBrightnessNotifier.new,
-);
+      SystemBrightnessNotifier.new,
+    );
 
 /// Renk paleti — ayarlara ve sistem temasına göre.
 final paletteProvider = Provider<AppPalette>((ref) {
@@ -430,9 +462,10 @@ class ClinicalSettingsNotifier extends Notifier<ClinicalSettings> {
 
     final after = next.resolve(key).formatted();
     if (before != after) {
-      await ref.read(databaseProvider).into(
-            ref.read(databaseProvider).clinicalChangeRows,
-          ).insert(
+      await ref
+          .read(databaseProvider)
+          .into(ref.read(databaseProvider).clinicalChangeRows)
+          .insert(
             ClinicalChangeRowsCompanion.insert(
               valueKey: key,
               oldText: Value(before),
@@ -452,7 +485,9 @@ class ClinicalSettingsNotifier extends Notifier<ClinicalSettings> {
     final after = next.resolve(key).formatted();
 
     final db = ref.read(databaseProvider);
-    await db.into(db.clinicalChangeRows).insert(
+    await db
+        .into(db.clinicalChangeRows)
+        .insert(
           ClinicalChangeRowsCompanion.insert(
             valueKey: key,
             oldText: Value(before),
@@ -462,22 +497,25 @@ class ClinicalSettingsNotifier extends Notifier<ClinicalSettings> {
         );
   }
 
-  Future<void> setBodyWeight(double? kg) =>
-      _persist(ClinicalSettings(
-        overrides: state.overrides,
-        bodyWeightKg: kg,
-        dryWeightKg: state.dryWeightKg,
-        hasResidualUrine: state.hasResidualUrine,
-        treatmentMode: state.treatmentMode,
-      ));
+  Future<void> setBodyWeight(double? kg) => _persist(
+    ClinicalSettings(
+      overrides: state.overrides,
+      bodyWeightKg: kg,
+      dryWeightKg: state.dryWeightKg,
+      hasResidualUrine: state.hasResidualUrine,
+      treatmentMode: state.treatmentMode,
+    ),
+  );
 
-  Future<void> setDryWeight(double? kg) => _persist(ClinicalSettings(
-        overrides: state.overrides,
-        bodyWeightKg: state.bodyWeightKg,
-        dryWeightKg: kg,
-        hasResidualUrine: state.hasResidualUrine,
-        treatmentMode: state.treatmentMode,
-      ));
+  Future<void> setDryWeight(double? kg) => _persist(
+    ClinicalSettings(
+      overrides: state.overrides,
+      bodyWeightKg: state.bodyWeightKg,
+      dryWeightKg: kg,
+      hasResidualUrine: state.hasResidualUrine,
+      treatmentMode: state.treatmentMode,
+    ),
+  );
 
   Future<void> setTreatmentMode(TreatmentMode mode) =>
       _persist(state.copyWith(treatmentMode: mode));
@@ -488,14 +526,14 @@ class ClinicalSettingsNotifier extends Notifier<ClinicalSettings> {
 
 final clinicalSettingsProvider =
     NotifierProvider<ClinicalSettingsNotifier, ClinicalSettings>(
-  ClinicalSettingsNotifier.new,
-);
+      ClinicalSettingsNotifier.new,
+    );
 
 /// Bir klinik değerin değişiklik geçmişi.
 final clinicalHistoryProvider =
     FutureProvider.family<List<ClinicalChangeRow>, String>(
-  (ref, key) => ref.watch(databaseProvider).changesFor(key),
-);
+      (ref, key) => ref.watch(databaseProvider).changesFor(key),
+    );
 
 // ---------------------------------------------------------------------------
 // VERİ AKIŞLARI
@@ -521,8 +559,9 @@ class SelectedDayNotifier extends Notifier<DateTime> {
   void shift(int days) => state = state.add(Duration(days: days));
 }
 
-final selectedDayProvider =
-    NotifierProvider<SelectedDayNotifier, DateTime>(SelectedDayNotifier.new);
+final selectedDayProvider = NotifierProvider<SelectedDayNotifier, DateTime>(
+  SelectedDayNotifier.new,
+);
 
 final foodLogsForDayProvider = StreamProvider<List<FoodLogRow>>((ref) {
   final day = ref.watch(selectedDayProvider);
@@ -634,18 +673,17 @@ class AiConnectionNotifier extends AsyncNotifier<AiConnectionState> {
 
   Future<void> deleteKey() async {
     await ref.read(secureStoreProvider).deleteApiKey();
-    await ref.read(databaseProvider).writeSetting(
-          'ai_connection_verified',
-          'false',
-        );
+    await ref
+        .read(databaseProvider)
+        .writeSetting('ai_connection_verified', 'false');
     state = const AsyncValue.data(AiConnectionState.noKey);
   }
 }
 
 final aiConnectionProvider =
     AsyncNotifierProvider<AiConnectionNotifier, AiConnectionState>(
-  AiConnectionNotifier.new,
-);
+      AiConnectionNotifier.new,
+    );
 
 /// Yapay zekaya gönderilecek bağlam özeti.
 final aiContextProvider = FutureProvider<AiContextSummary>((ref) async {
@@ -656,16 +694,18 @@ final aiContextProvider = FutureProvider<AiContextSummary>((ref) async {
 
   final labs = prefs.aiShareLabs
       ? await (db.select(db.labResultRows)
-            ..orderBy([(t) => OrderingTerm.desc(t.takenAt)])
-            ..limit(20))
-          .get()
+              ..orderBy([(t) => OrderingTerm.desc(t.takenAt)])
+              ..limit(20))
+            .get()
       : <LabResultRow>[];
 
   final meds = prefs.aiShareMedications
       ? await db.getActiveMedications()
       : <MedicationRow>[];
 
-  return ref.watch(aiPromptBuilderProvider).buildChatContext(
+  return ref
+      .watch(aiPromptBuilderProvider)
+      .buildChatContext(
         profile: profile,
         settings: settings,
         recentLabs: labs,
@@ -693,11 +733,11 @@ class LastLocation {
   final DateTime? at;
 
   Map<String, dynamic> toJson() => {
-        'lat': latitude,
-        'lon': longitude,
-        'place': placeName,
-        'at': at?.toIso8601String(),
-      };
+    'lat': latitude,
+    'lon': longitude,
+    'place': placeName,
+    'at': at?.toIso8601String(),
+  };
 
   static LastLocation? fromJson(Map<String, dynamic>? j) {
     if (j == null) return null;
@@ -723,8 +763,9 @@ class LocationNotifier extends Notifier<LastLocation?> {
   }
 
   Future<void> _load() async {
-    final json =
-        await ref.read(databaseProvider).readJsonSetting(kLastLocationKey);
+    final json = await ref
+        .read(databaseProvider)
+        .readJsonSetting(kLastLocationKey);
     final loc = LastLocation.fromJson(json);
     if (loc != null) state = loc;
   }
@@ -737,16 +778,16 @@ class LocationNotifier extends Notifier<LastLocation?> {
   }
 }
 
-final locationProvider =
-    NotifierProvider<LocationNotifier, LastLocation?>(LocationNotifier.new);
+final locationProvider = NotifierProvider<LocationNotifier, LastLocation?>(
+  LocationNotifier.new,
+);
 
 final weatherProvider = FutureProvider.autoDispose((ref) async {
   final loc = ref.watch(locationProvider);
   if (loc == null) return null;
-  return ref.watch(weatherServiceProvider).fetch(
-        latitude: loc.latitude,
-        longitude: loc.longitude,
-      );
+  return ref
+      .watch(weatherServiceProvider)
+      .fetch(latitude: loc.latitude, longitude: loc.longitude);
 });
 
 /// Bugünün adım sayısı. İzin yoksa veya Health Connect yoksa null.

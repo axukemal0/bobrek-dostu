@@ -1,7 +1,7 @@
 import 'dart:io' show Platform;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:material_ui/material_ui.dart';
+import 'package:material_ui/material_ui.dart' hide Text;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/config/ai_config.dart';
@@ -12,6 +12,7 @@ import '../../core/theme/neumorphic.dart';
 import '../../core/widgets/common.dart';
 import '../../core/widgets/form_fields.dart';
 import '../../core/widgets/responsive.dart';
+import '../../core/i18n/text.dart';
 
 /// Yapay Zeka Bağlantısı ekranı.
 ///

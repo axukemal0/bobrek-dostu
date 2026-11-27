@@ -1,7 +1,7 @@
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:material_ui/material_ui.dart';
+import 'package:material_ui/material_ui.dart' hide Text;
 
 import '../../clinical/definitions.dart';
 import '../../clinical/settings.dart';
@@ -18,6 +18,7 @@ import '../../core/brand/brand_mark.dart';
 import '../../core/widgets/form_fields.dart';
 import '../../core/widgets/responsive.dart';
 import '../settings/clinical_settings_screen.dart';
+import '../../core/i18n/text.dart';
 
 /// İlk kurulum testi: adım adım, görselli.
 ///

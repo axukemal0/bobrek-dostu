@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:material_ui/material_ui.dart';
+import 'package:material_ui/material_ui.dart' hide Text;
 
 import '../../clinical/evaluator.dart';
 import '../../core/providers.dart';
@@ -8,6 +8,7 @@ import '../../core/services/sms_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/neumorphic.dart';
 import '../../core/widgets/common.dart';
+import '../../core/i18n/text.dart';
 
 /// Yeni bir ölçüm kaydedildiğinde eşikleri değerlendirir.
 ///

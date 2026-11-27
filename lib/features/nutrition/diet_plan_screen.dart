@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:drift/drift.dart' show OrderingTerm, Value;
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:material_ui/material_ui.dart';
+import 'package:material_ui/material_ui.dart' hide Text;
 
 import '../../clinical/sources.dart';
 import '../../core/config/ai_config.dart';
@@ -21,6 +21,7 @@ import '../../core/widgets/common.dart';
 import '../../core/widgets/responsive.dart';
 import '../home/home_screen.dart' show showPermissionDialog;
 import 'diet_plan_parser.dart';
+import '../../core/i18n/text.dart';
 
 // ===========================================================================
 // DİYET PLANI VE UYUM

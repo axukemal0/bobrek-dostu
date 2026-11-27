@@ -2,7 +2,7 @@ import 'package:drift/drift.dart' show Value;
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:material_ui/material_ui.dart';
+import 'package:material_ui/material_ui.dart' hide Text;
 
 import '../../clinical/evaluator.dart';
 import '../../clinical/settings.dart';
@@ -18,6 +18,7 @@ import '../../core/widgets/app_shell.dart';
 import '../../core/widgets/responsive.dart';
 import '../../core/widgets/trend_chart.dart';
 import '../emergency/alert_dispatcher.dart';
+import '../../core/i18n/text.dart';
 
 class WeightScreen extends ConsumerWidget {
   const WeightScreen({super.key});

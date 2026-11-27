@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:material_ui/material_ui.dart';
+import 'package:material_ui/material_ui.dart' hide Text;
 import 'package:share_plus/share_plus.dart';
 
 import '../../core/providers.dart';
@@ -7,6 +7,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/neumorphic.dart';
 import '../../core/widgets/common.dart';
 import '../../core/widgets/responsive.dart';
+import '../../core/i18n/text.dart';
 
 /// Yakın modu — v1'de uzak senkronizasyon YOK.
 /// Özet cihazda üretilir, kullanıcı paylaşır.

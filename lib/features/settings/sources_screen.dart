@@ -1,4 +1,4 @@
-import 'package:material_ui/material_ui.dart';
+import 'package:material_ui/material_ui.dart' hide Text;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../clinical/definitions.dart';
@@ -8,6 +8,7 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/neumorphic.dart';
 import '../../core/widgets/common.dart';
 import '../../core/widgets/responsive.dart';
+import '../../core/i18n/text.dart';
 
 /// Kaynaklar ekranı: uygulamadaki her klinik değerin dayandığı
 /// kaynak adı + yıl + URL.

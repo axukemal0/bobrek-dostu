@@ -1,10 +1,11 @@
 import 'dart:math' as math;
 
-import 'package:material_ui/material_ui.dart';
+import 'package:material_ui/material_ui.dart' hide Text;
 
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import '../theme/motion.dart';
+import '../i18n/text.dart';
 
 /// Hedef halkası (sıvı bütçesi, besin öğeleri).
 ///

@@ -1,10 +1,11 @@
-import 'package:material_ui/material_ui.dart';
+import 'package:material_ui/material_ui.dart' hide Text;
 
 import '../../clinical/evaluator.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import '../theme/motion.dart';
 import 'responsive.dart';
+import '../i18n/text.dart';
 
 /// Bir besin öğesinin günlük durumu: ad, değer/hedef ve ince bir ölçek.
 ///
