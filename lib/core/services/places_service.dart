@@ -188,6 +188,23 @@ out center $limit;
       );
     }
 
+    // BOŞ SONUÇ DA BAŞARISIZLIKTIR.
+    //
+    // Bir Overpass aynası veritabanı boşken bile HTTP 200 ve geçerli
+    // JSON döndürebiliyor — overpass.osm.ch 28 Kasım 2026'da tam olarak
+    // bunu yapıyordu: yarım saniyede "başarılı" yanıt, sıfır eleman.
+    // Hata fırlatılmadığı için Nominatim yedeği devreye girmiyor,
+    // kullanıcı da boş bir liste görüyordu. Şehir merkezinde iki
+    // kilometre yarıçapta hiç restoran olmaması gerçekçi değil; bu
+    // yüzden boş sonucu sunucu arızası sayıp yedeğe düşüyoruz.
+    // Yedek de boş dönerse kullanıcı yine "sonuç yok" görecek —
+    // tenha bir yerdeyse doğru cevap da budur.
+    if (places.isEmpty) {
+      throw const ServiceFailure(
+        'Mekan sunucusu boş yanıt verdi; yedek kaynağa geçiliyor.',
+      );
+    }
+
     places.sort(
       (a, b) => a.straightLineMeters.compareTo(b.straightLineMeters),
     );

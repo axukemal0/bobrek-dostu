@@ -1,0 +1,12 @@
+# `live` etiketli testler GERÇEK ağa çıkar (Overpass, Nominatim).
+# Varsayılan koşuda atlanırlar: ağ olmadan ya da servisler düştüğünde
+# kırmızı yanmasınlar, kimsenin commit'ini bloke etmesinler.
+#
+# Elle çalıştırmak için:
+#     flutter test --tags live
+#
+# "Haritalar çalışmıyor" gibi bir bildirim geldiğinde ilk bakılacak
+# yer burası: servislerin o an gerçekten ne döndürdüğünü gösterir.
+tags:
+  live:
+    skip: "gerçek ağ gerekir — elle: flutter test --tags live"

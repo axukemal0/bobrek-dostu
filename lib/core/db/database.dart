@@ -453,6 +453,14 @@ class AppDatabase extends _$AppDatabase {
     return row.body;
   }
 
+  /// Tek bir önbellek satırını siler.
+  ///
+  /// Overpass sigortası için gerekiyor (bkz. api_client.dart): aynalar
+  /// geri gelince "hepsi düştü" işareti kaldırılmalı, yoksa sigorta
+  /// süresi dolana kadar çalışan sunucu hiç denenmez.
+  Future<void> cacheDelete(String key) =>
+      (delete(httpCacheRows)..where((t) => t.cacheKey.equals(key))).go();
+
   /// Süresi geçmiş olsa da en son gövdeyi döner (çevrimdışı yedek).
   Future<String?> cacheGetStale(String key) async {
     final row = await (select(httpCacheRows)

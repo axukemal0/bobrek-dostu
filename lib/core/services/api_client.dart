@@ -137,6 +137,11 @@ class ApiClient {
     _lastNominatimCall = DateTime.now();
   }
 
+  /// Overpass aynalarının TOPTAN düştüğünü işaretleyen önbellek
+  /// anahtarı ve sigortanın açık kalma süresi.
+  static const String _overpassDownKey = 'overpass:down';
+  static const Duration _overpassCooldown = Duration(minutes: 15);
+
   /// Overpass POST isteği — aynaları sırayla dener.
   ///
   /// Overpass'ın genel sunucusu sık "at capacity" döner; bu normaldir
@@ -149,15 +154,35 @@ class ApiClient {
   /// bekleyip hata görüyordu; ekran donmuş sanılıyordu. Artık toplam
   /// süre sınırlı: bütçe dolunca kalan sunucular hiç denenmez ve
   /// varsa eski önbellek gösterilir.
+  ///
+  /// Süreler 28 Kasım 2026'da kısaltıldı. Overpass aynalarının hepsi
+  /// birden ölü olabiliyor (o gün öyleydi) ve böyle bir günde 40
+  /// saniyelik bütçe, kullanıcıyı ÇALIŞAN yedek kaynaktan (Nominatim)
+  /// 40 saniye uzak tutuyor. Overpass burada zorunlu değil, daha
+  /// zengin veri veren İSTEĞE BAĞLI kaynak; beklemeye değmez.
   Future<String> overpassQuery(
     String query, {
     Duration maxAge = const Duration(hours: 6),
-    Duration perMirrorTimeout = const Duration(seconds: 15),
-    Duration totalBudget = const Duration(seconds: 40),
+    Duration perMirrorTimeout = const Duration(seconds: 6),
+    Duration totalBudget = const Duration(seconds: 12),
   }) async {
     final key = 'overpass:${query.hashCode}';
     final cached = await db.cacheGet(key, maxAge);
     if (cached != null) return cached;
+
+    // SİGORTA: bütün aynalar az önce ölüyse hiç deneme.
+    //
+    // Overpass ağının tamamı aynı anda ölü olabiliyor. Böyle bir günde
+    // her arama, kullanıcıyı çalışan yedek kaynaktan bütçe kadar
+    // (şu an 12 sn) uzak tutuyor — hem de her seferinde yeniden.
+    // Son toptan başarısızlığın üstünden [_overpassCooldown] geçmediyse
+    // doğrudan hata veriyoruz; çağıran Nominatim'e düşüyor.
+    if (await db.cacheGet(_overpassDownKey, _overpassCooldown) != null) {
+      throw const ServiceFailure(
+        'Mekan sunucuları az önce yanıt vermedi; yedek kaynak '
+        'kullanılıyor.',
+      );
+    }
 
     final deadline = DateTime.now().add(totalBudget);
     final errors = <String>[];
@@ -185,6 +210,8 @@ class ApiClient {
           // Overpass hata metnini 200 ile de dönebilir.
           if (body.trimLeft().startsWith('{')) {
             await db.cachePut(key, body);
+            // Çalıştı: varsa sigortayı indir.
+            await db.cacheDelete(_overpassDownKey);
             return body;
           }
           errors.add(tf('{0}: beklenmeyen yanıt biçimi', [mirror]));
@@ -197,6 +224,9 @@ class ApiClient {
         errors.add('$mirror: ${e.message}');
       }
     }
+
+    // Hepsi düştü: sigortayı at ki sonraki arama beklemesin.
+    await db.cachePut(_overpassDownKey, DateTime.now().toIso8601String());
 
     final stale = await db.cacheGetStale(key);
     if (stale != null) return stale;

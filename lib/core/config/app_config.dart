@@ -45,23 +45,32 @@ class Endpoints {
   static const String nominatimReverse =
       'https://nominatim.openstreetmap.org/reverse';
 
-  // Yakın mekan — Overpass API.
+  // Yakın mekan — Overpass API (İSTEĞE BAĞLI zenginleştirme).
   //
-  // DİKKAT — ESKİ HATA (27 Kasım 2026'da ölçüldü): sıralama yanlıştı ve
-  // "Yakındaki restoranlar" ekranı pratikte hiç çalışmıyordu.
-  //   overpass-api.de      -> HTTP 502, "all query workers are busy"
-  //   overpass.kumi.systems-> bağlantıyı kabul edip HİÇ yanıt vermiyor
-  //   overpass.private.coffee -> aynı şekilde sessiz
-  //   overpass.osm.ch      -> HTTP 200, yarım saniyede
-  // Uygulama üç ölü sunucuyu 35'er saniye beklediği için kullanıcı
-  // ~70 saniye sonra hata görüyordu. Çalışan sunucu başa alındı.
-  // Ölüler listeden SİLİNMEDİ: bunlar gönüllü topluluk sunucularıdır,
-  // bakımdan sonra geri gelirler; sadece en sona atıldılar.
+  // ÖLÇÜM (28 Kasım 2026, İstanbul merkezinde 2 km yarıçap):
+  //   overpass-api.de         -> HTTP 502
+  //   overpass.kumi.systems   -> 30 sn sessizlik, yanıt yok
+  //   overpass.private.coffee -> 30 sn sessizlik, yanıt yok
+  //   overpass.osm.jp         -> bağlantı kurulamıyor
+  //   overpass.osm.ch         -> HTTP 200, 0,4 sn, ELEMAN SAYISI SIFIR
+  //
+  // Sonuncusu en sinsisi: veritabanı boş olduğu için hızlıca "başarılı"
+  // yanıt veriyor. 27 Kasım'da en hızlı yanıtlayan sunucu diye başa
+  // alınmıştı — hızlıymış çünkü içinde veri yokmuş. Uygulama hatasız
+  // ama BOŞ liste gösteriyordu; kullanıcının "Haritalar çalışmıyor"
+  // demesinin sebebi buydu.
+  //
+  // Bu yüzden artık BOŞ sonuç da başarısızlık sayılıyor ve Nominatim
+  // yedeğine düşülüyor (bkz. places_service.dart). Nominatim OSMF'nin
+  // kendi sunucusu; aynı sorguda üç kategoride de 20'şer sonuç verdi.
+  //
+  // Sunucular listeden silinmedi: gönüllü topluluk sunucularıdır,
+  // bakımdan sonra geri gelirler. Boş veritabanı sunan en sona atıldı.
   static const List<String> overpassMirrors = [
-    'https://overpass.osm.ch/api/interpreter',
     'https://overpass-api.de/api/interpreter',
     'https://overpass.kumi.systems/api/interpreter',
     'https://overpass.private.coffee/api/interpreter',
+    'https://overpass.osm.ch/api/interpreter',
   ];
 
   // Rota süresi / mesafe — OSRM demo sunucusu.
