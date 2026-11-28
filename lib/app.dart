@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import 'core/config/app_config.dart';
 import 'core/i18n/i18n.dart';
 import 'core/i18n/languages.dart';
+import 'core/i18n/scope.dart';
 import 'core/providers.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_colors.dart';
@@ -78,17 +79,24 @@ class _BobrekDostuAppState extends ConsumerState<BobrekDostuApp>
     I18n.use(prefs.language);
     final language = prefs.language;
 
-    // DİL DEĞİŞİNCE BÜTÜN AĞAÇ YENİDEN KURULUR.
+    // DİL DEĞİŞİNCE EKRANDAKİ HER METİN YENİLENİR — iki ayrı düzenek:
     //
-    // Gerekli, çünkü metinlerin çoğu `const Text(...)`. Flutter aynı
-    // const widget örneğini gördüğünde onu yeniden ÇİZMEZ; sözlük
-    // değişse bile ekranda eski dil kalırdı. Anahtar değişince eleman
-    // ağacı baştan kurulur ve her metin yeniden çevrilir. Dil değişimi
-    // nadir bir olaydır, bedeli bir karelik yeniden kurulumdur.
-    // Açık sayfa korunur: konumu go_router tutuyor, widget ağacı değil.
-    return KeyedSubtree(
-      key: ValueKey(language),
-      child: MaterialApp.router(
+    // 1. I18nScope: çeviren Text buna bağımlılık kaydeder, dil
+    //    değişince Flutter o elemanları doğrudan kirli işaretler.
+    //    `const Text(...)` için ŞART: const örnekler teklendiği için
+    //    ağaç yeniden kurulmadan build'leri çağrılmaz. Anahtarla
+    //    yeniden kurmak tek başına yetmiyordu; simülatörde İngilizceden
+    //    Arapçaya geçişte başlık "Settings" olarak kalmıştı.
+    // 2. KeyedSubtree: metni String olarak alan yerler (hintText,
+    //    tooltip, NavigationDestination etiketi…) kalıtıma abone
+    //    olamaz; onlar ancak kendilerini kuran widget yeniden
+    //    çizilince güncellenir. Anahtar değişimi bunu garantiler.
+    //    Açık sayfa korunur: konumu go_router tutuyor.
+    return I18nScope(
+      language: language,
+      child: KeyedSubtree(
+        key: ValueKey(language),
+        child: MaterialApp.router(
         title: AppConfig.appName,
         debugShowCheckedModeBanner: false,
         routerConfig: router,
@@ -133,8 +141,9 @@ class _BobrekDostuAppState extends ConsumerState<BobrekDostuApp>
                 ),
               ),
             ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }

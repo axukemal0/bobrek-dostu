@@ -27,6 +27,7 @@ import 'package:material_ui/material_ui.dart' hide Text;
 import 'package:material_ui/material_ui.dart' as m show Text;
 
 import 'i18n.dart';
+import 'scope.dart';
 
 class Text extends StatelessWidget {
   const Text(
@@ -86,6 +87,12 @@ class Text extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Dil değişimine abone ol. Dönen değeri kullanmıyoruz: çeviriyi
+    // genel I18n yapıyor. Bu çağrının tek işi, bu elemanı dil
+    // değiştiğinde yeniden çizilecekler listesine yazdırmak — `const`
+    // Text örnekleri aksi hâlde eski dilde kalıyor (bkz. scope.dart).
+    I18nScope.maybeOf(context);
+
     final label = semanticsLabel;
     return m.Text(
       _translate ? t(data) : data,
