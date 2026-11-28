@@ -1,6 +1,7 @@
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../i18n/i18n.dart';
 import '../router/app_router.dart';
 import '../theme/app_colors.dart';
 import '../theme/neumorphic.dart';
@@ -166,12 +167,15 @@ class AppShell extends StatelessWidget {
               context.go(tabs[i].path);
             },
             destinations: [
-              for (final t in tabs)
+              // NavigationDestination etiketi Widget değil String alır:
+              // metni Flutter kendi çizer, bizim çeviren Text'imize
+              // uğramaz. Bu yüzden burada elle t() ile çeviriyoruz.
+              for (final tab in tabs)
                 NavigationDestination(
-                  icon: Icon(t.icon, color: p.textSecondary),
-                  selectedIcon: Icon(t.activeIcon, color: t.tone(p)),
-                  label: t.label,
-                  tooltip: t.label,
+                  icon: Icon(tab.icon, color: p.textSecondary),
+                  selectedIcon: Icon(tab.activeIcon, color: tab.tone(p)),
+                  label: t(tab.label),
+                  tooltip: t(tab.label),
                 ),
             ],
           ),

@@ -742,8 +742,8 @@ class _MedCard extends ConsumerWidget {
                         SizedBox(width: r.gapXs),
                         Expanded(
                           child: Text(
-                            '${m.risk.severity.labelTr} — '
-                            '${m.risk.genericTr} '
+                            '${t(m.risk.severity.labelTr)} — '
+                            '${t(m.risk.genericTr)} '
                             '(${m.risk.riskClass.labelTr})',
                             style: Theme.of(context)
                                 .textTheme
@@ -892,9 +892,9 @@ class _MedSheetState extends ConsumerState<_MedSheet> {
               controller: _name,
               textCapitalization: TextCapitalization.words,
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
-                labelText: 'İlaç adı',
-                hintText: 'Örn. Renagel, Brufen…',
+              decoration: InputDecoration(
+                labelText: t('İlaç adı'),
+                hintText: t('Örn. Renagel, Brufen…'),
               ),
             ),
 
@@ -922,8 +922,8 @@ class _MedSheetState extends ConsumerState<_MedSheet> {
                           SizedBox(width: r.gapSm),
                           Expanded(
                             child: Text(
-                              '${m.risk.genericTr}: '
-                              '${m.risk.severity.labelTr}',
+                              '${t(m.risk.genericTr)}: '
+                              '${t(m.risk.severity.labelTr)}',
                               style: Theme.of(context)
                                   .textTheme
                                   .titleMedium
@@ -1008,9 +1008,9 @@ class _MedSheetState extends ConsumerState<_MedSheet> {
             TextField(
               controller: _note,
               maxLines: 2,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Not',
-                hintText: 'Örn. yemekle birlikte al',
+                hintText: t('Örn. yemekle birlikte al'),
               ),
             ),
             SizedBox(height: r.gapLg),

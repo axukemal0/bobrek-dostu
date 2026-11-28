@@ -279,7 +279,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
             ),
           TapIcon(
             icon: Icons.privacy_tip_outlined,
-            semanticLabel: 'Ne gönderiliyor?',
+            semanticLabel: t('Ne gönderiliyor?'),
             onPressed: _showContext,
           ),
         ],
@@ -316,7 +316,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
                             ),
                             TapIcon(
                               icon: Icons.close_rounded,
-                              semanticLabel: 'Uyarıyı kapat',
+                              semanticLabel: t('Uyarıyı kapat'),
                               onPressed: () =>
                                   setState(() => _redFlag = null),
                             ),
@@ -523,7 +523,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
                     SizedBox(width: r.gapXs),
                     TapIcon(
                       icon: Icons.send_rounded,
-                      semanticLabel: 'Gönder',
+                      semanticLabel: t('Gönder'),
                       color: p.primary,
                       onPressed:
                           _sending ? null : () => _send(_input.text),

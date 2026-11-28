@@ -124,7 +124,7 @@ class NutritionScreen extends ConsumerWidget {
                                 ),
                                 if (n.hasTarget)
                                   Text(
-                                    'hedef ${n.target!.round()}',
+                                    tf('hedef {0}', [n.target!.round()]),
                                     style: Theme.of(context)
                                         .textTheme
                                         .labelSmall
@@ -256,7 +256,7 @@ class _DayNav extends ConsumerWidget {
         children: [
           TapIcon(
             icon: Icons.chevron_left_rounded,
-            semanticLabel: 'Önceki gün',
+            semanticLabel: t('Önceki gün'),
             onPressed: () =>
                 ref.read(selectedDayProvider.notifier).shift(-1),
           ),
@@ -276,7 +276,7 @@ class _DayNav extends ConsumerWidget {
           ),
           TapIcon(
             icon: Icons.chevron_right_rounded,
-            semanticLabel: 'Sonraki gün',
+            semanticLabel: t('Sonraki gün'),
             onPressed: isToday
                 ? null
                 : () => ref.read(selectedDayProvider.notifier).shift(1),

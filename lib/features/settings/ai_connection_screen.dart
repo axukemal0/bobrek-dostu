@@ -422,7 +422,7 @@ class _AiConnectionScreenState extends ConsumerState<AiConnectionScreen> {
                       },
                       title: Text(m.labelTr),
                       subtitle: Text(
-                        '${m.noteTr}\n${m.id}',
+                        '${t(m.noteTr)}\n${m.id}',
                         style: Theme.of(context).textTheme.labelSmall,
                       ),
                       isThreeLine: true,

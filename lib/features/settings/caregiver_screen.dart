@@ -8,6 +8,7 @@ import '../../core/theme/neumorphic.dart';
 import '../../core/widgets/common.dart';
 import '../../core/widgets/responsive.dart';
 import '../../core/i18n/text.dart';
+import '../../core/i18n/i18n.dart';
 
 /// Yakın modu — v1'de uzak senkronizasyon YOK.
 /// Özet cihazda üretilir, kullanıcı paylaşır.
@@ -115,7 +116,7 @@ class _CaregiverScreenState extends ConsumerState<CaregiverScreen> {
                         ),
                         TapIcon(
                           icon: Icons.volume_up_outlined,
-                          semanticLabel: 'Özeti sesli oku',
+                          semanticLabel: t('Özeti sesli oku'),
                           onPressed: () =>
                               ref.read(ttsServiceProvider).speak(_summary!),
                         ),
@@ -194,8 +195,9 @@ class _CaregiverScreenState extends ConsumerState<CaregiverScreen> {
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                   SizedBox(height: r.gapSm),
-                  Text(
-                    'Durum: ${sync.isEnabled ? "açık" : "kapalı"}',
+                  Text.verbatim(
+                    tf('Durum: {0}',
+                        [t(sync.isEnabled ? 'açık' : 'kapalı')]),
                     style: Theme.of(context).textTheme.labelSmall,
                   ),
                 ],

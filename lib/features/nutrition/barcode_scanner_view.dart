@@ -7,6 +7,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/neumorphic.dart';
 import '../../core/widgets/responsive.dart';
+import '../../core/i18n/i18n.dart';
 import '../../core/i18n/text.dart';
 
 /// Canlı barkod tarayıcı.
@@ -274,10 +275,12 @@ class _CircleAction extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = context.palette;
     return Tooltip(
-      message: tooltip,
+      // Tooltip ve Semantics metni String alır; Flutter kendi çizer,
+      // çeviren Text'imize uğramaz.
+      message: t(tooltip),
       child: Semantics(
         button: true,
-        label: tooltip,
+        label: t(tooltip),
         child: Pressable(
           onTap: onTap,
           radius: 24,

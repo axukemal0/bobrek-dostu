@@ -184,7 +184,7 @@ class _DietPlanScreenState extends ConsumerState<DietPlanScreen> {
                       ),
                       TapIcon(
                         icon: Icons.unarchive_outlined,
-                        semanticLabel: 'Planı yeniden etkinleştir',
+                        semanticLabel: t('Planı yeniden etkinleştir'),
                         onPressed: () async {
                           final db = ref.read(databaseProvider);
                           await (db.update(db.dietPlanRows)
@@ -196,7 +196,7 @@ class _DietPlanScreenState extends ConsumerState<DietPlanScreen> {
                       ),
                       TapIcon(
                         icon: Icons.delete_outline_rounded,
-                        semanticLabel: 'Planı sil',
+                        semanticLabel: t('Planı sil'),
                         onPressed: () => _deletePlan(plan.id),
                       ),
                     ],
@@ -384,7 +384,7 @@ class _PlanCardState extends ConsumerState<_PlanCard> {
               ),
               TapIcon(
                 icon: Icons.archive_outlined,
-                semanticLabel: 'Planı arşivle',
+                semanticLabel: t('Planı arşivle'),
                 onPressed: () async {
                   final db = ref.read(databaseProvider);
                   await (db.update(db.dietPlanRows)
@@ -993,15 +993,15 @@ class _MealEditorSheetState extends ConsumerState<_MealEditorSheet> {
             TextField(
               controller: controller,
               autofocus: true,
-              decoration: const InputDecoration(labelText: 'Öğün adı'),
+              decoration: InputDecoration(labelText: t('Öğün adı')),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: detail,
               minLines: 2,
               maxLines: 5,
-              decoration: const InputDecoration(
-                labelText: 'İçerik (isteğe bağlı)',
+              decoration: InputDecoration(
+                labelText: t('İçerik (isteğe bağlı)'),
                 alignLabelWithHint: true,
               ),
             ),
@@ -1992,7 +1992,7 @@ class _ScanPickerSheetState extends ConsumerState<_ScanPickerSheet> {
           if (_found.isNotEmpty) ...[
             SizedBox(height: r.gapLg),
             Text(
-              'Bulunanlar (${_found.length})',
+              tf('Bulunanlar ({0})', [_found.length]),
               style: Theme.of(context).textTheme.titleMedium,
             ),
             SizedBox(height: r.gapXs),
@@ -2392,9 +2392,9 @@ class _PlanQaSheetState extends ConsumerState<_PlanQaSheet> {
             minLines: 2,
             maxLines: 5,
             enabled: ready && !_busy,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: 'Sorun',
-              hintText: 'Örn. Akşam öğününde ne yazıyor?',
+              hintText: t('Örn. Akşam öğününde ne yazıyor?'),
               alignLabelWithHint: true,
             ),
           ),
@@ -2833,9 +2833,9 @@ class _PlanSheetState extends ConsumerState<_PlanSheet> {
           TextField(
             controller: _title,
             onChanged: (_) => setState(() {}),
-            decoration: const InputDecoration(
-              labelText: 'Plan adı',
-              hintText: 'Örn. Diyetisyen planı — Kasım',
+            decoration: InputDecoration(
+              labelText: t('Plan adı'),
+              hintText: t('Örn. Diyetisyen planı — Kasım'),
             ),
           ),
           SizedBox(height: r.gapMd),
@@ -2844,10 +2844,10 @@ class _PlanSheetState extends ConsumerState<_PlanSheet> {
             maxLines: 14,
             minLines: 6,
             onChanged: (_) => setState(() {}),
-            decoration: const InputDecoration(
-              labelText: 'Plan metni (isteğe bağlı)',
-              hintText: 'Kahvaltı: ...\nÖğle: ...\nAkşam: ...\n'
-                  'Kaçınılacaklar: ...',
+            decoration: InputDecoration(
+              labelText: t('Plan metni (isteğe bağlı)'),
+              hintText: t('Kahvaltı: ...\nÖğle: ...\nAkşam: ...\n'
+                  'Kaçınılacaklar: ...'),
               alignLabelWithHint: true,
             ),
           ),

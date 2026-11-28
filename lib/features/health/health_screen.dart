@@ -671,7 +671,7 @@ class _HealthScreenState extends ConsumerState<HealthScreen> {
                             Expanded(
                               child: Text(
                                 '${_fmtDate(e.at)} · '
-                                '${e.classificationTr}'
+                                '${t(e.classificationTr)}'
                                 '${e.averageHeartRate == null ? "" : " · "
                                     "${e.averageHeartRate!.round()} /dk"}',
                                 style: Theme.of(context)

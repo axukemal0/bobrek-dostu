@@ -484,8 +484,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   controller: _name,
                   textCapitalization: TextCapitalization.words,
                   onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(
-                    hintText: 'Örn. Ahmet',
+                  decoration: InputDecoration(
+                    hintText: t('Örn. Ahmet'),
                   ),
                 ),
               ),
@@ -496,7 +496,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 child: NumberField(
                   controller: _birthYear,
                   allowDecimal: false,
-                  hintText: 'Örn. 1958',
+                  hintText: t('Örn. 1958'),
                 ),
               ),
               SizedBox(height: r.gapMd),
@@ -683,8 +683,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   controller: _comorbidities,
                   maxLines: 3,
                   minLines: 2,
-                  decoration: const InputDecoration(
-                    hintText: 'Örn. prostat büyümesi, katarakt…',
+                  decoration: InputDecoration(
+                    hintText: t('Örn. prostat büyümesi, katarakt…'),
                   ),
                 ),
               ),
@@ -715,8 +715,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 child: TextField(
                   controller: _allergies,
                   maxLines: 2,
-                  decoration: const InputDecoration(
-                    hintText: 'Örn. penisilin, fıstık…',
+                  decoration: InputDecoration(
+                    hintText: t('Örn. penisilin, fıstık…'),
                   ),
                 ),
               ),
@@ -726,8 +726,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 child: TextField(
                   controller: _disliked,
                   maxLines: 2,
-                  decoration: const InputDecoration(
-                    hintText: 'Örn. karnabahar, ciğer…',
+                  decoration: InputDecoration(
+                    hintText: t('Örn. karnabahar, ciğer…'),
                   ),
                 ),
               ),
@@ -762,14 +762,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                         controller: _meds[i].name,
                         decoration: InputDecoration(
                           labelText: tf('İlaç {0}', [i + 1]),
-                          hintText: 'Örn. Renagel',
+                          hintText: t('Örn. Renagel'),
                         ),
                       ),
                     ),
                     if (_meds.length > 1)
                       TapIcon(
                         icon: Icons.delete_outline_rounded,
-                        semanticLabel: 'İlacı kaldır',
+                        semanticLabel: t('İlacı kaldır'),
                         onPressed: () => setState(() => _meds.removeAt(i)),
                       ),
                   ],
@@ -832,8 +832,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 child: TextField(
                   controller: _doctorName,
                   textCapitalization: TextCapitalization.words,
-                  decoration: const InputDecoration(
-                    hintText: 'Örn. Dr. Ayşe Yılmaz',
+                  decoration: InputDecoration(
+                    hintText: t('Örn. Dr. Ayşe Yılmaz'),
                   ),
                 ),
               ),
@@ -853,8 +853,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 label: 'Hastane / diyaliz merkezi',
                 child: TextField(
                   controller: _hospital,
-                  decoration: const InputDecoration(
-                    hintText: 'Örn. X Diyaliz Merkezi',
+                  decoration: InputDecoration(
+                    hintText: t('Örn. X Diyaliz Merkezi'),
                   ),
                 ),
               ),
@@ -891,14 +891,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                         textCapitalization: TextCapitalization.words,
                         decoration: InputDecoration(
                           labelText: tf('Kişi {0}', [i + 1]),
-                          hintText: 'Örn. Mehmet (oğlu)',
+                          hintText: t('Örn. Mehmet (oğlu)'),
                         ),
                       ),
                     ),
                     if (_contacts.length > 1)
                       TapIcon(
                         icon: Icons.delete_outline_rounded,
-                        semanticLabel: 'Kişiyi kaldır',
+                        semanticLabel: t('Kişiyi kaldır'),
                         onPressed: () =>
                             setState(() => _contacts.removeAt(i)),
                       ),
@@ -923,9 +923,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       flex: 2,
                       child: TextField(
                         controller: _contacts[i].relation,
-                        decoration: const InputDecoration(
-                          labelText: 'Yakınlık',
-                          hintText: 'Oğlu',
+                        decoration: InputDecoration(
+                          labelText: t('Yakınlık'),
+                          hintText: t('Oğlu'),
                         ),
                       ),
                     ),

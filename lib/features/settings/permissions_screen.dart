@@ -106,7 +106,7 @@ class _PermissionsScreenState extends ConsumerState<PermissionsScreen> {
         actions: [
           TapIcon(
             icon: Icons.refresh_rounded,
-            semanticLabel: 'Durumları yenile',
+            semanticLabel: t('Durumları yenile'),
             onPressed: _refresh,
           ),
         ],

@@ -370,7 +370,7 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen> {
                                 Theme.of(context).textTheme.titleSmall,
                           ),
                           Text(
-                            '${profile!.doctorName ?? "Doktor"} · '
+                            '${profile!.doctorName ?? t('Doktor')} · '
                             '${profile.doctorPhone}',
                             style:
                                 Theme.of(context).textTheme.bodySmall,
@@ -389,7 +389,7 @@ class _EmergencyScreenState extends ConsumerState<EmergencyScreen> {
               icon: Icons.contact_emergency_outlined,
               trailing: TapIcon(
                 icon: Icons.person_add_alt_rounded,
-                semanticLabel: 'Kişi ekle',
+                semanticLabel: t('Kişi ekle'),
                 onPressed: () => showModalBottomSheet<void>(
                   context: context,
                   isScrollControlled: true,
@@ -679,9 +679,9 @@ class _ContactSheetState extends ConsumerState<_ContactSheet> {
             SizedBox(height: r.gapSm),
             TextField(
               controller: _relation,
-              decoration: const InputDecoration(
-                labelText: 'Yakınlık',
-                hintText: 'Oğlu, kızı, eşi…',
+              decoration: InputDecoration(
+                labelText: t('Yakınlık'),
+                hintText: t('Oğlu, kızı, eşi…'),
               ),
             ),
             SizedBox(height: r.gapSm),

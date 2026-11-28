@@ -187,5 +187,78 @@ void main() {
             '${offenders.join("\n")}',
       );
     });
+
+    // Aşağıdaki iki test, simülatörde yakalanan iki sessiz hatayı
+    // geri gelmesin diye bekliyor. İkisinde de uygulama derleniyor,
+    // test geçiyor, ekranda hata çıkmıyor — metin yalnızca Türkçe
+    // kalıyor. Gözle bakmadan fark edilmiyor.
+
+    test('Flutter\'ın kendi çizdiği String parametreleri t() ile sarılı', () {
+      // hintText, labelText, semanticLabel, tooltip… Widget değil String
+      // alır; metni Flutter kendi içinde çizer, çeviren Text'imize hiç
+      // uğramaz. İngilizce arayüzde Türkçe ipucu metinleri böyle çıktı.
+      const params = [
+        'hintText', 'labelText', 'helperText', 'errorText', 'counterText',
+        'prefixText', 'suffixText', 'semanticLabel', 'semanticsLabel',
+        'tooltip',
+      ];
+      final pattern = RegExp(
+        "(?<![A-Za-z0-9_])(${params.join('|')})\\s*:\\s*'((?:[^'\\\\]|\\\\.)*)'",
+      );
+      final turkish = RegExp('[çğıöşüÇĞİÖŞÜ]');
+      final offenders = <String>[];
+      for (final entity in Directory('lib').listSync(recursive: true)) {
+        if (entity is! File || !entity.path.endsWith('.dart')) continue;
+        if (entity.path.endsWith('.g.dart')) continue;
+        if (entity.path.contains('/i18n/')) continue;
+
+        final src = withoutComments(entity.readAsStringSync());
+        for (final m in pattern.allMatches(src)) {
+          if (!turkish.hasMatch(m.group(2)!)) continue;
+          offenders.add('${entity.path}  ${m.group(1)}: ${m.group(2)}');
+        }
+      }
+      expect(
+        offenders,
+        isEmpty,
+        reason: 'Bu parametreler t() ile sarılmalı, yoksa her dilde '
+            'Türkçe kalır:\n${offenders.join("\n")}',
+      );
+    });
+
+    test('Text içindeki ara değerli metinlerde Türkçe gömülü değil', () {
+      // Sözlük anahtarı, metnin ÇALIŞMA ZAMANINDAKİ tam değeri. Araya
+      // değer giren bir metin ('Kaynak: $x') hiçbir sözlükte yoktur;
+      // çeviri sessizce atlanır. Böyle metinler tf() şablonuna
+      // çevrilmeli: tf('Kaynak: {0}', [x]).
+      final interpolated = RegExp(
+        r"(?<![A-Za-z0-9_.$])Text\(\s*\n?\s*'((?:[^'\\]|\\.)*\$(?:[^'\\]|\\.)*)'",
+      );
+      // Ara değerin KENDİSİ Türkçe olabilir ama onu burada göremeyiz;
+      // bu test yalnız düz yazı kısmındaki Türkçeyi yakalar.
+      final turkish = RegExp('[çğıöşüÇĞİÖŞÜ]');
+      final offenders = <String>[];
+      for (final entity in Directory('lib').listSync(recursive: true)) {
+        if (entity is! File || !entity.path.endsWith('.dart')) continue;
+        if (entity.path.endsWith('.g.dart')) continue;
+        if (entity.path.contains('/i18n/')) continue;
+
+        final src = withoutComments(entity.readAsStringSync());
+        for (final m in interpolated.allMatches(src)) {
+          final literal = m.group(1)!;
+          // Ara değerlerin içindeki Dart ifadesini çıkar: değişken adı
+          // Türkçe karakter içerebilir, bizi ilgilendiren düz yazı.
+          final prose = literal.replaceAll(RegExp(r'\$\{[^}]*\}|\$\w+'), '');
+          if (!turkish.hasMatch(prose)) continue;
+          offenders.add('${entity.path}  $literal');
+        }
+      }
+      expect(
+        offenders,
+        isEmpty,
+        reason: 'Bu metinler tf() şablonuna çevrilmeli, yoksa her dilde '
+            'Türkçe kalır:\n${offenders.join("\n")}',
+      );
+    });
   });
 }

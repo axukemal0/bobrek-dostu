@@ -191,8 +191,8 @@ class _TravelScreenState extends ConsumerState<TravelScreen> {
                         controller: _destination,
                         textCapitalization: TextCapitalization.words,
                         onChanged: (_) => setState(() {}),
-                        decoration: const InputDecoration(
-                          hintText: 'Örn. Gaziantep, Trabzon, Antalya…',
+                        decoration: InputDecoration(
+                          hintText: t('Örn. Gaziantep, Trabzon, Antalya…'),
                         ),
                       ),
                     ),
@@ -299,7 +299,7 @@ class _TravelScreenState extends ConsumerState<TravelScreen> {
                           ),
                           TapIcon(
                             icon: Icons.volume_up_outlined,
-                            semanticLabel: 'Planı sesli oku',
+                            semanticLabel: t('Planı sesli oku'),
                             onPressed: () => ref
                                 .read(ttsServiceProvider)
                                 .speak(_plan!),
@@ -395,7 +395,7 @@ class _TravelScreenState extends ConsumerState<TravelScreen> {
                             ),
                             TapIcon(
                               icon: Icons.ios_share_rounded,
-                              semanticLabel: 'Planı paylaş',
+                              semanticLabel: t('Planı paylaş'),
                               onPressed: () => SharePlus.instance.share(
                                 ShareParams(
                                   text: tf(
@@ -410,7 +410,7 @@ class _TravelScreenState extends ConsumerState<TravelScreen> {
                             ),
                             TapIcon(
                               icon: Icons.delete_outline_rounded,
-                              semanticLabel: 'Planı sil',
+                              semanticLabel: t('Planı sil'),
                               onPressed: () async {
                                 final db = ref.read(databaseProvider);
                                 await (db.delete(db.travelPlanRows)

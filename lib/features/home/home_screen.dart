@@ -181,7 +181,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              formatTurkishDate(DateTime.now()),
+                              formatLongDate(DateTime.now()),
                               style: Theme.of(context)
                                   .textTheme
                                   .labelSmall
@@ -222,7 +222,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   // --- SIVI HALKASI ---
                   NeuCard(
                     onTap: () => context.go(Routes.fluid),
-                    semanticLabel: 'Sıvı bütçesi, aç',
+                    semanticLabel: t('Sıvı bütçesi, aç'),
                     child: Row(
                       children: [
                         ProgressRing(
@@ -277,7 +277,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   // --- BESİN HALKALARI ---
                   NeuCard(
                     onTap: () => context.go(Routes.nutrition),
-                    semanticLabel: 'Besin takibi, aç',
+                    semanticLabel: t('Besin takibi, aç'),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -342,7 +342,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   // --- SIRADAKİ İLAÇ ---
                   NeuCard(
                     onTap: () => context.go(Routes.medications),
-                    semanticLabel: 'İlaçlar, aç',
+                    semanticLabel: t('İlaçlar, aç'),
                     child: Row(
                       children: [
                         AccentTile(
@@ -423,7 +423,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ),
                         SizedBox(height: r.gapSm),
                         Text(
-                          'Kaynak: ${tip.sourceTr} · $kReferenceCaveatTr',
+                          tf('Kaynak: {0} · {1}',
+                              [t(tip.sourceTr), t(kReferenceCaveatTr)]),
                           style: Theme.of(context).textTheme.labelSmall,
                         ),
                       ],
@@ -538,7 +539,7 @@ class _StepsCard extends ConsumerWidget {
 
     return NeuCard(
       onTap: () => context.push(Routes.health),
-      semanticLabel: 'Sağlık verisi ekranını aç',
+      semanticLabel: t('Sağlık verisi ekranını aç'),
       child: Row(
         children: [
           AccentTile(
@@ -723,7 +724,7 @@ class _WeatherCard extends StatelessWidget {
                         ),
                         Text(
                           '${w.temperatureC?.toStringAsFixed(0) ?? "—"}°C · '
-                          '${w.conditionTr}',
+                          '${t(w.conditionTr)}',
                           style: AppTypography.numeric(p, size: r.s(22)),
                         ),
                         if (w.apparentTemperatureC != null)
@@ -738,7 +739,7 @@ class _WeatherCard extends StatelessWidget {
                   ),
                   TapIcon(
                     icon: Icons.refresh_rounded,
-                    semanticLabel: 'Konumu ve havayı yenile',
+                    semanticLabel: t('Konumu ve havayı yenile'),
                     onPressed: locating ? null : onRefresh,
                   ),
                 ],
@@ -976,24 +977,37 @@ enum Greeting {
       };
 
   /// "İyi akşamlar, Kemal" — ad yoksa yalnız selam.
+  ///
+  /// Selamla adı birleştirip Text'e vermek çeviriyi atlatıyordu: sözlük
+  /// anahtarı metnin çalışma zamanındaki TAM değeri, "Günaydın, Kemal"
+  /// ise hiçbir sözlükte yok. Bu yüzden selam ayrı çevriliyor, ad
+  /// şablona yerleştiriliyor.
   String sentenceFor(String? name) {
+    final greeting = t(wordTr);
     final trimmed = name?.trim();
-    if (trimmed == null || trimmed.isEmpty) return wordTr;
+    if (trimmed == null || trimmed.isEmpty) return greeting;
     // Yalnız ilk ad: tam ad başlığı iki satıra taşırıyordu.
     final first = trimmed.split(RegExp(r'\s+')).first;
-    return '$wordTr, $first';
+    return tf('{0}, {1}', [greeting, first]);
   }
 }
 
-const List<String> _trWeekdays = [
+const List<String> _weekdaysTr = [
   'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar',
 ];
 
-const List<String> _trMonths = [
+const List<String> _monthsTr = [
   'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
   'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık',
 ];
 
-/// "27 Kasım, Cuma" — cihaz diline bağlı değil, her zaman Türkçe.
-String formatTurkishDate(DateTime d) =>
-    '${d.day} ${_trMonths[d.month - 1]}, ${_trWeekdays[d.weekday - 1]}';
+/// "27 Kasım, Cuma" — seçili dile göre.
+///
+/// Ay ve gün adları tek tek çevriliyor, sıralamayı şablon belirliyor:
+/// İngilizcede "{2}, {0} {1}" (Friday, 27 November) gibi. Birleştirilmiş
+/// metin Text'e verilseydi sözlükte karşılığı olmaz, her dilde Türkçe
+/// kalırdı. Takvim sistemi değişmiyor; yalnız adlar ve sıra değişiyor.
+String formatLongDate(DateTime d) => tf(
+      '{0} {1}, {2}',
+      [d.day, t(_monthsTr[d.month - 1]), t(_weekdaysTr[d.weekday - 1])],
+    );

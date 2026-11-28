@@ -83,11 +83,11 @@ void main() {
   group('Türkçe tarih', () {
     test('gün ve ay adları Türkçe', () {
       expect(
-        formatTurkishDate(DateTime(2026, 11, 27)),
+        formatLongDate(DateTime(2026, 11, 27)),
         '27 Kasım, Cuma',
       );
       expect(
-        formatTurkishDate(DateTime(2026, 1, 1)),
+        formatLongDate(DateTime(2026, 1, 1)),
         '1 Ocak, Perşembe',
       );
     });

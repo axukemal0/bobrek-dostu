@@ -194,8 +194,8 @@ class _SearchTabState extends ConsumerState<_SearchTab> {
             controller: _query,
             autofocus: false,
             onChanged: _search,
-            decoration: const InputDecoration(
-              hintText: 'Örn. mercimek çorbası, beyaz peynir…',
+            decoration: InputDecoration(
+              hintText: t('Örn. mercimek çorbası, beyaz peynir…'),
               prefixIcon: Icon(Icons.search_rounded),
             ),
           ),
@@ -992,7 +992,7 @@ class _LabelOcrTabState extends ConsumerState<_LabelOcrTab> {
                 SizedBox(height: r.gapMd),
                 TextField(
                   controller: _label,
-                  decoration: const InputDecoration(labelText: 'Ürün adı'),
+                  decoration: InputDecoration(labelText: t('Ürün adı')),
                 ),
                 SizedBox(height: r.gapSm),
                 NumberField(
@@ -1723,9 +1723,9 @@ class _ManualTabState extends ConsumerState<_ManualTab> {
           SizedBox(height: r.gapMd),
           TextField(
             controller: _label,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: 'Ne yedin?',
-              hintText: 'Örn. annemin yaptığı karnıyarık',
+              hintText: t('Örn. annemin yaptığı karnıyarık'),
             ),
             onChanged: (_) => setState(() {}),
           ),

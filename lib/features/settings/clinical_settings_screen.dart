@@ -424,7 +424,7 @@ class _InlineNumberState extends State<_InlineNumber> {
           controller: _c,
           focusNode: _focus,
           suffix: widget.unit,
-          hintText: 'boş bırakılabilir',
+          hintText: t('boş bırakılabilir'),
           maxIntegerDigits: 3,
           maxDecimals: 1,
           onChanged: (_) {},
@@ -688,7 +688,7 @@ class _ClinicalValueTileState extends ConsumerState<ClinicalValueTile> {
           if (widget.readOnly) ...[
             SizedBox(height: r.gapSm),
             Text(
-              'Referans: ${def.referenceTextTr}',
+              tf('Referans: {0}', [t(def.referenceTextTr)]),
               style: Theme.of(context).textTheme.bodySmall,
             ),
             SizedBox(height: r.gapXs),
@@ -849,8 +849,8 @@ class _ClinicalValueTileState extends ConsumerState<ClinicalValueTile> {
                 child: TextField(
                   controller: _note,
                   maxLines: 2,
-                  decoration: const InputDecoration(
-                    hintText: 'Örn. son tahlile göre düşürdüm',
+                  decoration: InputDecoration(
+                    hintText: t('Örn. son tahlile göre düşürdüm'),
                   ),
                 ),
               ),

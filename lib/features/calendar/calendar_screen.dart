@@ -390,7 +390,7 @@ class _AppointmentSheetState extends ConsumerState<_AppointmentSheet> {
             TextField(
               controller: _title,
               decoration: InputDecoration(
-                labelText: 'Başlık',
+                labelText: t('Başlık'),
                 hintText: kAppointmentKinds[_kind]!.labelTr,
               ),
             ),
@@ -461,9 +461,9 @@ class _AppointmentSheetState extends ConsumerState<_AppointmentSheet> {
             SizedBox(height: r.gapMd),
             TextField(
               controller: _location,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Yer',
-                hintText: 'Örn. X Diyaliz Merkezi',
+                hintText: t('Örn. X Diyaliz Merkezi'),
               ),
             ),
             SizedBox(height: r.gapMd),

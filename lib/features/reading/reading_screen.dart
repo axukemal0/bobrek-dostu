@@ -63,7 +63,7 @@ class _ReadingScreenState extends ConsumerState<ReadingScreen> {
         actions: [
           TapIcon(
             icon: Icons.refresh_rounded,
-            semanticLabel: 'İçerikleri yenile',
+            semanticLabel: t('İçerikleri yenile'),
             onPressed: _refreshing ? null : _refresh,
           ),
         ],
@@ -294,8 +294,12 @@ class _ArticleCardState extends ConsumerState<_ArticleCard> {
               SizedBox(width: r.gapXs),
               Expanded(
                 child: Text(
-                  'Kaynak: ${a.sourceName}'
-                  '${a.publishedAt == null ? "" : " · ${_fmt(a.publishedAt!)}"}',
+                  tf('Kaynak: {0}{1}', [
+                    a.sourceName,
+                    a.publishedAt == null
+                        ? ''
+                        : ' · ${_fmt(a.publishedAt!)}',
+                  ]),
                   style: Theme.of(context).textTheme.labelSmall,
                 ),
               ),
@@ -311,7 +315,7 @@ class _ArticleCardState extends ConsumerState<_ArticleCard> {
               if (a.link != null)
                 TapIcon(
                   icon: Icons.open_in_new_rounded,
-                  semanticLabel: 'Kaynağı tarayıcıda aç',
+                  semanticLabel: t('Kaynağı tarayıcıda aç'),
                   size: 17,
                   onPressed: () async {
                     final uri = Uri.tryParse(a.link!);

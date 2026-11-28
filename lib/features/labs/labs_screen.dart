@@ -298,7 +298,7 @@ class _AnalyteCard extends ConsumerWidget {
                   ),
                   trailing: TapIcon(
                     icon: Icons.delete_outline_rounded,
-                    semanticLabel: 'Kaydı sil',
+                    semanticLabel: t('Kaydı sil'),
                     onPressed: () async {
                       final db = ref.read(databaseProvider);
                       await (db.delete(db.labResultRows)
@@ -377,7 +377,7 @@ class _AddLabSheetState extends ConsumerState<_AddLabSheet> {
                 if (_method != null)
                   TapIcon(
                     icon: Icons.arrow_back_rounded,
-                    semanticLabel: 'Yöntem seçimine dön',
+                    semanticLabel: t('Yöntem seçimine dön'),
                     onPressed: () => setState(() => _method = null),
                   ),
                 Expanded(
@@ -1122,15 +1122,15 @@ class _EditableLabCard extends StatelessWidget {
                 child: TextField(
                   controller: row.label,
                   onChanged: (_) => onChanged(),
-                  decoration: const InputDecoration(
-                    labelText: 'Tahlil adı',
+                  decoration: InputDecoration(
+                    labelText: t('Tahlil adı'),
                     isDense: true,
                   ),
                 ),
               ),
               TapIcon(
                 icon: Icons.delete_outline_rounded,
-                semanticLabel: 'Satırı sil',
+                semanticLabel: t('Satırı sil'),
                 onPressed: onRemove,
               ),
             ],
@@ -1142,7 +1142,7 @@ class _EditableLabCard extends StatelessWidget {
                 flex: 2,
                 child: NumberField(
                   controller: row.value,
-                  hintText: 'sonuç',
+                  hintText: t('sonuç'),
                   onChanged: (_) => onChanged(),
                 ),
               ),
@@ -1162,11 +1162,11 @@ class _EditableLabCard extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: NumberField(controller: row.min, hintText: 'alt sınır'),
+                child: NumberField(controller: row.min, hintText: t('alt sınır')),
               ),
               SizedBox(width: r.gapSm),
               Expanded(
-                child: NumberField(controller: row.max, hintText: 'üst sınır'),
+                child: NumberField(controller: row.max, hintText: t('üst sınır')),
               ),
             ],
           ),
@@ -1182,7 +1182,7 @@ class _EditableLabCard extends StatelessWidget {
           ],
           SizedBox(height: r.gapXs),
           Text(
-            'ham: ${row.rawLine}',
+            tf('ham: {0}', [row.rawLine]),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.labelSmall,
@@ -1362,9 +1362,9 @@ class _ManualLabTabState extends ConsumerState<_ManualLabTab> {
             SizedBox(height: r.gapMd),
             TextField(
               controller: _customName,
-              decoration: const InputDecoration(
-                labelText: 'Tahlil adı',
-                hintText: 'Örn. CRP',
+              decoration: InputDecoration(
+                labelText: t('Tahlil adı'),
+                hintText: t('Örn. CRP'),
               ),
             ),
           ],
@@ -1444,7 +1444,7 @@ class _ManualLabTabState extends ConsumerState<_ManualLabTab> {
                 Expanded(
                   child: NumberField(
                     controller: _refMax,
-                    hintText: 'üst',
+                    hintText: t('üst'),
                   ),
                 ),
               ],
@@ -1474,8 +1474,8 @@ class _ManualLabTabState extends ConsumerState<_ManualLabTab> {
           SizedBox(height: r.gapMd),
           TextField(
             controller: _labName,
-            decoration: const InputDecoration(
-              labelText: 'Laboratuvar / hastane (isteğe bağlı)',
+            decoration: InputDecoration(
+              labelText: t('Laboratuvar / hastane (isteğe bağlı)'),
             ),
           ),
           SizedBox(height: r.gapLg),

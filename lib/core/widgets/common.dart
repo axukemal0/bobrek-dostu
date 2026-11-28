@@ -164,7 +164,8 @@ class VerificationChip extends StatelessWidget {
     };
 
     return Tooltip(
-      message: verification.explanationTr,
+      // Tooltip metni String; Flutter kendi çizer, Text'imize uğramaz.
+      message: t(verification.explanationTr),
       triggerMode: TooltipTriggerMode.tap,
       showDuration: const Duration(seconds: 8),
       child: Container(
@@ -372,8 +373,10 @@ class ApproximateBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(6),
         border: Border.all(color: p.divider),
       ),
-      child: Text(
-        '≈ $labelTr',
+      // Birleştirilmiş metin sözlükte aranmaz; etiketi ayrı çevirip
+      // "≈" işaretini sonra ekliyoruz.
+      child: Text.verbatim(
+        '≈ ${t(labelTr)}',
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
@@ -384,7 +387,7 @@ class ApproximateBadge extends StatelessWidget {
     );
     if (tooltipTr == null) return chip;
     return Tooltip(
-      message: tooltipTr!,
+      message: t(tooltipTr!),
       triggerMode: TooltipTriggerMode.tap,
       showDuration: const Duration(seconds: 6),
       child: chip,

@@ -445,9 +445,9 @@ class _FluidScreenState extends ConsumerState<FluidScreen> {
             const SizedBox(height: 16),
             TextField(
               controller: labelC,
-              decoration: const InputDecoration(
-                labelText: 'Ne içtin?',
-                hintText: 'Örn. maden suyu',
+              decoration: InputDecoration(
+                labelText: t('Ne içtin?'),
+                hintText: t('Örn. maden suyu'),
               ),
             ),
             const SizedBox(height: 12),

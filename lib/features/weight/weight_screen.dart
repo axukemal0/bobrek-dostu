@@ -399,7 +399,7 @@ class _VitalTile extends ConsumerWidget {
           ),
           TapIcon(
             icon: Icons.delete_outline_rounded,
-            semanticLabel: 'Kaydı sil',
+            semanticLabel: t('Kaydı sil'),
             onPressed: () async {
               final db = ref.read(databaseProvider);
               await (db.delete(db.vitalRows)
@@ -630,9 +630,9 @@ class _AddVitalSheetState extends ConsumerState<_AddVitalSheet> {
             TextField(
               controller: _note,
               maxLines: 2,
-              decoration: const InputDecoration(
-                labelText: 'Not (isteğe bağlı)',
-                hintText: 'Örn. sabah aç karnına',
+              decoration: InputDecoration(
+                labelText: t('Not (isteğe bağlı)'),
+                hintText: t('Örn. sabah aç karnına'),
               ),
             ),
             SizedBox(height: r.gapLg),
@@ -689,7 +689,7 @@ class _AddVitalSheetState extends ConsumerState<_AddVitalSheet> {
               Expanded(
                 child: NumberField(
                   controller: _systolic,
-                  hintText: 'büyük (üstteki)',
+                  hintText: t('büyük (üstteki)'),
                   allowDecimal: false,
                   onChanged: (_) => setState(() {}),
                 ),
@@ -701,7 +701,7 @@ class _AddVitalSheetState extends ConsumerState<_AddVitalSheet> {
               Expanded(
                 child: NumberField(
                   controller: _diastolic,
-                  hintText: 'küçük (alttaki)',
+                  hintText: t('küçük (alttaki)'),
                   allowDecimal: false,
                   onChanged: (_) => setState(() {}),
                 ),
