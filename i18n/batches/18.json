@@ -1,0 +1,38 @@
+{
+ "en": {
+  "Sıfırdan başla": "Start from scratch",
+  "Okunamayan veritabanı dosyası kenara alınacak ve uygulama BOŞ bir veritabanıyla açılacak.\n\nEski kayıtlarına (tahlil, ilaç, sıvı, kilo) bir daha ulaşamayacaksın — şifre anahtarı kaybolduğu için o dosya zaten çözülemiyor. Dosya silinmiyor, yalnız kenara alınıyor.\n\nDevam edeyim mi?": "The unreadable database file will be set aside and the app will open with an EMPTY database.\n\nYou will not be able to reach your old records (labs, medication, fluid, weight) again — that file cannot be decrypted anyway, because the encryption key is lost. The file is not deleted, only set aside.\n\nShall I go ahead?"
+ },
+ "es": {
+  "Sıfırdan başla": "Empezar de cero",
+  "Okunamayan veritabanı dosyası kenara alınacak ve uygulama BOŞ bir veritabanıyla açılacak.\n\nEski kayıtlarına (tahlil, ilaç, sıvı, kilo) bir daha ulaşamayacaksın — şifre anahtarı kaybolduğu için o dosya zaten çözülemiyor. Dosya silinmiyor, yalnız kenara alınıyor.\n\nDevam edeyim mi?": "El archivo de base de datos ilegible se dejará a un lado y la aplicación se abrirá con una base de datos VACÍA.\n\nNo volverás a tener acceso a tus registros antiguos (analíticas, medicación, líquido, peso): ese archivo ya no se puede descifrar porque la clave de cifrado se ha perdido. El archivo no se borra, solo se deja a un lado.\n\n¿Sigo adelante?"
+ },
+ "ar": {
+  "Sıfırdan başla": "ابدأ من الصفر",
+  "Okunamayan veritabanı dosyası kenara alınacak ve uygulama BOŞ bir veritabanıyla açılacak.\n\nEski kayıtlarına (tahlil, ilaç, sıvı, kilo) bir daha ulaşamayacaksın — şifre anahtarı kaybolduğu için o dosya zaten çözülemiyor. Dosya silinmiyor, yalnız kenara alınıyor.\n\nDevam edeyim mi?": "سيُنحَّى ملف قاعدة البيانات غير المقروء جانبًا، وسيُفتح التطبيق بقاعدة بيانات فارغة.\n\nولن تصل إلى سجلاتك القديمة (التحاليل والدواء والسوائل والوزن) مرة أخرى — فذلك الملف لا يمكن فكّ تشفيره أصلًا لأن مفتاح التشفير فُقد. والملف لا يُحذف، إنما يُنحَّى جانبًا.\n\nأُتابع؟"
+ },
+ "fr": {
+  "Sıfırdan başla": "Repartir de zéro",
+  "Okunamayan veritabanı dosyası kenara alınacak ve uygulama BOŞ bir veritabanıyla açılacak.\n\nEski kayıtlarına (tahlil, ilaç, sıvı, kilo) bir daha ulaşamayacaksın — şifre anahtarı kaybolduğu için o dosya zaten çözülemiyor. Dosya silinmiyor, yalnız kenara alınıyor.\n\nDevam edeyim mi?": "Le fichier de base de données illisible sera mis de côté et l'application s'ouvrira avec une base VIDE.\n\nVous n'aurez plus accès à vos anciens enregistrements (analyses, médicaments, liquides, poids) — ce fichier est de toute façon indéchiffrable, la clé étant perdue. Le fichier n'est pas supprimé, seulement mis de côté.\n\nJe continue ?"
+ },
+ "de": {
+  "Sıfırdan başla": "Neu anfangen",
+  "Okunamayan veritabanı dosyası kenara alınacak ve uygulama BOŞ bir veritabanıyla açılacak.\n\nEski kayıtlarına (tahlil, ilaç, sıvı, kilo) bir daha ulaşamayacaksın — şifre anahtarı kaybolduğu için o dosya zaten çözülemiyor. Dosya silinmiyor, yalnız kenara alınıyor.\n\nDevam edeyim mi?": "Die unlesbare Datenbankdatei wird beiseitegelegt, und die App startet mit einer LEEREN Datenbank.\n\nDu kommst an deine alten Einträge (Labor, Medikamente, Flüssigkeit, Gewicht) nicht mehr heran — diese Datei ist ohnehin nicht entschlüsselbar, da der Schlüssel verloren ist. Die Datei wird nicht gelöscht, nur beiseitegelegt.\n\nSoll ich weitermachen?"
+ },
+ "ru": {
+  "Sıfırdan başla": "Начать с нуля",
+  "Okunamayan veritabanı dosyası kenara alınacak ve uygulama BOŞ bir veritabanıyla açılacak.\n\nEski kayıtlarına (tahlil, ilaç, sıvı, kilo) bir daha ulaşamayacaksın — şifre anahtarı kaybolduğu için o dosya zaten çözülemiyor. Dosya silinmiyor, yalnız kenara alınıyor.\n\nDevam edeyim mi?": "Нечитаемый файл базы данных будет отложен в сторону, и приложение откроется с ПУСТОЙ базой.\n\nК старым записям (анализы, лекарства, жидкость, вес) вы больше не доберётесь — этот файл и так не расшифровать, ключ утрачен. Файл не удаляется, лишь откладывается.\n\nПродолжать?"
+ },
+ "pt": {
+  "Sıfırdan başla": "Começar do zero",
+  "Okunamayan veritabanı dosyası kenara alınacak ve uygulama BOŞ bir veritabanıyla açılacak.\n\nEski kayıtlarına (tahlil, ilaç, sıvı, kilo) bir daha ulaşamayacaksın — şifre anahtarı kaybolduğu için o dosya zaten çözülemiyor. Dosya silinmiyor, yalnız kenara alınıyor.\n\nDevam edeyim mi?": "O ficheiro de base de dados ilegível será posto de lado e a aplicação abrirá com uma base de dados VAZIA.\n\nNão voltarás a chegar aos teus registos antigos (análises, medicação, líquidos, peso) — esse ficheiro já não pode ser decifrado, porque a chave se perdeu. O ficheiro não é apagado, apenas posto de lado.\n\nProsseguir?"
+ },
+ "hi": {
+  "Sıfırdan başla": "शून्य से शुरू करें",
+  "Okunamayan veritabanı dosyası kenara alınacak ve uygulama BOŞ bir veritabanıyla açılacak.\n\nEski kayıtlarına (tahlil, ilaç, sıvı, kilo) bir daha ulaşamayacaksın — şifre anahtarı kaybolduğu için o dosya zaten çözülemiyor. Dosya silinmiyor, yalnız kenara alınıyor.\n\nDevam edeyim mi?": "न पढ़ी जा सकने वाली डेटाबेस फ़ाइल किनारे रख दी जाएगी और ऐप एक ख़ाली डेटाबेस के साथ खुलेगा।\n\nआप अपने पुराने रिकॉर्डों (जाँच, दवा, द्रव, वज़न) तक दोबारा नहीं पहुँच पाएँगे — कूट कुंजी खो जाने के कारण वह फ़ाइल पहले से ही नहीं खुलती। फ़ाइल मिटाई नहीं जा रही, केवल किनारे रखी जा रही है।\n\nआगे बढ़ूँ?"
+ },
+ "zh": {
+  "Sıfırdan başla": "从零开始",
+  "Okunamayan veritabanı dosyası kenara alınacak ve uygulama BOŞ bir veritabanıyla açılacak.\n\nEski kayıtlarına (tahlil, ilaç, sıvı, kilo) bir daha ulaşamayacaksın — şifre anahtarı kaybolduğu için o dosya zaten çözülemiyor. Dosya silinmiyor, yalnız kenara alınıyor.\n\nDevam edeyim mi?": "无法读取的数据库文件将被搁置一旁，应用会以一个空数据库打开。\n\n你将再也无法取回旧记录（化验、用药、液体、体重）——由于加密密钥已丢失，那个文件本来也解不开。文件不会被删除，只是搁置一旁。\n\n要继续吗？"
+ }
+}

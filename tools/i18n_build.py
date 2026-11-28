@@ -25,6 +25,21 @@ import sys
 LANGS = ['en', 'es', 'ar', 'fr', 'de', 'ru', 'pt', 'hi', 'zh']
 SRC = 'i18n'
 OUT = 'lib/core/i18n/translations'
+VERBATIM = os.path.join(SRC, 'verbatim.json')
+
+
+def load_verbatim() -> set:
+    """Asla çevrilmeyecek metinler.
+
+    İçinde eşleştirme anahtarları var: speech_service.dart'ın Türkçe konuşmayla
+    karşılaştırdığı kelimeler, evaluator.dart'ın acil belirti desenleri, SQL
+    ifadeleri ve kullanıcıya "sunucuya giden metin" diye gösterilen sistem
+    komutu. Bunlardan biri sözlüğe sızarsa sesli kayıt ya da acil belirti
+    taraması sessizce bozulabilir; bu yüzden üretim hata verip durur.
+    """
+    if not os.path.exists(VERBATIM):
+        return set()
+    return set(json.load(io.open(VERBATIM, encoding='utf-8')))
 
 
 def dart_string(s: str) -> str:
@@ -34,12 +49,23 @@ def dart_string(s: str) -> str:
     return "'" + out + "'"
 
 
-def build(code: str) -> int:
+def build(code: str, verbatim: set) -> int:
     path = os.path.join(SRC, '%s.json' % code)
     if not os.path.exists(path):
         data = {}
     else:
         data = json.load(io.open(path, encoding='utf-8'))
+
+    leaked = sorted(k for k in data if k in verbatim)
+    if leaked:
+        sys.stderr.write(
+            '%s: çevrilmeyecek olarak işaretli %d metin sözlüğe girmiş.\n'
+            'Bunları i18n/%s.json dosyasından çıkar ya da gerçekten '
+            'çevrilebilirse i18n/verbatim.json listesinden çıkar:\n'
+            % (path, len(leaked), code))
+        for k in leaked[:10]:
+            sys.stderr.write('  %r\n' % k[:70])
+        raise SystemExit(1)
 
     rows = []
     for key in sorted(data):
@@ -70,9 +96,10 @@ def build(code: str) -> int:
 
 
 def main():
+    verbatim = load_verbatim()
     total = 0
     for code in LANGS:
-        n = build(code)
+        n = build(code, verbatim)
         total += n
         print('%-3s %5d satır' % (code, n))
     print('toplam %d çeviri' % total)
